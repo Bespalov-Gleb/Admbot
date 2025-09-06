@@ -3,11 +3,27 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from app.deps.auth import require_user_id
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db import get_db
-from app.models import Review as DBReview, Order as DBOrder, AppReview as DBAppReview
+from app.models import Review as DBReview, Order as DBOrder, AppReview as DBAppReview, Restaurant as DBRestaurant
 
 
 router = APIRouter()
+
+
+def update_restaurant_rating(restaurant_id: int, db: Session):
+    """Обновляет рейтинг ресторана на основе всех отзывов"""
+    # Получаем средний рейтинг всех активных отзывов для ресторана
+    avg_rating = db.query(func.avg(DBReview.rating)).filter(
+        DBReview.restaurant_id == restaurant_id,
+        DBReview.is_deleted == False
+    ).scalar()
+    
+    # Обновляем рейтинг ресторана
+    restaurant = db.query(DBRestaurant).filter(DBRestaurant.id == restaurant_id).first()
+    if restaurant:
+        restaurant.rating_agg = round(avg_rating or 0.0, 1)
+        db.commit()
 
 
 class ReviewCreate(BaseModel):
@@ -51,6 +67,10 @@ async def create_review(payload: ReviewCreate, user_id: int = Depends(require_us
     db.add(rv)
     db.commit()
     db.refresh(rv)
+    
+    # Обновляем рейтинг ресторана
+    update_restaurant_rating(payload.restaurant_id, db)
+    
     return {"status": "ok", "id": rv.id}
 
 
@@ -103,5 +123,34 @@ async def get_my_app_review(user_id: int = Depends(require_user_id), db: Session
             "comment": review.comment,
             "created_at": review.created_at
         } if review else None
+    }
+
+
+@router.get("/reviews/restaurant/{restaurant_id}")
+async def get_restaurant_reviews(restaurant_id: int, db: Session = Depends(get_db)) -> dict:
+    """Получить все отзывы о ресторане"""
+    reviews = db.query(DBReview).filter(
+        DBReview.restaurant_id == restaurant_id,
+        DBReview.is_deleted == False
+    ).order_by(DBReview.created_at.desc()).all()
+    
+    # Получаем средний рейтинг
+    avg_rating = db.query(func.avg(DBReview.rating)).filter(
+        DBReview.restaurant_id == restaurant_id,
+        DBReview.is_deleted == False
+    ).scalar()
+    
+    return {
+        "reviews": [
+            {
+                "id": r.id,
+                "user_id": r.user_id,
+                "rating": r.rating,
+                "comment": r.comment,
+                "created_at": r.created_at
+            } for r in reviews
+        ],
+        "average_rating": round(avg_rating or 0.0, 1),
+        "total_reviews": len(reviews)
     }
 

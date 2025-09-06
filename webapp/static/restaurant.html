@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=19" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=48" />
+  <script src="/static/page-transitions.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
     .cat-row {
@@ -403,7 +404,7 @@
       box-sizing: border-box;
     }
     
-    /* Адаптивность для мобильных устройств */
+    /* Адаптивность для мобильных устройств - всегда 2 карточки в строке */
     @media (max-width: 600px) {
       .dishes-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -414,9 +415,9 @@
     
     @media (max-width: 480px) {
       .dishes-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        padding: 0 8px;
+        grid-template-columns: repeat(2, 1fr); /* Всегда 2 карточки */
+        gap: 6px;
+        padding: 0 6px;
       }
       
       .dish-card {
@@ -424,20 +425,68 @@
       }
       
       .dish-content {
-        padding: 12px;
+        padding: 8px;
       }
       
       .dish-name {
-        font-size: 16px;
+        font-size: 14px;
+        line-height: 1.2;
+      }
+      
+      .dish-description {
+        font-size: 12px;
+        margin-bottom: 8px;
       }
       
       .dish-price {
-        font-size: 18px;
+        font-size: 16px;
+        margin-bottom: 8px;
       }
       
       .add-btn {
-        padding: 10px 20px;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      
+      .qty-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+      }
+      
+      .qty-display {
+        font-size: 16px;
+      }
+    }
+    
+    /* Для очень маленьких экранов */
+    @media (max-width: 360px) {
+      .dishes-grid {
+        gap: 4px;
+        padding: 0 4px;
+      }
+      
+      .dish-content {
+        padding: 6px;
+      }
+      
+      .dish-name {
+        font-size: 13px;
+      }
+      
+      .dish-description {
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+      
+      .dish-price {
         font-size: 14px;
+        margin-bottom: 6px;
+      }
+      
+      .add-btn {
+        padding: 6px 10px;
+        font-size: 11px;
       }
     }
     
@@ -468,6 +517,81 @@
     /* Стили для заголовка ресторана */
     .restaurant-header {
       padding: 16px 16px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .restaurant-info {
+      flex: 1;
+      display: block !important;
+    }
+    
+    .restaurant-info h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .restaurant-details-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      width: 100%;
+    }
+    
+    .rating-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .rating-section span:first-child {
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .rating-section span:last-child {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .delivery-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .delivery-icon {
+      font-size: 16px;
+    }
+    
+    .delivery-section span:last-child {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .info-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.2s ease;
+    }
+    
+    .info-btn:hover {
+      background-color: #f5f5f5;
     }
     
     /* Стили для спейсера внизу */
@@ -488,11 +612,16 @@
     <div class="restaurant-header">
       <div class="restaurant-info">
         <h1 id="restaurantName">Загрузка...</h1>
-        <div class="restaurant-meta">
-          <span id="restaurantRating">★ 4.6 • 48 отзывов</span>
-          <span id="restaurantDelivery">35–45 мин</span>
+        <div class="restaurant-details-row">
+          <div class="rating-section">
+            <span id="restaurantRating">★ --</span>
+            <span id="restaurantReviews">-- отзывов</span>
+          </div>
+          <div class="delivery-section">
+            <span class="delivery-icon">🚚</span>
+            <span id="restaurantDelivery">-- мин</span>
+          </div>
         </div>
-        <div class="restaurant-address" id="restaurantAddress">Адрес загружается...</div>
       </div>
       <button class="info-btn" onclick="showRestaurantInfo()">ℹ️</button>
     </div>
@@ -624,7 +753,7 @@
           dishesMap.set(dish.id, dish);
         });
         
-        renderRestaurantHeader(restaurant);
+        await renderRestaurantHeader(restaurant);
         renderCategories();
         renderDishes();
         
@@ -633,20 +762,41 @@
       }
     }
     
-    function renderRestaurantHeader(restaurant) {
+    async function renderRestaurantHeader(restaurant) {
       document.getElementById('restaurantName').textContent = restaurant.name;
-      document.getElementById('restaurantAddress').textContent = restaurant.address || 'Адрес не указан';
       
       // Формируем рейтинг
       const rating = restaurant.rating_agg 
-        ? `★ ${Number(restaurant.rating_agg).toFixed(1)} • 48 отзывов`
-        : '★ 4.6 • 48 отзывов';
+        ? `★ ${Number(restaurant.rating_agg).toFixed(1)}`
+        : '★ --';
       document.getElementById('restaurantRating').textContent = rating;
+      
+      // Загружаем количество отзывов из API
+      try {
+        console.log('Loading reviews for restaurant ID:', restaurant.id);
+        const reviewsRes = await fetch(api + '/reviews/restaurant/' + restaurant.id);
+        console.log('Reviews API response:', reviewsRes.status, reviewsRes.ok);
+        if (reviewsRes.ok) {
+          const reviewsData = await reviewsRes.json();
+          console.log('Reviews data:', reviewsData);
+          const reviewsCount = reviewsData.total_reviews || 0;
+          console.log('Reviews count:', reviewsCount);
+          document.getElementById('restaurantReviews').textContent = `${reviewsCount} отзывов`;
+        } else {
+          console.log('Reviews API failed, using fallback');
+          document.getElementById('restaurantReviews').textContent = '0 отзывов';
+        }
+      } catch (error) {
+        console.error('Error loading reviews count:', error);
+        document.getElementById('restaurantReviews').textContent = '0 отзывов';
+      }
       
       // Формируем время доставки
       const deliveryTime = restaurant.delivery_time_min && restaurant.delivery_time_max
         ? `${restaurant.delivery_time_min}–${restaurant.delivery_time_max} мин`
-        : '35–45 мин';
+        : restaurant.delivery_time_minutes 
+          ? `${restaurant.delivery_time_minutes} мин`
+          : '-- мин';
       document.getElementById('restaurantDelivery').textContent = deliveryTime;
     }
     
@@ -724,9 +874,12 @@
         const dishesGrid = document.createElement('div');
         dishesGrid.className = 'dishes-grid';
         
-        categoryDishes.forEach(dish => {
+        categoryDishes.forEach((dish, index) => {
           const card = document.createElement('div');
           card.className = 'dish-card';
+          
+          // Добавляем задержку для анимации появления
+          card.style.animationDelay = `${index * 0.1}s`;
           
           card.innerHTML = `
             <img src="${dish.image || 'https://via.placeholder.com/300x200?text=No+Image'}" alt="${dish.name}" class="dish-image" />
@@ -835,7 +988,8 @@
         if (qty <= 0) {
           // Кнопка "+" для добавления блюда
           c.innerHTML = '<button class="add-btn">+</button>';
-          c.querySelector('.add-btn').onclick = () => {
+          const addBtn = c.querySelector('.add-btn');
+          addBtn.onclick = () => {
             // Если у блюда есть опции, переходим к странице блюда
             if (dish?.has_options) {
               const p = new URLSearchParams(location.search);
@@ -843,7 +997,11 @@
               location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
               return;
             }
-            // Если опций нет, добавляем в корзину
+            // Если опций нет, добавляем в корзину с анимацией
+            addBtn.classList.add('success-animation');
+            setTimeout(() => {
+              addBtn.classList.remove('success-animation');
+            }, 600);
             updateQtyClient(dishId, 1);
           };
         } else {
@@ -855,6 +1013,9 @@
               <button class="qty-btn" data-act="inc" title="Увеличить количество">+</button>
             </div>
           `;
+          
+          // Добавляем анимацию появления контролов
+          c.style.animation = 'fadeInUp 0.3s ease-out';
           
           // Обработчик для кнопки "-"
           c.querySelector('[data-act="dec"]').onclick = () => updateQtyClient(dishId, -1);
@@ -987,8 +1148,8 @@
       
       // Формируем рейтинг
       const rating = restaurant.rating_agg 
-        ? `★ ${Number(restaurant.rating_agg).toFixed(1)} • 48 отзывов`
-        : '★ 4.6 • 48 отзывов';
+        ? `★ ${Number(restaurant.rating_agg).toFixed(1)}`
+        : '★ --';
       document.getElementById('modalRating').textContent = rating;
       
       // Формируем теги кухни (используем доступные данные)

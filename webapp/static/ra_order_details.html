@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Детали заказа</title>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=32" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <style>
     .order-details-container {
       max-width: 600px;
@@ -521,106 +521,6 @@
       border-radius: 8px;
     }
     
-    /* Стили для отзыва о заказе */
-    .order-feedback-section {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 20px;
-      border: 1px solid #e2e8f0;
-    }
-    
-    .feedback-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 16px;
-      border-bottom: 2px solid #e5e7eb;
-      padding-bottom: 8px;
-    }
-    
-    .rating-section {
-      margin-bottom: 16px;
-    }
-    
-    .rating-label {
-      display: block;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 8px;
-    }
-    
-    .star-rating {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-    
-    .star {
-      font-size: 24px;
-      color: #d1d5db;
-      cursor: pointer;
-      transition: color 0.2s ease;
-      user-select: none;
-    }
-    
-    .star:hover,
-    .star.active {
-      color: #fbbf24;
-    }
-    
-    .star.filled {
-      color: #fbbf24;
-    }
-    
-    .rating-text {
-      margin-left: 12px;
-      font-size: 14px;
-      color: #6b7280;
-      min-width: 80px;
-    }
-    
-    .feedback-comment-section {
-      margin-bottom: 16px;
-    }
-    
-    .feedback-comment {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 14px;
-      resize: vertical;
-      min-height: 80px;
-      font-family: inherit;
-    }
-    
-    .feedback-comment:focus {
-      outline: none;
-      border-color: #dc2626;
-      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    }
-    
-    .feedback-submit {
-      background: #dc2626;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
-    
-    .feedback-submit:hover {
-      background: #b91c1c;
-    }
-    
-    .feedback-submit:disabled {
-      background: #d1d5db;
-      cursor: not-allowed;
-    }
   </style>
 </head>
 <body>
@@ -673,11 +573,17 @@ const api = location.origin + '/api';
       const acceptedTime = order.accepted_at ? new Date(order.accepted_at) : new Date();
       const etaMinutes = order.eta_minutes || 60;
       
+      // Функция для конвертации в московское время (UTC+3)
+      function toMoscowTime(date) {
+        const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+        return moscowTime;
+      }
+      
       const orderContent = document.getElementById('order-content');
       orderContent.innerHTML = `
         <div class="order-header">
-          <div class="order-status" id="order-status">Принят рестораном в ${acceptedTime.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}.</div>
-          <div class="order-time">Время заказа: ${new Date(order.created_at).toLocaleString('ru-RU')}</div>
+          <div class="order-status" id="order-status">Принят рестораном в ${toMoscowTime(acceptedTime).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}.</div>
+          <div class="order-time">Время заказа: ${toMoscowTime(new Date(order.created_at)).toLocaleString('ru-RU')}</div>
           <div class="order-delivery-time" id="delivery-countdown">Время доставки - ${formatDeliveryTime(etaMinutes)}</div>
         </div>
         
@@ -721,32 +627,6 @@ const api = location.origin + '/api';
           <button class="action-btn btn-delivered" onclick="markDelivered()">Доставлено</button>
         </div>
         
-        <div class="order-feedback-section">
-          <div class="feedback-title">Отзыв о заказе</div>
-          
-          <div class="rating-section">
-            <label class="rating-label">Оценка:</label>
-            <div class="star-rating">
-              <span class="star" data-rating="1" onclick="setRating(1)">★</span>
-              <span class="star" data-rating="2" onclick="setRating(2)">★</span>
-              <span class="star" data-rating="3" onclick="setRating(3)">★</span>
-              <span class="star" data-rating="4" onclick="setRating(4)">★</span>
-              <span class="star" data-rating="5" onclick="setRating(5)">★</span>
-              <span class="rating-text" id="rating-text">Выберите оценку</span>
-            </div>
-          </div>
-          
-          <div class="feedback-comment-section">
-            <label class="comment-label">Комментарий:</label>
-            <textarea class="feedback-comment" 
-                      placeholder="Ваш отзыв о заказе..."
-                      rows="3"></textarea>
-          </div>
-          
-          <button class="feedback-submit" onclick="submitFeedback()" disabled>
-            Отправить отзыв
-          </button>
-        </div>
       `;
       
       // Запускаем таймер обратного отсчета
@@ -1139,7 +1019,9 @@ const api = location.origin + '/api';
     function startCountdown(orderId, etaMinutes, acceptedTime) {
       console.log(`Starting countdown for order ${orderId} with ${etaMinutes} minutes`);
       
-      const endTime = new Date(acceptedTime).getTime() + (etaMinutes * 60 * 1000);
+      // Конвертируем время принятия в московское время для правильного расчета
+      const moscowAcceptedTime = new Date(acceptedTime.getTime() + (3 * 60 * 60 * 1000));
+      const endTime = moscowAcceptedTime.getTime() + (etaMinutes * 60 * 1000);
       const countdownElement = document.getElementById('delivery-countdown');
       
       if (!countdownElement) {
@@ -1148,7 +1030,8 @@ const api = location.origin + '/api';
       }
       
       const countdownInterval = setInterval(() => {
-        const now = new Date().getTime();
+        // Текущее время в московском часовом поясе
+        const now = new Date().getTime() + (3 * 60 * 60 * 1000);
         const timeLeft = endTime - now;
         
         if (timeLeft <= 0) {
@@ -1197,80 +1080,6 @@ const api = location.origin + '/api';
       }
     });
     
-    // Глобальные переменные для отзыва
-    let currentRating = 0;
-    
-    // Функция установки рейтинга
-    function setRating(rating) {
-      currentRating = rating;
-      
-      // Обновляем отображение звездочек
-      const stars = document.querySelectorAll('.star');
-      const ratingText = document.getElementById('rating-text');
-      
-      stars.forEach((star, index) => {
-        if (index < rating) {
-          star.classList.add('filled');
-        } else {
-          star.classList.remove('filled');
-        }
-      });
-      
-      // Обновляем текст рейтинга
-      const ratingLabels = {
-        1: 'Плохо',
-        2: 'Неудовлетворительно',
-        3: 'Удовлетворительно',
-        4: 'Хорошо',
-        5: 'Отлично'
-      };
-      
-      ratingText.textContent = ratingLabels[rating] || 'Выберите оценку';
-      
-      // Активируем кнопку отправки
-      const submitBtn = document.querySelector('.feedback-submit');
-      submitBtn.disabled = false;
-    }
-    
-    // Функция отправки отзыва
-    async function submitFeedback() {
-      if (currentRating === 0) {
-        alert('Пожалуйста, выберите оценку');
-        return;
-      }
-      
-      const commentTextarea = document.querySelector('.feedback-comment');
-      const comment = commentTextarea.value.trim();
-      
-      const submitBtn = document.querySelector('.feedback-submit');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Отправка...';
-      
-      try {
-        // Здесь можно добавить API вызов для сохранения отзыва
-        // Пока что просто показываем успешное сообщение
-        
-        // Имитация API вызова
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        alert(`Спасибо за отзыв! Оценка: ${currentRating} звезд`);
-        
-        // Очищаем форму
-        currentRating = 0;
-        const stars = document.querySelectorAll('.star');
-        stars.forEach(star => star.classList.remove('filled'));
-        document.getElementById('rating-text').textContent = 'Выберите оценку';
-        commentTextarea.value = '';
-        submitBtn.disabled = true;
-        
-      } catch (error) {
-        console.error('Error submitting feedback:', error);
-        alert('Ошибка при отправке отзыва: ' + error.message);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Отправить отзыв';
-      }
-    }
   </script>
 </body>
 </html> 

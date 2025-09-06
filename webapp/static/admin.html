@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Админка</title>
-  <link rel="stylesheet" href="/static/admin.css?v=7" />
+  <link rel="stylesheet" href="/static/admin.css?v=8" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -86,19 +86,6 @@
         </div>
       </div>
        
-       <div class="admin-section">
-         <h3>Настройки системы</h3>
-         <div class="form-group">
-           <label>Кодовое слово для входа в админку</label>
-           <div class="form-row">
-             <input id="adminCodeInput" placeholder="Введите новое кодовое слово"/>
-             <button id="updateAdminCode">🔐 Обновить</button>
-           </div>
-           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-             💡 Текущее кодовое слово: <span id="currentAdminCode">Загрузка...</span>
-           </div>
-         </div>
-       </div>
        
       <div class="admin-section">
         <h3 id="collectionsToggle" style="cursor: pointer; user-select: none;">

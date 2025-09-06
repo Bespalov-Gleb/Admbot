@@ -4,174 +4,400 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Профиль ресторана</title>
-     <link rel="stylesheet" href="/static/styles.v23.css?v=30" />
+     <link rel="stylesheet" href="/static/styles.v23.css?v=49" />
   <style>
-         .admin-buttons {
-       display: grid;
-       grid-template-columns: 1fr 1fr;
-       gap: 8px;
-       margin-top: 20px;
-     }
-     
-     .admin-btn {
-       padding: 10px 12px;
-       background: #3b82f6;
-       color: white;
-       border: none;
-       border-radius: 8px;
-       font-size: 13px;
-       font-weight: 500;
-       cursor: pointer;
-       transition: all 0.2s ease;
-       text-align: center;
-     }
-     
-     .admin-btn:hover {
-       background: #2563eb;
-       transform: translateY(-1px);
-     }
+    /* ===== СОВРЕМЕННЫЙ ДИЗАЙН ПРОФИЛЯ РЕСТОРАНА ===== */
     
-    .submenu {
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .meta {
+      text-align: center;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .meta a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .meta a:hover {
+      background: #f1f5f9;
+      color: #1d4ed8;
+    }
+    
+    .meta span {
+      color: #94a3b8;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    /* Карточка ресторана */
+    .restaurant {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .restaurant-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .restaurant-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      object-fit: cover;
+      border: 3px solid #f1f5f9;
+    }
+    
+    .restaurant-info h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 8px 0;
+    }
+    
+    .restaurant-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .status-enabled {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .status-disabled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .restaurant-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    
+    .stat-item {
+      text-align: center;
+      padding: 16px;
       background: #f8fafc;
       border-radius: 12px;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
     }
     
-    .submenu-title {
-      font-size: 16px;
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    
+    /* Секция загрузки фото */
+    .upload-section {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .upload-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .upload-icon {
+      width: 24px;
+      height: 24px;
+      background: #3b82f6;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+    
+    .upload-title {
+      font-size: 18px;
       font-weight: 600;
       color: #1e293b;
-      margin-bottom: 12px;
     }
     
-    .submenu-btn {
-      display: block;
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
       width: 100%;
-      padding: 10px 12px;
-      background: white;
-      color: #374151;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
+    }
+    
+    .file-input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .file-input-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      color: #64748b;
       font-size: 14px;
-      margin-bottom: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .file-input-button:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    
+    .current-image {
+      margin-top: 16px;
+      text-align: center;
+    }
+    
+    .current-image img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Редактируемые поля */
+    .fields-section {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .fields-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .fields-icon {
+      width: 24px;
+      height: 24px;
+      background: #10b981;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+    
+    .fields-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    
+    .field-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .field-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .field-input {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      background: #fafafa;
+    }
+    
+    .field-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .field-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .save-btn {
+      padding: 8px 16px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
     }
     
-    .submenu-btn:hover {
-      background: #f3f4f6;
-      border-color: #9ca3af;
+    .save-btn:hover {
+      background: #059669;
+      transform: translateY(-1px);
     }
     
-    .back-btn {
-      background: #f1f5f9;
-      color: #64748b;
-      border-color: #cbd5e1;
-    }
-    
-    .back-btn:hover {
-      background: #e2e8f0;
-      color: #475569;
-    }
-    
-    .orders-section {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
-    }
-    
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1e293b;
-      margin-bottom: 16px;
-    }
-    
-    .order-item {
-      background: #f8fafc;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 8px;
-      border: 1px solid #e2e8f0;
-    }
-    
-    .order-header {
+    /* Кнопки управления */
+    .admin-buttons {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
+      justify-content: center;
+      margin-bottom: 24px;
     }
     
-    .order-id {
+    .admin-btn {
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
       font-weight: 600;
-      color: #1e293b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     
-    .order-status {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
+    .admin-btn.primary {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
     }
     
-    .status-sent { background: #fef3c7; color: #92400e; }
-    .status-accepted { background: #d1fae5; color: #065f46; }
-    .status-delivered { background: #dbeafe; color: #1e40af; }
-    .status-cancelled { background: #fee2e2; color: #991b1b; }
-    .status-modified { background: #f3e8ff; color: #7c3aed; }
-    
-    .order-details {
-      font-size: 13px;
-      color: #64748b;
+    .admin-btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
     }
     
-         .order-items {
-       margin-top: 8px;
-       font-size: 12px;
-       color: #6b7280;
-     }
-     
-     .editable-field {
-       display: flex;
-       align-items: center;
-       gap: 8px;
-       margin-bottom: 8px;
-     }
-     
-     .editable-field input {
-       flex: 1;
-       padding: 6px 8px;
-       border: 1px solid #d1d5db;
-       border-radius: 4px;
-       font-size: 13px;
-     }
-     
-           .editable-field button {
-        padding: 6px 12px;
-        background: white;
-        color: #374151;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
+    .admin-btn.secondary {
+      background: linear-gradient(135deg, #6b7280, #4b5563);
+      color: white;
+    }
+    
+    .admin-btn.secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(107, 114, 128, 0.3);
+    }
+    
+    .admin-btn.danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+    
+    .admin-btn.danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
       }
       
-      .editable-field button:hover {
-        background: #f3f4f6;
-        border-color: #9ca3af;
+      .restaurant-header {
+        flex-direction: column;
+        text-align: center;
       }
-     
-     .field-label {
-       font-weight: 500;
-       color: #374151;
-       min-width: 120px;
-     }
-     
-     .field-value {
-       color: #6b7280;
-     }
+      
+      .restaurant-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .field-group {
+        grid-template-columns: 1fr;
+      }
+      
+      .admin-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .restaurant-stats {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -192,59 +418,82 @@
      <div id="card" class="restaurant"></div>
 
      <!-- Загрузка изображения ресторана -->
-     <div id="imageUploadSection" style="margin-top: 20px;">
-       <div class="editable-field">
-         <span class="field-label">Фото ресторана:</span>
-         <input id="imageInput" type="file" accept="image/*" style="flex: 1; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;">
-         <button onclick="uploadRestaurantImage()">Загрузить</button>
+     <div id="imageUploadSection" class="upload-section">
+       <div class="upload-header">
+         <div class="upload-icon">📷</div>
+         <div class="upload-title">Фото ресторана</div>
        </div>
-       <div id="currentImage" style="margin-top: 10px; text-align: center;"></div>
+       <div class="file-input-wrapper">
+         <input id="imageInput" type="file" accept="image/*" class="file-input">
+         <div class="file-input-button">
+           <span>📁</span>
+           <span>Выберите файл</span>
+         </div>
+       </div>
+       <div id="currentImage" class="current-image"></div>
      </div>
 
      <!-- Изменяемые поля -->
-     <div id="editableFields" style="margin-top: 20px;">
-       <div class="editable-field">
-         <span class="field-label">Адрес:</span>
-         <input id="addressInput" type="text" placeholder="Введите адрес">
-         <button onclick="updateField('address')">Сохранить</button>
+     <div id="editableFields" class="fields-section">
+       <div class="fields-header">
+         <div class="fields-icon">⚙️</div>
+         <div class="fields-title">Настройки ресторана</div>
        </div>
-       
-       <div class="editable-field">
-         <span class="field-label">Телефон:</span>
-         <input id="phoneInput" type="text" placeholder="Введите телефон">
-         <button onclick="updateField('phone')">Сохранить</button>
-       </div>
-       
-       <div class="editable-field">
-         <span class="field-label">Email для уведомлений:</span>
-         <input id="emailInput" type="email" placeholder="restaurant@example.com">
-         <button onclick="updateField('email')">Сохранить</button>
-       </div>
-       
-       <div class="editable-field">
-         <span class="field-label">Режим работы:</span>
-         <input id="workingHoursInput" type="text" placeholder="10:00 - 20:00">
-         <button onclick="updateField('workingHours')">Сохранить</button>
-       </div>
-       
-       <div class="editable-field">
-         <span class="field-label">Мин. сумма:</span>
-         <input id="minOrderInput" type="number" placeholder="1500">
-         <button onclick="updateField('minOrder')">Сохранить</button>
-       </div>
-       
-       <div class="editable-field">
-         <span class="field-label">Время доставки:</span>
-         <input id="deliveryTimeInput" type="number" placeholder="90">
-         <button onclick="updateField('deliveryTime')">Сохранить</button>
+       <div class="field-group">
+         <div class="field-item">
+           <label class="field-label">Адрес</label>
+           <input id="addressInput" type="text" class="field-input" placeholder="Введите адрес">
+           <div class="field-actions">
+             <button onclick="updateField('address')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Телефон</label>
+           <input id="phoneInput" type="text" class="field-input" placeholder="Введите телефон">
+           <div class="field-actions">
+             <button onclick="updateField('phone')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Email для уведомлений</label>
+           <input id="emailInput" type="email" class="field-input" placeholder="restaurant@example.com">
+           <div class="field-actions">
+             <button onclick="updateField('email')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Режим работы</label>
+           <input id="workingHoursInput" type="text" class="field-input" placeholder="10:00 - 20:00">
+           <div class="field-actions">
+             <button onclick="updateField('workingHours')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Мин. сумма заказа</label>
+           <input id="minOrderInput" type="number" class="field-input" placeholder="1500">
+           <div class="field-actions">
+             <button onclick="updateField('minOrder')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Время доставки (мин)</label>
+           <input id="deliveryTimeInput" type="number" class="field-input" placeholder="90">
+           <div class="field-actions">
+             <button onclick="updateField('deliveryTime')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
        </div>
      </div>
 
      <!-- Кнопки управления -->
-     <div class="admin-buttons">
-       <button id="btnToggleStatus" class="admin-btn">Выключить ресторан</button>
-       <button id="btnOrders" class="admin-btn">Заказы</button>
-     </div>
+         <div class="admin-buttons">
+           <button id="btnToggleStatus" class="admin-btn danger">🔴 Выключить ресторан</button>
+         </div>
 
     
 
@@ -296,13 +545,30 @@ const api = location.origin + '/api';
 
          function render(r) {
        const card = document.getElementById('card');
-       card.innerHTML = '';
-       const box = document.createElement('div');
-       box.innerHTML = `
-         <div class="title">${r.name}</div>
-         <div class="meta">Статус: <span style="color: ${r.is_enabled ? '#059669' : '#dc2626'}; font-weight: 600;">${r.is_enabled ? 'Включен' : 'Выключен'}</span></div>
-         <div class="meta">Доставка: ${r.delivery_fee} ₽</div>`;
-       card.appendChild(box);
+       card.innerHTML = `
+         <div class="restaurant-header">
+           <img src="${r.image || '/static/placeholder-restaurant.jpg'}" alt="${r.name}" class="restaurant-logo">
+           <div class="restaurant-info">
+             <h3>${r.name}</h3>
+             <div class="restaurant-status ${r.is_enabled ? 'status-enabled' : 'status-disabled'}">
+               ${r.is_enabled ? '✅ Включен' : '❌ Выключен'}
+             </div>
+           </div>
+         </div>
+         <div class="restaurant-stats">
+           <div class="stat-item">
+             <div class="stat-value">${r.delivery_fee} ₽</div>
+             <div class="stat-label">Доставка</div>
+           </div>
+           <div class="stat-item">
+             <div class="stat-value">${r.delivery_time_minutes || '--'} мин</div>
+             <div class="stat-label">Время доставки</div>
+           </div>
+           <div class="stat-item">
+             <div class="stat-value">${r.delivery_min_sum || '--'} ₽</div>
+             <div class="stat-label">Мин. заказ</div>
+           </div>
+         </div>`;
 
        // Заполняем поля текущими значениями
        document.getElementById('addressInput').value = r.address || '';
@@ -465,11 +731,6 @@ const api = location.origin + '/api';
       load();
     };
 
-         // Заказы
-     document.getElementById('btnOrders').onclick = async () => {
-       document.getElementById('ordersSection').style.display = 'block';
-       await loadOrders();
-     };
 
     async function loadOrders() {
       const res = await fetch(api + '/ra/orders', { headers });
@@ -501,7 +762,7 @@ const api = location.origin + '/api';
             ${order.items.map(item => `${item.name} x${item.qty}`).join(', ')}
           </div>
           <div class="order-details">
-            ${new Date(order.created_at).toLocaleString('ru-RU')}
+            ${new Date(new Date(order.created_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleString('ru-RU')}
           </div>
         </div>
       `).join('');

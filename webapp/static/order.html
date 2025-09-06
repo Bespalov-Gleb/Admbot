@@ -4,8 +4,127 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Текущий заказ</title>
-  <link rel="stylesheet" href="/static/styles.css?v=24" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/page-transitions.js"></script>
+  <style>
+    /* Стили для улучшенной страницы заказа */
+    
+    
+    .order-item {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .order-item-content {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    
+    .order-item-image {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .order-item-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .order-item-details {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .order-item-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    
+    .order-item-options {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    
+    .order-item-price {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    
+    .order-item-price strong {
+      color: #dc2626;
+      font-weight: 700;
+    }
+    
+    .simple-status {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      text-align: center;
+      padding: 8px 0;
+    }
+    
+    .order-total-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      border-top: 3px solid #dc2626;
+    }
+    
+    .order-total-amount {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .delivery-label {
+      font-size: 16px;
+      font-weight: 500;
+      color: #64748b;
+    }
+    
+    .order-total-label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #dc2626;
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 480px) {
+      .order-item-content {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .order-item-image {
+        width: 100%;
+        height: 120px;
+      }
+      
+      .order-summary {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -77,6 +196,14 @@
         optionsMap = new Map(opts.map(o => [o.id, o]));
       }
 
+      // lookup dishes for images and names
+      const dishIds = [...new Set(o.items.map(i => i.dish_id))];
+      let dishesMap = new Map();
+      if (dishIds.length) {
+        const dishes = await (await fetch(api + '/dishes?ids=' + dishIds.join(','))).json();
+        dishesMap = new Map(dishes.map(d => [d.id, d]));
+      }
+
       // recompute subtotal with options (client-side presentation)
       let subtotal = o.items.reduce((sum, it) => {
         const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
@@ -96,7 +223,12 @@
       const human = { created: 'создан', sent: 'отправлен', accepted: 'принят рестораном', delivered: 'доставлен', cancelled: 'отменён', modified: 'изменён' };
       const title = (o.status === 'accepted') ? `Ресторан принял заказ. Время доставки ~ ${o.eta_minutes || 60} мин` : 'Заказ отправлен. Ждите подтверждение ресторана';
       document.getElementById('bannerTitle').textContent = title;
-      document.getElementById('status').textContent = 'Статус: ' + (human[o.status] || o.status) + ' · Доставка: ' + delivery + ' р · Итого: ' + presentedTotal + ' р';
+      // Простое отображение статуса
+      const statusElement = document.getElementById('status');
+      const statusText = human[o.status] || o.status;
+      const capitalizedStatus = statusText.charAt(0).toUpperCase() + statusText.slice(1);
+      
+      statusElement.innerHTML = `<div class="simple-status">${capitalizedStatus}</div>`;
       // support link
       try {
         const cfg = await (await fetch(api + '/config')).json();
@@ -116,17 +248,42 @@
       const list = document.getElementById('items');
       list.innerHTML = '';
       o.items.forEach(it => {
+        const dish = dishesMap.get(it.dish_id);
         const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
         const delta = chosen.reduce((s, op) => s + (op.price_delta || 0), 0);
         const unit = it.price + delta;
-        const optsLabel = chosen.length ? ('Опции: ' + chosen.map(o => o.name + (o.price_delta ? ` (+${o.price_delta} р)` : '')).join(', ')) : '';
+        
+        // Убираем дублирование опций - показываем только если они есть и отличаются от названия блюда
+        const optsLabel = chosen.length ? chosen.map(o => o.name + (o.price_delta ? ` (+${o.price_delta} р)` : '')).join(', ') : '';
+        
         const el = document.createElement('div');
-        el.className = 'restaurant';
-        el.innerHTML = `<div class="title">${it.name}</div>
-          <div class="meta">${optsLabel}</div>
-          <div class="meta">${unit} р × ${it.qty} = <b>${unit*it.qty}</b> р</div>`;
+        el.className = 'order-item';
+        el.innerHTML = `
+          <div class="order-item-content">
+            <div class="order-item-image">
+              <img src="${dish?.image || '/static/placeholder-dish.jpg'}" alt="${it.name}" />
+            </div>
+            <div class="order-item-details">
+              <div class="order-item-name">${it.name}</div>
+              ${optsLabel ? `<div class="order-item-options">${optsLabel}</div>` : ''}
+              <div class="order-item-price">${unit} ₽ × ${it.qty} = <strong>${unit*it.qty} ₽</strong></div>
+            </div>
+          </div>
+        `;
         list.appendChild(el);
       });
+      
+      // Добавляем итоговую сумму после списка товаров
+      const totalElement = document.createElement('div');
+      totalElement.className = 'order-total-card';
+      totalElement.innerHTML = `
+        <div class="order-total-amount">
+          <span class="delivery-label">Доставка: ${delivery} ₽</span>
+          <span class="order-total-label">Итого: ${presentedTotal} ₽</span>
+        </div>
+      `;
+      list.appendChild(totalElement);
+      
       document.getElementById('delivered').disabled = (o.status === 'delivered');
 
       // review block

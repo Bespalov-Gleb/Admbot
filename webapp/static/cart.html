@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Корзина</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
+  <script src="/static/page-transitions.js"></script>
   <style>
     * {
       margin: 0;
@@ -595,6 +597,9 @@
         console.log('Rendering restaurant tabs and cart items...');
         renderRestaurantTabs();
         renderCartItems();
+        
+        // Принудительно показываем checkout-bar для нормальной корзины
+        document.getElementById('checkout-bar').style.display = 'block';
         updateCheckoutBar();
         
       } catch (error) {
@@ -767,6 +772,9 @@
         
         tabs.appendChild(tab);
       });
+      
+      // Принудительно показываем checkout-bar после рендеринга табов
+      document.getElementById('checkout-bar').style.display = 'block';
     }
 
     function renderCartItems() {
@@ -840,6 +848,9 @@
         
         root.appendChild(el);
       });
+      
+      // Принудительно показываем checkout-bar после рендеринга товаров
+      document.getElementById('checkout-bar').style.display = 'block';
     }
 
     function calcTotalForRestaurant(restaurantId) {

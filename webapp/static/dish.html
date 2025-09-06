@@ -4,8 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Блюдо</title>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=19" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/page-transitions.js"></script>
 </head>
 <body>
   <div class="container" style="padding-bottom: 120px;">
@@ -88,6 +89,12 @@
         groups = data.groups || [];
         options = data.options || [];
         console.log('Loaded options data:', data);
+        console.log('Groups loaded:', groups);
+        console.log('Options loaded:', options);
+        
+        // Проверяем обязательные группы
+        const requiredGroups = groups.filter(g => g.required);
+        console.log('Required groups found:', requiredGroups);
         
         renderHeader();
         renderOptions();
@@ -125,8 +132,14 @@
       root.innerHTML = '';
       groups.forEach(g => {
         const block = document.createElement('div');
-        block.className = 'restaurant';
-        block.innerHTML = `<div class="title">${g.name} ${g.required ? '(обязательно)' : ''}</div>`;
+        block.className = 'option-group';
+        
+        const title = document.createElement('div');
+        title.className = 'title';
+        if (g.required) title.classList.add('required');
+        title.textContent = g.name;
+        block.appendChild(title);
+        
         const list = document.createElement('div');
         options.filter(o => o.group_id === g.id).forEach(o => {
           const id = `g${g.id}_o${o.id}`;
@@ -134,14 +147,28 @@
           input.type = (g.max_select === 1 && g.min_select <= 1) ? 'radio' : 'checkbox';
           input.name = 'g' + g.id;
           input.id = id;
-          input.value = o.id; // Добавляем value с ID опции
+          input.value = o.id;
           const set = selected.get(g.id);
           if (set && set.has(o.id)) input.checked = true;
           input.onchange = () => toggleOption(g, o, input.checked);
+          
           const label = document.createElement('label');
           label.htmlFor = id;
-          label.textContent = `${o.name}${o.price_delta ? ' (+' + o.price_delta + ' р)' : ''}`;
+          
+          const labelText = document.createElement('span');
+          labelText.textContent = o.name;
+          
+          const priceSpan = document.createElement('span');
+          if (o.price_delta) {
+            priceSpan.className = 'option-price';
+            priceSpan.textContent = o.price_delta + ' ₽';
+          }
+          
+          label.appendChild(labelText);
+          label.appendChild(priceSpan);
+          
           const row = document.createElement('div');
+          row.className = 'option-item';
           row.appendChild(input);
           row.appendChild(label);
           list.appendChild(row);
@@ -159,9 +186,22 @@
         if (count < (g.required ? Math.max(1, g.min_select) : g.min_select)) ok = false;
         if (g.max_select > 0 && count > g.max_select) ok = false;
       }
-      document.getElementById('add').disabled = !ok;
+      
+      // НЕ блокируем кнопку - позволяем клик для показа уведомления
+      // document.getElementById('add').disabled = !ok;
+      
       const sumEl = document.getElementById('sumBtn');
       if (sumEl) sumEl.textContent = calcTotal() + ' р';
+      
+      // Визуально показываем, что опции не выбраны
+      const addBtn = document.getElementById('add');
+      if (ok) {
+        addBtn.style.opacity = '1';
+        addBtn.style.cursor = 'pointer';
+      } else {
+        addBtn.style.opacity = '0.7';
+        addBtn.style.cursor = 'not-allowed';
+      }
     }
 
     function toggleOption(group, option, checked) {
@@ -174,6 +214,115 @@
 
     document.getElementById('minus').onclick = () => { qty = Math.max(1, qty-1); document.getElementById('qty').textContent = String(qty); updateValidity(); };
     document.getElementById('plus').onclick = () => { qty = qty+1; document.getElementById('qty').textContent = String(qty); updateValidity(); };
+    // Функция для проверки обязательных опций
+    function checkRequiredOptions() {
+      const missingRequired = [];
+      
+      console.log('Checking required options...');
+      console.log('Groups:', groups);
+      console.log('Selected:', selected);
+      
+      groups.forEach(g => {
+        console.log(`Group ${g.id} (${g.name}): required=${g.required}`);
+        if (g.required) {
+          const selectedInGroup = selected.get(g.id);
+          console.log(`Selected in group ${g.id}:`, selectedInGroup);
+          if (!selectedInGroup || selectedInGroup.size === 0) {
+            missingRequired.push(g.name);
+            console.log(`Missing required option: ${g.name}`);
+          }
+        }
+      });
+      
+      console.log('Missing required options:', missingRequired);
+      return missingRequired;
+    }
+
+    // Функция для показа уведомления о обязательных опциях
+    function showRequiredOptionsNotification(missingOptions) {
+      console.log('Showing notification for missing options:', missingOptions);
+      
+      // Создаем уведомление
+      const notification = document.createElement('div');
+      notification.className = 'required-options-notification';
+      notification.innerHTML = `
+        <div class="notification-content">
+          <div class="notification-icon">⚠️</div>
+          <div class="notification-text">
+            <div class="notification-title">Сначала выберите опции:</div>
+            <div class="notification-list">
+              ${missingOptions.map(option => `<div class="notification-item">• ${option}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Добавляем стили
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        max-width: 90%;
+        animation: slideDown 0.3s ease-out;
+      `;
+      
+      // Добавляем анимацию
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideDown {
+          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        .notification-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .notification-icon {
+          font-size: 20px;
+          flex-shrink: 0;
+        }
+        .notification-text {
+          flex: 1;
+        }
+        .notification-title {
+          font-weight: 600;
+          color: #856404;
+          margin-bottom: 8px;
+        }
+        .notification-list {
+          color: #856404;
+        }
+        .notification-item {
+          margin-bottom: 4px;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Добавляем в DOM
+      document.body.appendChild(notification);
+      
+      // Убираем через 4 секунды
+      setTimeout(() => {
+        notification.style.animation = 'slideDown 0.3s ease-out reverse';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+          if (style.parentNode) {
+            style.parentNode.removeChild(style);
+          }
+        }, 300);
+      }, 4000);
+    }
+
     document.getElementById('add').onclick = async () => {
       console.log('Add button clicked');
       
@@ -187,6 +336,18 @@
         if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1');
         location.href = '/static/cart.html?' + q.toString();
         return;
+      }
+      
+      // Проверяем обязательные опции
+      console.log('Checking required options before adding to cart...');
+      const missingRequired = checkRequiredOptions();
+      console.log('Missing required options result:', missingRequired);
+      if (missingRequired.length > 0) {
+        console.log('Found missing required options, showing notification');
+        showRequiredOptionsNotification(missingRequired);
+        return;
+      } else {
+        console.log('All required options are selected, proceeding with add to cart');
       }
       
       console.log('Processing add to cart...');
@@ -250,10 +411,16 @@
         console.log('Response data:', data);
         
         if (data.status === 'ok') {
-          // После успешного добавления меняем кнопку
+          // После успешного добавления меняем кнопку с анимацией
           addBtn.textContent = 'Далее';
           addBtn.style.background = '#28a745';
           addBtn.style.borderColor = '#28a745';
+          addBtn.classList.add('success-animation');
+          
+          // Убираем класс анимации через 600ms
+          setTimeout(() => {
+            addBtn.classList.remove('success-animation');
+          }, 600);
           return;
         }
         if (data && data.status === 'too_many_restaurants') {

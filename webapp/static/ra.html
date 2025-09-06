@@ -4,58 +4,146 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Заказы ресторана</title>
-           <link rel="stylesheet" href="/static/styles.v23.css?v=32" />
+           <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <style>
-    .admin-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 20px;
+    /* ===== СОВРЕМЕННЫЙ ДИЗАЙН СТРАНИЦЫ ЗАКАЗОВ ===== */
+    
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      min-height: 100vh;
     }
     
-    .admin-btn {
-      padding: 10px 12px;
-      background: #dc2626;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
       text-align: center;
     }
     
+    .meta {
+      text-align: center;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .meta a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .meta a:hover {
+      background: #f1f5f9;
+      color: #1d4ed8;
+    }
+    
+    .meta span {
+      color: #94a3b8;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    /* Секция управления */
+    .controls-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .admin-btn {
+      padding: 12px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
     .admin-btn:hover {
-      background: #b91c1c;
+      background: #2563eb;
       transform: translateY(-1px);
+    }
+    
+    .admin-btn.danger {
+      background: #dc2626;
+    }
+    
+    .admin-btn.danger:hover {
+      background: #b91c1c;
+    }
+    
+    /* Список заказов */
+    .orders-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
     
     .order-item {
       background: #f8fafc;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 8px;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
       border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+    
+    .order-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
     }
     
     .order-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
     
     .order-id {
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 16px;
       color: #1e293b;
     }
     
     .order-status {
-      padding: 4px 8px;
-      border-radius: 4px;
+      padding: 6px 12px;
+      border-radius: 20px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
     }
     
     .status-sent { background: #fef3c7; color: #92400e; }
@@ -65,50 +153,230 @@
     .status-modified { background: #f3e8ff; color: #7c3aed; }
     
     .order-details {
-      font-size: 13px;
+      font-size: 14px;
       color: #64748b;
+      margin-bottom: 8px;
     }
     
     .order-items {
       margin-top: 8px;
-      font-size: 12px;
+      font-size: 13px;
       color: #6b7280;
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 8px;
     }
     
-         .order-actions {
-       position: absolute;
-       bottom: 8px;
-       right: 8px;
-       display: flex;
-       gap: 6px;
-       align-items: center;
-     }
-     
-     .order-actions button {
-       padding: 8px 16px;
-       background: white;
-       color: #374151;
-       border: 1px solid #d1d5db;
-       border-radius: 20px;
-       font-size: 12px;
-       font-weight: 500;
-       cursor: pointer;
-       display: flex;
-       align-items: center;
-       justify-content: center;
-       min-width: 24px;
-       height: 32px;
-     }
-     
-     .order-actions button.accept {
-       background: #10b981;
-       color: white;
-       border-color: #10b981;
-     }
-     
-     .order-actions button.accept:hover {
-       background: #059669;
-     }
+    .order-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+    
+    .order-actions button {
+      padding: 8px 16px;
+      background: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .order-actions button:hover {
+      background: #f8fafc;
+      transform: translateY(-1px);
+    }
+    
+    .order-actions button.accept {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+    
+    .order-actions button.accept:hover {
+      background: #059669;
+    }
+    
+    /* Модальные окна */
+    .order-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .order-modal {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease;
+    }
+    
+    .order-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .order-modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    
+    .order-modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .order-modal-close:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    
+    .order-detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .order-detail-label {
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .order-detail-value {
+      color: #64748b;
+    }
+    
+    .action-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .action-option:hover {
+      background: #f8fafc;
+      border-color: #3b82f6;
+    }
+    
+    .action-option.selected {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    
+    .action-option input[type="radio"] {
+      margin: 0;
+    }
+    
+    .action-option-label {
+      font-weight: 500;
+      color: #374151;
+      cursor: pointer;
+    }
+    
+    .order-modal-submit {
+      width: 100%;
+      padding: 12px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: all 0.2s ease;
+    }
+    
+    .order-modal-submit:hover:not(:disabled) {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    .order-modal-submit:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+      
+      .controls-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      
+      .order-actions {
+        justify-content: stretch;
+      }
+      
+      .order-actions button {
+        flex: 1;
+      }
+    }
      
      .order-actions button.delivered:hover {
        background: #2563eb;
@@ -514,12 +782,16 @@
       <a id="navProfile" href="#">Профиль админа</a>
     </div>
 
-    <div class="meta" style="margin-bottom:16px">
-      <button id="refresh" class="admin-btn" style="width: auto; margin-right: 8px;">Обновить</button>
-      <label style="margin-left:8px"><input type="checkbox" id="auto"/> Авто-обновлять</label>
+    <div class="controls-section">
+      <button id="refresh" class="admin-btn">🔄 Обновить</button>
+      <label style="display: flex; align-items: center; gap: 8px; color: #64748b; font-weight: 500;">
+        <input type="checkbox" id="auto" style="margin: 0;"/> Авто-обновлять
+      </label>
     </div>
 
-    <div id="olist"></div>
+    <div class="orders-container">
+      <div id="olist"></div>
+    </div>
   </div>
 
   <script>
@@ -577,7 +849,7 @@
                       ${Array.isArray(order.items) ? order.items.map(i => `${i.name} × ${i.qty}`).join(', ') : 'Нет данных'}
           </div>
           <div class="order-details">
-                      ${new Date(order.created_at).toLocaleString('ru-RU')}
+                      ${new Date(new Date(order.created_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleString('ru-RU')}
           </div>
           </div>`;
                 });
@@ -1134,6 +1406,28 @@
     // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
     document.addEventListener('DOMContentLoaded', function() {
       console.log('=== DOM LOADED ===');
+      
+      // Обработчики навигации
+      document.getElementById('navRestaurants').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/index.html?' + p.toString();
+      };
+      
+      document.getElementById('navMenu').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_menu.html?' + p.toString();
+      };
+      
+      document.getElementById('navProfile').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_profile.html?' + p.toString();
+      };
       
       // Обработчик для кнопки "Обновить"
       const refreshBtn = document.getElementById('refresh');

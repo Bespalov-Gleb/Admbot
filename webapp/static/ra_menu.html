@@ -4,26 +4,91 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Управление меню</title>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=29" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <style>
-    .admin-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    /* ===== СОВРЕМЕННЫЙ ДИЗАЙН СТРАНИЦЫ УПРАВЛЕНИЯ МЕНЮ ===== */
+    
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .meta {
+      text-align: center;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
       gap: 8px;
-      margin-top: 20px;
+    }
+    
+    .meta a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .meta a:hover {
+      background: #f1f5f9;
+      color: #1d4ed8;
+    }
+    
+    .meta span {
+      color: #94a3b8;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    /* Секция управления */
+    .controls-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
     }
     
     .admin-btn {
-      padding: 10px 12px;
+      padding: 12px 20px;
       background: #3b82f6;
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .admin-btn:hover {
@@ -31,50 +96,73 @@
       transform: translateY(-1px);
     }
     
+    .admin-btn.danger {
+      background: #dc2626;
+    }
+    
+    .admin-btn.danger:hover {
+      background: #b91c1c;
+    }
+    
+    /* Список меню */
+    .menu-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
     .menu-item {
       background: #f8fafc;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 8px;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
       border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+    
+    .menu-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
     }
     
     .menu-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
     
     .menu-title {
-      font-weight: 600;
+      font-weight: 700;
       color: #1e293b;
+      font-size: 16px;
     }
     
     .menu-actions {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
     }
     
     .menu-actions button {
-      padding: 6px 12px;
+      padding: 8px 16px;
       background: white;
       color: #374151;
       border: 1px solid #d1d5db;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      min-width: 24px;
-      height: 32px;
+      gap: 4px;
+      transition: all 0.2s ease;
     }
     
     .menu-actions button:hover {
-      background: #f9fafb;
+      background: #f8fafc;
+      transform: translateY(-1px);
     }
     
     .menu-actions button.edit {
@@ -97,45 +185,59 @@
       background: #b91c1c;
     }
     
+    /* Формы */
     .form-group {
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     
     .form-group label {
       display: block;
-      margin-bottom: 4px;
-      font-weight: 500;
+      margin-bottom: 6px;
+      font-weight: 600;
       color: #374151;
+      font-size: 14px;
     }
     
     .form-group input,
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 8px 12px;
+      padding: 12px 16px;
       border: 1px solid #d1d5db;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+    
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     
     .form-group textarea {
-      min-height: 80px;
+      min-height: 100px;
       resize: vertical;
     }
     
     .form-buttons {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: flex-end;
     }
     
     .form-buttons button {
-      padding: 8px 16px;
+      padding: 12px 20px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.2s ease;
     }
     
     .form-buttons button.save {
@@ -150,10 +252,116 @@
     
     .form-buttons button.save:hover {
       background: #059669;
+      transform: translateY(-1px);
     }
     
     .form-buttons button.cancel:hover {
       background: #4b5563;
+      transform: translateY(-1px);
+    }
+    
+    /* Модальные окна */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .modal-close:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+      
+      .controls-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .menu-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      
+      .menu-actions {
+        justify-content: stretch;
+      }
+      
+      .menu-actions button {
+        flex: 1;
+      }
+      
+      .form-buttons {
+        flex-direction: column;
+      }
     }
     
     .section-title {
@@ -399,9 +607,11 @@
     </div>
 
     <!-- Секция управления меню -->
-    <div class="menu-section">
-      <div class="section-title">Управление меню</div>
-      <button id="loadMenu" class="admin-btn" style="width: auto;">Загрузить меню</button>
+    <div class="controls-section">
+      <button id="loadMenu" class="admin-btn">📋 Загрузить меню</button>
+    </div>
+    
+    <div class="menu-container">
       <div id="menu"></div>
     </div>
   </div>
