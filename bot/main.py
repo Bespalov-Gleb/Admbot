@@ -583,7 +583,7 @@ async def ga_cancel(message: types.Message) -> None:
 
 
 # Обработчик для отмены добавления ресторана
-@dp.message(lambda message: message.text.lower() == "отмена" and message.from_user.id in ADD_FLOW)
+@dp.message(lambda message: message.text and message.text.lower() == "отмена" and message.from_user.id in ADD_FLOW)
 async def cancel_add_restaurant(message: types.Message) -> None:
     uid = message.from_user.id
     
@@ -953,7 +953,7 @@ async def broadcast_confirm_callback(callback: types.CallbackQuery) -> None:
             }
             
             response = await client.post(
-                INTERNAL_API_URL + "/api/admin/broadcast",
+                INTERNAL_API_URL + "/api/admin/broadcast-telegram",
                 json=payload,
                 headers={"X-Telegram-User-Id": str(uid)}
             )

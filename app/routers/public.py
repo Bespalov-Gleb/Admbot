@@ -46,12 +46,23 @@ async def get_public_collections(db: Session = Depends(get_db)) -> List[dict]:
             elif item.item_type == "dish":
                 dish = db.query(DBDish).filter(DBDish.id == item.item_id).first()
                 if dish:
+                    # Получаем информацию о ресторане для блюда
+                    restaurant = db.query(DBRestaurant).filter(DBRestaurant.id == dish.restaurant_id).first()
                     item_data["dish"] = {
                         "id": dish.id,
                         "name": dish.name,
                         "price": dish.price,
                         "description": dish.description
                     }
+                    if restaurant:
+                        item_data["restaurant"] = {
+                            "id": restaurant.id,
+                            "name": restaurant.name,
+                            "rating": restaurant.rating_agg,
+                            "delivery_min_sum": restaurant.delivery_min_sum,
+                            "delivery_fee": restaurant.delivery_fee,
+                            "delivery_time_minutes": restaurant.delivery_time_minutes
+                        }
             
             collection_items.append(item_data)
         

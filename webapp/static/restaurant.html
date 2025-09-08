@@ -5,21 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=48" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=51" />
   <script src="/static/page-transitions.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
     .cat-row {
-      display: flex;
-      overflow-x: auto;
-      gap: 12px;
-      padding: 16px 16px;
-      position: sticky;
-      top: 0;
-      background: #fff;
-      border-bottom: 1px solid #f0f0f0;
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none; /* IE/Edge */
+      display: flex !important;
+      overflow-x: auto !important;
+      gap: 12px !important;
+      padding: 16px 16px !important;
+      position: sticky !important;
+      top: 0 !important;
+      background: #fff !important;
+      border-bottom: 1px solid #f0f0f0 !important;
+      z-index: 100 !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      scrollbar-width: none !important; /* Firefox */
+      -ms-overflow-style: none !important; /* IE/Edge */
     }
     
     .cat-row::-webkit-scrollbar {
@@ -27,17 +29,17 @@
     }
     
     .cat-row button {
-      padding: 10px 20px;
-      border-radius: 20px;
-      border: 1px solid #e5e5e5;
-      background: #fff;
-      color: #333;
-      font-weight: 500;
-      font-size: 14px;
-      white-space: nowrap;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      padding: 10px 20px !important;
+      border-radius: 20px !important;
+      border: 1px solid #e5e5e5 !important;
+      background: #fff !important;
+      color: #333 !important;
+      font-weight: 500 !important;
+      font-size: 14px !important;
+      white-space: nowrap !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
     }
     
     .cat-row button:hover {
@@ -48,10 +50,10 @@
     }
     
     .cat-row button.active {
-      background: #dc2626;
-      border-color: #dc2626;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
+      color: #fff !important;
+      box-shadow: 0 4px 12px rgba(220,38,38,0.3) !important;
     }
     
     /* Плавный скролл для категорий */
@@ -1253,7 +1255,10 @@
     
     // Функция для возврата назад
     function goBack() {
-      history.back();
+      // Ресторан → главная страница
+      const params = new URLSearchParams(location.search);
+      if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
+      location.href = '/static/index.html?' + params.toString();
     }
     
     // Primary initialization
