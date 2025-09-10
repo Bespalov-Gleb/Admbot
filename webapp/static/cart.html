@@ -944,7 +944,10 @@
     }
 
     function goBack() {
-      history.back();
+      // Корзина → главная страница
+      const params = new URLSearchParams(location.search);
+      if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
+      location.href = '/static/index.html?' + params.toString();
     }
 
     async function deleteItem(itemId) {
@@ -978,10 +981,18 @@
     }
 
     async function clearCart() {
-      if (confirm('Очистить корзину?')) {
+      if (!activeRestaurantId) {
+        alert('Выберите ресторан для очистки корзины');
+        return;
+      }
+      
+      const restaurant = restaurantsMap.get(activeRestaurantId);
+      const restaurantName = restaurant ? restaurant.name : 'этого ресторана';
+      
+      if (confirm(`Очистить корзину ${restaurantName}?`)) {
         try {
-          // Очищаем корзину через API
-          const response = await fetch(api + '/cart/clear' + (uid ? ('?uid=' + uid) : ''), { 
+          // Очищаем корзину только выбранного ресторана через API
+          const response = await fetch(api + '/cart/clear?restaurant_id=' + activeRestaurantId + (uid ? ('&uid=' + uid) : ''), { 
             method: 'POST', 
             headers 
           });
@@ -990,16 +1001,69 @@
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
           
-          // Очищаем локальный объект cart
-          cart.items = [];
+          // Удаляем элементы этого ресторана из локального объекта cart
+          cart.items = cart.items.filter(item => {
+            const dish = dishesMap.get(item.dish_id);
+            return dish && dish.restaurant_id !== activeRestaurantId;
+          });
           
-          // Показываем пустую корзину
-          showEmptyCart();
+          // Если корзина стала пустой, показываем пустую корзину
+          if (!cart.items || cart.items.length === 0) {
+            showEmptyCart();
+          } else {
+            // Автоматически переключаемся на соседний ресторан
+            switchToNextRestaurant();
+          }
         } catch (error) {
-          console.error('Error clearing cart:', error);
-          alert('Ошибка при очистке корзины');
+          console.error('Error clearing restaurant cart:', error);
+          alert('Ошибка при очистке корзины ресторана');
         }
       }
+    }
+    
+    function switchToNextRestaurant() {
+      // Получаем список ресторанов, которые остались в корзине
+      const remainingRestIds = [...new Set(cart.items.map(i => {
+        const dish = dishesMap.get(i.dish_id);
+        return dish ? dish.restaurant_id : null;
+      }))].filter(Boolean);
+      
+      if (remainingRestIds.length === 0) {
+        showEmptyCart();
+        return;
+      }
+      
+      // Находим текущий индекс в списке оставшихся ресторанов
+      const currentIndex = remainingRestIds.indexOf(activeRestaurantId);
+      
+      let nextRestaurantId;
+      if (currentIndex === -1) {
+        // Если текущий ресторан не найден, берем первый доступный
+        nextRestaurantId = remainingRestIds[0];
+      } else {
+        // Переключаемся на правый ресторан, если есть, иначе на левый
+        if (currentIndex < remainingRestIds.length - 1) {
+          nextRestaurantId = remainingRestIds[currentIndex + 1];
+        } else if (currentIndex > 0) {
+          nextRestaurantId = remainingRestIds[currentIndex - 1];
+        } else {
+          // Остался только один ресторан
+          nextRestaurantId = remainingRestIds[0];
+        }
+      }
+      
+      // Переключаемся на новый ресторан
+      activeRestaurantId = nextRestaurantId;
+      
+      // Обновляем URL
+      const url = new URL(location.href);
+      url.searchParams.set('r', String(activeRestaurantId));
+      history.replaceState({}, '', url.toString());
+      
+      // Обновляем интерфейс
+      renderRestaurantTabs();
+      renderCartItems();
+      updateCheckoutBar();
     }
     
     

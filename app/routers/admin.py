@@ -261,6 +261,12 @@ async def broadcast(payload: Broadcast, db: Session = Depends(get_db)) -> dict:
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/broadcast-telegram")
+async def broadcast_telegram(payload: Broadcast, db: Session = Depends(get_db)) -> dict:
+    """Алиас для /broadcast endpoint для совместимости с ботом"""
+    return await broadcast(payload, db)
+
+
 # users management
 @router.get("/users")
 async def list_users(db: Session = Depends(get_db)) -> List[dict]:

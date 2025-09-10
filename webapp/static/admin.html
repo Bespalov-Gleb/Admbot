@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Админка</title>
-  <link rel="stylesheet" href="/static/admin.css?v=8" />
+  <link rel="stylesheet" href="/static/admin.css?v=22" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -37,8 +37,7 @@
           
           <div class="form-group">
             <label>Рассылка</label>
-            <input id="btext" placeholder="Текст сообщения"/>
-            <button id="sendB">📢 Отправить</button>
+            <button id="openBroadcastModal" class="broadcast-btn">📢 Создать рассылку</button>
           </div>
         </div>
       </div>
@@ -58,10 +57,17 @@
           </div>
           <div class="form-group">
             <label>Назначить админом ресторана</label>
-            <div class="form-row">
-              <input id="bindRestId" placeholder="ID ресторана"/>
-              <button id="bindRA">👑 Назначить</button>
+            <div class="restaurant-selector">
+              <input id="restaurantSearch" placeholder="Поиск ресторана..." class="restaurant-search"/>
+              <div id="restaurantDropdown" class="restaurant-dropdown" style="display: none;">
+                <div id="restaurantList" class="restaurant-list"></div>
+              </div>
+              <div id="selectedRestaurant" class="selected-restaurant" style="display: none;">
+                <span class="selected-name"></span>
+                <button type="button" class="clear-selection" onclick="clearRestaurantSelection()">×</button>
+              </div>
             </div>
+            <button id="bindRA" class="bind-admin-btn" disabled>👑 Назначить админом</button>
           </div>
           <button id="uload">🔄 Обновить список</button>
           <div id="ulist"></div>
@@ -96,7 +102,34 @@
             <label>Создать подборку</label>
             <input id="collectionName" placeholder="Название подборки"/>
             <input id="collectionDescription" placeholder="Описание подборки"/>
-            <input id="collectionImage" placeholder="URL изображения"/>
+            <div class="image-upload-section">
+              <label>Изображение подборки:</label>
+              <div class="image-upload-options">
+                <div class="upload-option">
+                  <input type="radio" id="uploadTypeFile" name="uploadType" value="file" checked>
+                  <label for="uploadTypeFile">Загрузить файл</label>
+                </div>
+                <div class="upload-option">
+                  <input type="radio" id="uploadTypeUrl" name="uploadType" value="url">
+                  <label for="uploadTypeUrl">URL изображения</label>
+                </div>
+              </div>
+              
+              <div id="fileUploadSection" class="upload-section">
+                <input type="file" id="collectionImageFile" accept="image/*" style="display: none;">
+                <button type="button" class="file-upload-btn" onclick="document.getElementById('collectionImageFile').click()">
+                  📎 Выбрать изображение
+                </button>
+                <div id="imagePreview" class="image-preview" style="display: none;">
+                  <img id="previewImg" style="max-width: 200px; max-height: 150px; border-radius: 8px;">
+                  <button type="button" class="remove-image" onclick="removeCollectionImage()">×</button>
+                </div>
+              </div>
+              
+              <div id="urlUploadSection" class="upload-section" style="display: none;">
+                <input id="collectionImageUrl" placeholder="URL изображения"/>
+              </div>
+            </div>
             <div class="form-row">
               <button id="createCollection">📚 Создать подборку</button>
               <button id="loadCollections">🔄 Обновить список</button>
@@ -346,13 +379,6 @@
         button.disabled = false;
       }
     };
-    document.getElementById('sendB').onclick = async () => {
-      const text = document.getElementById('btext').value.trim();
-      if (!text) return;
-      await fetch(api + '/admin/broadcast', { method:'POST', headers, body: JSON.stringify({ text }) });
-      document.getElementById('btext').value='';
-      alert('Отправлено в канал администратора');
-    };
 
     async function loadUsers() {
       const res = await fetch(api + '/admin/users?t=' + Date.now(), { headers });
@@ -421,22 +447,110 @@
       }
     };
     document.getElementById('uload').onclick = loadUsers;
+    // Переменные для управления ресторанами
+    let allRestaurants = [];
+    let selectedRestaurantId = null;
+
+    // Загружаем список ресторанов
+    async function loadRestaurants() {
+      try {
+        const res = await fetch(api + '/admin/restaurants', { headers });
+        if (res.ok) {
+          allRestaurants = await res.json();
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки ресторанов:', error);
+      }
+    }
+
+    // Поиск ресторанов
+    function searchRestaurants(query) {
+      if (!query.trim()) {
+        return allRestaurants;
+      }
+      return allRestaurants.filter(restaurant => 
+        restaurant.name.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    // Отображение результатов поиска
+    function showRestaurantDropdown(restaurants) {
+      const dropdown = document.getElementById('restaurantDropdown');
+      const list = document.getElementById('restaurantList');
+      
+      if (restaurants.length === 0) {
+        list.innerHTML = '<div class="restaurant-item" style="color: #64748b; cursor: default;">Рестораны не найдены</div>';
+      } else {
+        list.innerHTML = restaurants.map(restaurant => `
+          <div class="restaurant-item" onclick="selectRestaurant(${restaurant.id}, '${restaurant.name}')">
+            <div class="restaurant-name">${restaurant.name}</div>
+            <div class="restaurant-id">ID: ${restaurant.id}</div>
+          </div>
+        `).join('');
+      }
+      
+      dropdown.style.display = 'block';
+    }
+
+    // Выбор ресторана
+    function selectRestaurant(id, name) {
+      selectedRestaurantId = id;
+      document.getElementById('restaurantSearch').value = '';
+      document.getElementById('restaurantDropdown').style.display = 'none';
+      document.getElementById('selectedRestaurant').style.display = 'flex';
+      document.querySelector('.selected-name').textContent = name;
+      document.getElementById('bindRA').disabled = false;
+    }
+
+    // Очистка выбора ресторана
+    function clearRestaurantSelection() {
+      selectedRestaurantId = null;
+      document.getElementById('selectedRestaurant').style.display = 'none';
+      document.getElementById('bindRA').disabled = true;
+    }
+
+    // Обработчики событий
+    document.getElementById('restaurantSearch').addEventListener('input', (e) => {
+      const query = e.target.value;
+      const restaurants = searchRestaurants(query);
+      showRestaurantDropdown(restaurants);
+    });
+
+    document.getElementById('restaurantSearch').addEventListener('focus', () => {
+      if (allRestaurants.length > 0) {
+        showRestaurantDropdown(allRestaurants);
+      }
+    });
+
+    // Закрытие dropdown при клике вне его
+    document.addEventListener('click', (e) => {
+      const selector = document.querySelector('.restaurant-selector');
+      if (!selector.contains(e.target)) {
+        document.getElementById('restaurantDropdown').style.display = 'none';
+      }
+    });
+
     document.getElementById('bindRA').onclick = async () => {
       try {
         const input = (document.getElementById('uidInput').value||'').trim();
-        const rid = parseInt((document.getElementById('bindRestId').value||'').trim(),10);
-        if (!input || !rid) return alert('Введите user_id/@username и restaurant_id');
+        if (!input) return alert('Введите ID или @username пользователя');
+        if (!selectedRestaurantId) return alert('Выберите ресторан');
+        
         const id = await resolveUserId(input);
-        await fetch(api + '/admin/users/bind-admin?user_id=' + id + '&restaurant_id=' + rid, { method:'POST', headers });
-        alert('Назначен админом ресторана #' + rid);
+        await fetch(api + '/admin/users/bind-admin?user_id=' + id + '&restaurant_id=' + selectedRestaurantId, { method:'POST', headers });
+        
+        const restaurantName = document.querySelector('.selected-name').textContent;
+        alert(`✅ Пользователь назначен админом ресторана "${restaurantName}"`);
         loadUsers();
+        clearRestaurantSelection();
       } catch (error) {
-        alert(error.message);
+        alert('Ошибка: ' + error.message);
       }
     };
 
     load();
     loadUsers();
+    loadRestaurants();
 
     async function loadStatsGlobal() {
       const res = await fetch(api + '/admin/stats?t=' + Date.now(), { headers });
@@ -1170,11 +1284,51 @@
       }
     }
 
+    // Functions for collection image upload
+    function switchUploadType() {
+      const fileType = document.querySelector('input[name="uploadType"]:checked').value;
+      const fileSection = document.getElementById('fileUploadSection');
+      const urlSection = document.getElementById('urlUploadSection');
+      
+      if (fileType === 'file') {
+        fileSection.style.display = 'block';
+        urlSection.style.display = 'none';
+      } else {
+        fileSection.style.display = 'none';
+        urlSection.style.display = 'block';
+      }
+    }
+
+    function removeCollectionImage() {
+      document.getElementById('collectionImageFile').value = '';
+      document.getElementById('imagePreview').style.display = 'none';
+    }
+
+    // Event listeners for upload type switching
+    document.querySelectorAll('input[name="uploadType"]').forEach(radio => {
+      radio.addEventListener('change', switchUploadType);
+    });
+
+    // Event listener for file upload
+    document.getElementById('collectionImageFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const preview = document.getElementById('imagePreview');
+          const img = document.getElementById('previewImg');
+          img.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
     // Event listeners for collections
     document.getElementById('createCollection').onclick = async () => {
       const name = document.getElementById('collectionName').value.trim();
       const description = document.getElementById('collectionDescription').value.trim();
-      const image = document.getElementById('collectionImage').value.trim();
+      const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
       
       if (!name) {
         showMessage('Введите название подборки', 'error');
@@ -1182,16 +1336,48 @@
       }
       
       try {
+        let imageUrl = '';
+        
+        if (uploadType === 'file') {
+          const fileInput = document.getElementById('collectionImageFile');
+          const file = fileInput.files[0];
+          
+          if (file) {
+            // Загружаем файл на сервер
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const uploadResponse = await fetch(api + '/collections/upload-collection-image', {
+              method: 'POST',
+              headers: {
+                'X-Telegram-User-Id': String(uid)
+              },
+              body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+              throw new Error('Ошибка загрузки изображения');
+            }
+            
+            const uploadResult = await uploadResponse.json();
+            imageUrl = uploadResult.url;
+          }
+        } else {
+          imageUrl = document.getElementById('collectionImageUrl').value.trim();
+        }
+        
         await fetch(api + '/collections', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ name, description, image })
+          body: JSON.stringify({ name, description, image: imageUrl })
         });
         
         // Очищаем поля
         document.getElementById('collectionName').value = '';
         document.getElementById('collectionDescription').value = '';
-        document.getElementById('collectionImage').value = '';
+        document.getElementById('collectionImageUrl').value = '';
+        document.getElementById('collectionImageFile').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
         
         loadCollections();
         showMessage('Подборка создана', 'success');
@@ -1250,6 +1436,174 @@
       toggleSection('appReviewsContent', 'appReviewsIcon');
     };
 
+    // Функции для модального окна рассылки
+    function openBroadcastModal() {
+      console.log('openBroadcastModal called');
+      const modal = document.getElementById('broadcastModal');
+      const textInput = document.getElementById('broadcastText');
+      
+      if (modal) {
+        modal.style.display = 'flex';
+        console.log('Modal opened');
+      } else {
+        console.error('Broadcast modal not found!');
+      }
+      
+      if (textInput) {
+        textInput.focus();
+        console.log('Text input focused');
+      } else {
+        console.error('Broadcast text input not found!');
+      }
+      
+      // Инициализируем обработчик медиа после открытия модального окна
+      const broadcastMediaInput = document.getElementById('broadcastMedia');
+      console.log('broadcastMediaInput found:', !!broadcastMediaInput);
+      
+      if (broadcastMediaInput) {
+        // Убираем старый обработчик, если он есть
+        broadcastMediaInput.removeEventListener('change', handleMediaChange);
+        // Добавляем новый обработчик
+        broadcastMediaInput.addEventListener('change', handleMediaChange);
+        console.log('Media input handler attached');
+      } else {
+        console.error('broadcastMediaInput not found!');
+      }
+    }
+    
+    function handleMediaChange(e) {
+      console.log('File input changed');
+      const file = e.target.files[0];
+      console.log('Selected file:', file);
+      
+      if (file) {
+        console.log('File type:', file.type);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          console.log('FileReader loaded');
+          const preview = document.getElementById('mediaPreview');
+          const img = document.getElementById('mediaPreviewImg');
+          
+          console.log('Media preview elements:', { 
+            preview: !!preview, 
+            img: !!img,
+            previewElement: preview,
+            imgElement: img
+          });
+          
+          if (preview && img) {
+            if (file.type.startsWith('image/')) {
+              console.log('Setting image preview');
+              img.src = e.target.result;
+              preview.style.display = 'block';
+              console.log('Image preview shown, display:', preview.style.display);
+            } else if (file.type.startsWith('video/')) {
+              console.log('Setting video preview');
+              img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjMiIGZpbGw9IiM2NDcyOGIiLz48cG9seWdvbiBwb2ludHM9IjEwLDggMTYsMTIgMTAsMTYiIGZpbGw9IndoaXRlIi8+PC9zdmc+';
+              preview.style.display = 'block';
+              console.log('Video preview shown, display:', preview.style.display);
+            }
+          } else {
+            console.error('Media preview elements not found!');
+            console.log('Available elements with mediaPreview:', document.querySelectorAll('[id*="mediaPreview"]'));
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        console.log('No file selected');
+      }
+    }
+
+    function closeBroadcastModal() {
+      document.getElementById('broadcastModal').style.display = 'none';
+      // Очищаем форму
+      document.getElementById('broadcastText').value = '';
+      document.getElementById('broadcastMedia').value = '';
+      document.getElementById('mediaPreview').style.display = 'none';
+      document.querySelector('input[name="recipients"][value="all"]').checked = true;
+    }
+
+    function removeMedia() {
+      document.getElementById('broadcastMedia').value = '';
+      document.getElementById('mediaPreview').style.display = 'none';
+    }
+
+    // Инициализация обработчика медиа будет в openBroadcastModal
+
+    // Обработчик кнопки открытия модального окна
+    const openBroadcastBtn = document.getElementById('openBroadcastModal');
+    if (openBroadcastBtn) {
+      openBroadcastBtn.onclick = openBroadcastModal;
+      console.log('Broadcast button handler attached');
+    } else {
+      console.error('Broadcast button not found!');
+    }
+
+    // Закрытие модального окна при клике на overlay
+    const broadcastModal = document.getElementById('broadcastModal');
+    if (broadcastModal) {
+      broadcastModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          closeBroadcastModal();
+        }
+      });
+    }
+
+    // Закрытие модального окна по Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && document.getElementById('broadcastModal').style.display === 'flex') {
+        closeBroadcastModal();
+      }
+    });
+
+    async function sendBroadcast() {
+      const text = document.getElementById('broadcastText').value.trim();
+      const mediaFile = document.getElementById('broadcastMedia').files[0];
+      const recipients = document.querySelector('input[name="recipients"]:checked').value;
+
+      if (!text && !mediaFile) {
+        alert('Введите текст сообщения или прикрепите медиа файл');
+        return;
+      }
+
+      const sendBtn = document.getElementById('sendBroadcast');
+      const originalText = sendBtn.textContent;
+      sendBtn.disabled = true;
+      sendBtn.textContent = '📤 Отправка...';
+
+      try {
+        const formData = new FormData();
+        formData.append('text', text);
+        formData.append('recipients', recipients);
+        
+        if (mediaFile) {
+          formData.append('media', mediaFile);
+        }
+
+        const response = await fetch(api + '/admin/broadcast-with-media', {
+          method: 'POST',
+          headers: {
+            'X-Telegram-User-Id': String(uid)
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: 'Ошибка сервера' }));
+          throw new Error(error.detail || 'Ошибка отправки рассылки');
+        }
+
+        const result = await response.json();
+        alert(`✅ Рассылка отправлена! Получателей: ${result.sent_count || 'неизвестно'}`);
+        closeBroadcastModal();
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = originalText;
+      }
+    }
+
     // первичная инициализация
     load();
     loadUsers();
@@ -1258,7 +1612,66 @@
     loadReviews();
     loadAdminCode();
     loadCollections();
+    
+    // Инициализация переключения типов загрузки изображений
+    switchUploadType();
   </script>
+  
+  <!-- Модальное окно для рассылки -->
+  <div id="broadcastModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📢 Создать рассылку</h3>
+        <button class="modal-close" onclick="closeBroadcastModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Текст сообщения:</label>
+          <textarea id="broadcastText" placeholder="Введите текст сообщения..." rows="4"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Медиа файл (необязательно):</label>
+          <div class="media-upload">
+            <input type="file" id="broadcastMedia" accept="image/*,video/*" style="display: none;">
+            <button type="button" class="media-upload-btn" onclick="document.getElementById('broadcastMedia').click()">
+              📎 Прикрепить фото/видео
+            </button>
+            <div id="mediaPreview" class="media-preview" style="display: none;">
+              <img id="mediaPreviewImg" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+              <button type="button" class="remove-media" onclick="removeMedia()">×</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Получатели:</label>
+          <div class="recipients-options">
+            <label class="radio-option">
+              <span>Все пользователи</span>
+              <input type="radio" name="recipients" value="all" checked>
+            </label>
+            <label class="radio-option">
+              <span>Только активные</span>
+              <input type="radio" name="recipients" value="active">
+            </label>
+            <label class="radio-option">
+              <span>Только админы ресторанов</span>
+              <input type="radio" name="recipients" value="admins">
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeBroadcastModal()">Отмена</button>
+        <button type="button" class="btn-primary" id="sendBroadcast" onclick="sendBroadcast()">
+          📢 Отправить рассылку
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
 

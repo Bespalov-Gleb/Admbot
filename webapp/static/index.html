@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=48" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=63" />
   <script src="/static/page-transitions.js"></script>
 </head>
 <body>
@@ -175,13 +175,28 @@
                  cardImage = it.dish.image || it.image || '/static/placeholder-dish.jpg';
                  cardTitle = it.title || it.dish.name;
                  cardSubtitle = `${it.dish.price} ₽`;
+                 card.className = 'mini-card dish-card';
                }
                
-               card.innerHTML = `
-                 <img src="${cardImage}" alt="${cardTitle}"/>
-                 <div class="cap">${cardTitle}</div>
-                 ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
-               `;
+               // Разная структура для карточек блюд и ресторанов
+               if (it.dish) {
+                 card.innerHTML = `
+                   <img src="${cardImage}" alt="${cardTitle}" onerror="this.src='/static/placeholder-dish.jpg'"/>
+                   <div class="cap">${cardTitle}</div>
+                   <div class="subtitle">
+                     <span class="price">${it.dish.price} ₽</span>
+                     <div class="restaurant-info">
+                       <span class="restaurant-name">${it.restaurant ? it.restaurant.name : 'Неизвестный ресторан'}</span>
+                     </div>
+                   </div>
+                 `;
+               } else {
+                 card.innerHTML = `
+                   <img src="${cardImage}" alt="${cardTitle}"/>
+                   <div class="cap">${cardTitle}</div>
+                   ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
+                 `;
+               }
                card.onclick = () => {
                  const p = new URLSearchParams(location.search);
                  if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
@@ -287,6 +302,7 @@
                         imageElement.src = data.image;
                         console.log('Updated image:', data.image);
                       }
+                      
                     }
                   })
                   .catch(error => console.error('Error loading restaurant data:', error));
@@ -328,13 +344,28 @@
                   cardImage = it.dish.image || it.image;
                   cardTitle = it.title || it.dish.name;
                   cardSubtitle = `${it.dish.price} ₽`;
+                  card.className = 'mini-card dish-card';
                 }
                 
-                card.innerHTML = `
-                  <img src="${cardImage}" alt="${cardTitle}"/>
-                  <div class="cap">${cardTitle}</div>
-                  ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
-                `;
+                // Разная структура для карточек блюд и ресторанов
+                if (it.dish) {
+                  card.innerHTML = `
+                    <img src="${cardImage}" alt="${cardTitle}" onerror="this.src='/static/placeholder-dish.jpg'"/>
+                    <div class="cap">${cardTitle}</div>
+                    <div class="subtitle">
+                      <span class="price">${it.dish.price} ₽</span>
+                      <div class="restaurant-info">
+                        <span class="restaurant-name">${it.restaurant ? it.restaurant.name : 'Неизвестный ресторан'}</span>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  card.innerHTML = `
+                    <img src="${cardImage}" alt="${cardTitle}"/>
+                    <div class="cap">${cardTitle}</div>
+                    ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
+                  `;
+                }
                 
                 card.onclick = () => {
                   const p = new URLSearchParams(location.search);
