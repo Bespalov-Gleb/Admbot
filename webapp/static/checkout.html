@@ -240,6 +240,7 @@
     .bottom-spacer {
       height: 120px;
     }
+    
   </style>
 </head>
 <body>
@@ -271,7 +272,17 @@
       <div class="label">Доставка</div>
       <div class="field"><span>📍</span><input id="address" placeholder="Город, улица, дом" /></div>
       <div class="field" style="margin-top:12px"><span>💬</span><input id="comment" placeholder="Комментарий к заказу" /></div>
+      <div class="field" style="margin-top:12px">
+        <span>🍴</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="color: #666; font-size: 14px;">Количество приборов:</span>
+          <button type="button" onclick="updateCutlery(-1)" style="width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">−</button>
+          <span id="cutleryCount" style="min-width: 20px; text-align: center; font-weight: 600;">0</span>
+          <button type="button" onclick="updateCutlery(1)" style="width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">+</button>
+        </div>
+      </div>
     </div>
+
 
     <div class="section">
       <div class="label">Оплата</div>
@@ -302,6 +313,7 @@
     let cart = null;
     let dishesMap = new Map();
     let restaurantName = '';
+    let cutleryCount = 0;
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
     const uid = (q.get('uid') && Number(q.get('uid'))) || (tg?.initDataUnsafe?.user?.id || 0);
@@ -317,6 +329,10 @@
         document.getElementById('submit').disabled = true;
         return;
       }
+      
+      // Инициализируем количество приборов из корзины
+      cutleryCount = cart.cutlery_count || 0;
+      document.getElementById('cutleryCount').textContent = cutleryCount;
       
       // Загружаем название ресторана
       if (activeRestaurantId) {
@@ -334,6 +350,7 @@
       } else {
         document.getElementById('restaurantName').textContent = 'Ресторан';
       }
+      
       
       // Загружаем данные пользователя для автозаполнения
       if (uid) {
@@ -413,6 +430,21 @@
       return { ok: true };
     }
 
+
+    // Функция для обновления количества приборов
+    function updateCutlery(delta) {
+      const newCount = Math.max(0, cutleryCount + delta);
+      
+      // Ограничиваем максимальное количество приборов
+      if (newCount > 10) {
+        alert('Максимальное количество приборов: 10');
+        return;
+      }
+      
+      cutleryCount = newCount;
+      document.getElementById('cutleryCount').textContent = cutleryCount;
+    }
+
     async function submit() {
       const v = validate();
       if (!v.ok) { alert(v.msg); return; }
@@ -433,6 +465,7 @@
         phone: document.getElementById('phone').value.trim(),
         payment_method: document.getElementById('payment').value,
         client_comment: document.getElementById('comment').value.trim() || null,
+        cutlery_count: cutleryCount,
         items
       };
       const res = await fetch(api + '/orders' + (uid ? ('?uid=' + uid) : ''), { method: 'POST', headers, body: JSON.stringify(payload) });

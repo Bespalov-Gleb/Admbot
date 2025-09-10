@@ -278,51 +278,10 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 16px;
     }
     
-    .cutlery-section {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .cutlery-icon {
-      font-size: 20px;
-      color: #666;
-    }
-    
-    .cutlery-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .cutlery-btn {
-      width: 28px;
-      height: 28px;
-      border: 1px solid #e5e7eb;
-      background: white;
-      border-radius: 50%;
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    }
-    
-    .cutlery-btn:hover {
-      background: #f3f4f6;
-    }
-    
-    .cutlery-count {
-      min-width: 20px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 16px;
-    }
     
     .checkout-right {
       display: flex;
@@ -512,14 +471,6 @@
     <!-- Bottom Checkout Bar -->
     <div class="checkout-bar" id="checkout-bar">
       <div class="checkout-content">
-        <div class="cutlery-section">
-          <span class="cutlery-icon">🍴</span>
-          <div class="cutlery-controls">
-            <button class="cutlery-btn" onclick="updateCutlery(-1)">−</button>
-            <span class="cutlery-count" id="cutleryCount">0</span>
-            <button class="cutlery-btn" onclick="updateCutlery(1)">+</button>
-          </div>
-        </div>
         <div class="checkout-right">
           <div class="total-sum" id="totalSum">Итого 0 ₽</div>
           <button class="checkout-btn" id="checkoutBtn" onclick="proceedToCheckout()" disabled>Далее</button>
@@ -539,13 +490,18 @@
     let dishesMap = new Map();
     let restaurantsMap = new Map();
     let optionsMap = new Map();
-    let cutleryCount = 0;
     
     const url = new URL(location.href);
     let activeRestaurantId = Number(url.searchParams.get('r')) || 0;
     let restIdsCached = [];
+    const orderId = url.searchParams.get('order_id');
 
     async function load() {
+      // Если передан order_id, загружаем данные заказа и заполняем корзину
+      if (orderId) {
+        await loadOrderToCart(orderId);
+        return;
+      }
       try {
         console.log('Loading cart...');
       const res = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), { headers });
@@ -598,6 +554,7 @@
         renderRestaurantTabs();
         renderCartItems();
         
+        
         // Принудительно показываем checkout-bar для нормальной корзины
         document.getElementById('checkout-bar').style.display = 'block';
         updateCheckoutBar();
@@ -605,6 +562,49 @@
       } catch (error) {
         console.error('Error loading cart:', error);
         console.log('Showing empty cart due to error');
+        showEmptyCart();
+      }
+    }
+
+    async function loadOrderToCart(orderId) {
+      try {
+        console.log('Loading order to cart, order ID:', orderId);
+        
+        // Загружаем данные заказа
+        const orderRes = await fetch(api + '/orders/' + orderId, { headers });
+        if (!orderRes.ok) {
+          throw new Error(`Failed to load order: ${orderRes.status}`);
+        }
+        
+        const order = await orderRes.json();
+        console.log('Order loaded:', order);
+        
+        // Очищаем текущую корзину
+        await fetch(api + '/cart/clear', { 
+          method: 'POST', 
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+        
+        // Добавляем товары из заказа в корзину
+        for (const item of order.items) {
+          const addItemPayload = {
+            dish_id: item.dish_id,
+            qty: item.qty,
+            chosen_options: item.chosen_options || []
+          };
+          
+          await fetch(api + '/cart/add', {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(addItemPayload)
+          });
+        }
+        
+        // Загружаем обновленную корзину
+        await load();
+        
+      } catch (error) {
+        console.error('Error loading order to cart:', error);
         showEmptyCart();
       }
     }
@@ -798,6 +798,9 @@
         return;
       }
       
+      // Группируем блюда по dish_id и chosen_options
+      const groupedItems = new Map();
+      
       items.forEach(it => {
         const d = dishesMap.get(it.dish_id);
         if (!d) {
@@ -805,12 +808,36 @@
           return;
         }
         
-        console.log('Rendering item:', it, 'dish:', d);
+        // Создаем ключ для группировки: dish_id + опции
+        const optionsKey = (it.chosen_options || []).sort().join(',');
+        const groupKey = `${it.dish_id}_${optionsKey}`;
         
-        const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
+        if (groupedItems.has(groupKey)) {
+          // Если такое блюдо с такими же опциями уже есть, увеличиваем количество
+          const existing = groupedItems.get(groupKey);
+          existing.qty += it.qty;
+          existing.itemIds.push(it.id); // Сохраняем ID всех элементов для управления
+        } else {
+          // Создаем новую группу
+          groupedItems.set(groupKey, {
+            dish_id: it.dish_id,
+            chosen_options: it.chosen_options || [],
+            qty: it.qty,
+            itemIds: [it.id],
+            dish: d
+          });
+        }
+      });
+      
+      console.log('Grouped items:', groupedItems);
+      
+      // Отображаем сгруппированные блюда
+      groupedItems.forEach(group => {
+        const d = group.dish;
+        const chosen = group.chosen_options.map(id => optionsMap.get(id)).filter(Boolean);
         const delta = chosen.reduce((s, o) => s + (o.price_delta || 0), 0);
         const unitPrice = (d.price || 0) + delta;
-        const totalPrice = unitPrice * it.qty;
+        const totalPrice = unitPrice * group.qty;
         
         const optsLabel = chosen.length ? chosen.map(o => o.name).join(', ') : '';
         const weight = d.weight ? `${d.weight} г` : '';
@@ -825,7 +852,7 @@
               <div class="cart-item-name">${d.name}</div>
               <div class="cart-item-controls">
                 <button class="qty-btn" data-act="dec">−</button>
-                <span class="qty-display">${it.qty}</span>
+                <span class="qty-display">${group.qty}</span>
                 <button class="qty-btn plus" data-act="inc">+</button>
             </div>
             </div>
@@ -835,14 +862,19 @@
           </div>
         `;
         
-        el.querySelector('[data-act="inc"]').onclick = () => updateQty(it.id, it.qty + 1);
+        // Обработчики для изменения количества
+        el.querySelector('[data-act="inc"]').onclick = () => {
+          // Увеличиваем количество первого элемента в группе
+          updateQty(group.itemIds[0], group.qty + 1);
+        };
+        
         el.querySelector('[data-act="dec"]').onclick = () => {
-          if (it.qty <= 1) {
-            // Если количество 1 или меньше, удаляем блюдо
-            deleteItem(it.id);
+          if (group.qty <= 1) {
+            // Если количество 1 или меньше, удаляем все элементы группы
+            group.itemIds.forEach(itemId => deleteItem(itemId));
           } else {
-            // Иначе уменьшаем количество
-            updateQty(it.id, it.qty - 1);
+            // Иначе уменьшаем количество первого элемента в группе
+            updateQty(group.itemIds[0], group.qty - 1);
           }
         };
         
@@ -889,7 +921,6 @@
         checkoutBtn.className = 'checkout-btn';
       }
       
-      document.getElementById('cutleryCount').textContent = cutleryCount;
     }
 
     async function updateQty(itemId, qty) {
@@ -915,11 +946,6 @@
       }
     }
 
-    function updateCutlery(delta) {
-      cutleryCount = Math.max(0, cutleryCount + delta);
-      document.getElementById('cutleryCount').textContent = cutleryCount;
-      updateCheckoutBar();
-    }
 
     function openMenu() {
       const p = new URLSearchParams(location.search);

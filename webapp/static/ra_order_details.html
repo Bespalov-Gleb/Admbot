@@ -579,12 +579,38 @@ const api = location.origin + '/api';
         return moscowTime;
       }
       
+      // Функция для получения текста статуса
+      function getStatusText(status) {
+        const statusMap = {
+          'sent': 'Отправлен',
+          'accepted': 'Принят рестораном',
+          'delivered': 'Доставлен',
+          'cancelled': 'Отменен',
+          'modified': 'Изменен'
+        };
+        return statusMap[status] || status;
+      }
+      
+      // Формируем текст статуса в зависимости от текущего статуса
+      let statusText = '';
+      if (order.status === 'accepted') {
+        statusText = `Принят рестораном в ${toMoscowTime(acceptedTime).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}.`;
+      } else if (order.status === 'delivered') {
+        statusText = 'Доставлен';
+      } else if (order.status === 'cancelled') {
+        statusText = 'Отменен';
+      } else if (order.status === 'modified') {
+        statusText = 'Изменен';
+      } else {
+        statusText = getStatusText(order.status);
+      }
+      
       const orderContent = document.getElementById('order-content');
       orderContent.innerHTML = `
         <div class="order-header">
-          <div class="order-status" id="order-status">Принят рестораном в ${toMoscowTime(acceptedTime).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}.</div>
+          <div class="order-status" id="order-status">${statusText}</div>
           <div class="order-time">Время заказа: ${toMoscowTime(new Date(order.created_at)).toLocaleString('ru-RU')}</div>
-          <div class="order-delivery-time" id="delivery-countdown">Время доставки - ${formatDeliveryTime(etaMinutes)}</div>
+          <div class="order-delivery-time" id="delivery-countdown">${order.status === 'accepted' ? `Время доставки - ${formatDeliveryTime(etaMinutes)}` : ''}</div>
         </div>
         
         <div class="order-content">
@@ -592,7 +618,7 @@ const api = location.origin + '/api';
             <div class="section-title">Состав заказа:</div>
             <ul class="order-items">
               ${order.items.map(item => `
-                <li class="order-item">${item.name}</li>
+                <li class="order-item">${item.name} × ${item.qty}</li>
               `).join('')}
             </ul>
             <div class="order-total">Итого: ${order.total_price} ₽</div>
@@ -617,6 +643,10 @@ const api = location.origin + '/api';
                 <span class="info-label">Комментарий клиента:</span>
                 <span class="info-value">${order.client_comment || 'Нет комментария'}</span>
               </div>
+              <div class="info-item">
+                <span class="info-label">Приборы:</span>
+                <span class="info-value">${order.cutlery_count || 0} комплектов</span>
+              </div>
             </div>
           </div>
         </div>
@@ -628,6 +658,26 @@ const api = location.origin + '/api';
         </div>
         
       `;
+      
+      // Управляем видимостью кнопок в зависимости от статуса заказа
+      setTimeout(() => {
+        const cancelBtn = document.querySelector('.btn-cancel');
+        const modifyBtn = document.querySelector('.btn-modify');
+        const deliveredBtn = document.querySelector('.btn-delivered');
+        
+        if (order.status === 'delivered') {
+          // Для доставленных заказов скрываем все кнопки
+          if (cancelBtn) cancelBtn.style.display = 'none';
+          if (modifyBtn) modifyBtn.style.display = 'none';
+          if (deliveredBtn) deliveredBtn.style.display = 'none';
+        } else if (order.status === 'cancelled') {
+          // Для отмененных заказов скрываем все кнопки
+          if (cancelBtn) cancelBtn.style.display = 'none';
+          if (modifyBtn) modifyBtn.style.display = 'none';
+          if (deliveredBtn) deliveredBtn.style.display = 'none';
+        }
+        // Для других статусов (sent, accepted, modified) кнопки остаются видимыми
+      }, 100);
       
       // Запускаем таймер обратного отсчета
       if (order.status === 'accepted') {
@@ -1004,8 +1054,25 @@ const api = location.origin + '/api';
         });
         
         if (res.ok) {
+          // Обновляем отображение статуса без перезагрузки страницы
+          const statusElement = document.getElementById('order-status');
+          const countdownElement = document.getElementById('delivery-countdown');
+          
+          if (statusElement) {
+            statusElement.innerHTML = '<span style="color: #059669; font-weight: 600;">Доставлен</span>';
+          }
+          
+          if (countdownElement) {
+            countdownElement.innerHTML = '<span style="color: #059669; font-weight: 600;">Заказ доставлен</span>';
+          }
+          
+          // Скрываем кнопку "Доставлено"
+          const deliveredBtn = document.getElementById('delivered-btn');
+          if (deliveredBtn) {
+            deliveredBtn.style.display = 'none';
+          }
+          
           alert('Заказ отмечен как доставленный');
-          window.location.href = '/static/ra.html';
         } else {
           throw new Error('Ошибка отметки доставки');
         }

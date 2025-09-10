@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=63" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=77" />
   <script src="/static/page-transitions.js"></script>
 </head>
 <body>
@@ -40,6 +40,53 @@
     const uid = (q.get('uid') && Number(q.get('uid'))) || tg?.initDataUnsafe?.user?.id || 0;
     const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     const uidQ = uid ? ('?uid=' + encodeURIComponent(String(uid))) : '';
+    
+    // Общая функция для создания карточек
+    function createCard(it) {
+      const card = document.createElement('div');
+      card.className = 'mini-card';
+      
+      // Отображение для новых типов элементов подборок
+      let cardImage = it.image || 'https://via.placeholder.com/300x200?text=No+Image';
+      let cardTitle = it.title;
+      let cardSubtitle = '';
+      
+      // ПРИОРИТЕТ У БЛЮДА: если есть dish, то это карточка блюда
+      if (it.dish) {
+        cardImage = it.dish.image || it.image || '/static/placeholder-dish.jpg';
+        cardTitle = it.title || it.dish.name;
+        cardSubtitle = `${it.dish.price} ₽`;
+        card.className = 'mini-card dish-card';
+        console.log('Applied dish-card class to:', cardTitle);
+      } else if (it.restaurant) {
+        cardImage = it.restaurant.image || it.image || '/static/placeholder-restaurant.jpg';
+        cardTitle = it.title || it.restaurant.name;
+        cardSubtitle = `★ ${it.restaurant.rating ? it.restaurant.rating.toFixed(1) : '--'} · ${it.restaurant.delivery_time_minutes || '--'} мин`;
+      }
+      
+      // Разная структура для карточек блюд и ресторанов
+      if (it.dish) {
+        card.innerHTML = `
+          <img src="${cardImage}" alt="${cardTitle}" onerror="this.src='/static/placeholder-dish.jpg'"/>
+          <div class="cap">${cardTitle}</div>
+          <div class="subtitle">
+            <span class="price">${it.dish.price} ₽</span>
+          </div>
+          <div class="restaurant-info">
+            <span class="restaurant-name">${it.restaurant ? it.restaurant.name : 'Неизвестный ресторан'}</span>
+          </div>
+        `;
+      } else {
+        card.innerHTML = `
+          <img src="${cardImage}" alt="${cardTitle}"/>
+          <div class="cap">${cardTitle}</div>
+          ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
+        `;
+      }
+      
+      return card;
+    }
+    
     async function loadSelections() {
       console.log('=== loadSelections started ===');
       const fallback = [
@@ -159,44 +206,7 @@
             row.appendChild(next);
             
             items.forEach((it, idx) => {
-               const card = document.createElement('div');
-               card.className = 'mini-card';
-               // Отображение для новых типов элементов подборок
-               let cardImage = it.image || 'https://via.placeholder.com/300x200?text=No+Image';
-               let cardTitle = it.title;
-               let cardSubtitle = '';
-               
-               // Если есть данные о ресторане или блюде, используем их
-               if (it.restaurant) {
-                 cardImage = it.restaurant.image || it.image || '/static/placeholder-restaurant.jpg';
-                 cardTitle = it.title || it.restaurant.name;
-                 cardSubtitle = `★ ${it.restaurant.rating ? it.restaurant.rating.toFixed(1) : '--'} · ${it.restaurant.delivery_time_minutes || '--'} мин`;
-               } else if (it.dish) {
-                 cardImage = it.dish.image || it.image || '/static/placeholder-dish.jpg';
-                 cardTitle = it.title || it.dish.name;
-                 cardSubtitle = `${it.dish.price} ₽`;
-                 card.className = 'mini-card dish-card';
-               }
-               
-               // Разная структура для карточек блюд и ресторанов
-               if (it.dish) {
-                 card.innerHTML = `
-                   <img src="${cardImage}" alt="${cardTitle}" onerror="this.src='/static/placeholder-dish.jpg'"/>
-                   <div class="cap">${cardTitle}</div>
-                   <div class="subtitle">
-                     <span class="price">${it.dish.price} ₽</span>
-                     <div class="restaurant-info">
-                       <span class="restaurant-name">${it.restaurant ? it.restaurant.name : 'Неизвестный ресторан'}</span>
-                     </div>
-                   </div>
-                 `;
-               } else {
-                 card.innerHTML = `
-                   <img src="${cardImage}" alt="${cardTitle}"/>
-                   <div class="cap">${cardTitle}</div>
-                   ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
-                 `;
-               }
+               const card = createCard(it);
                card.onclick = () => {
                  const p = new URLSearchParams(location.search);
                  if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
@@ -250,6 +260,26 @@
             console.log('Processing block:', block.title, 'items:', block.items);
             block.items.forEach((it, index) => {
               console.log(`Item ${index}:`, it);
+              
+              // ПРИОРИТЕТ У БЛЮДА: если есть dish, то это карточка блюда
+              if (it.dish || it.type === 'dish') {
+                // Используем функцию createCard для блюд
+                const card = createCard(it);
+                card.onclick = () => {
+                  const p = new URLSearchParams(location.search);
+                  if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+                  
+                  if (it.type === 'dish' && it.item_id) {
+                    location.href = '/static/dish.html?id=' + it.item_id + '&' + p.toString();
+                  } else if (block.kind === 'dishes' && it.dish_id) {
+                    location.href = '/static/dish.html?id=' + it.dish_id + '&' + p.toString();
+                  }
+                };
+                row.appendChild(card);
+                return; // Пропускаем остальную логику для блюд
+              }
+              
+              // Для ресторанов создаем карточку ресторана
               const card = document.createElement('div');
               card.className = 'restaurant-card';
               
@@ -262,7 +292,7 @@
                 restaurant_id: it.restaurant_id
               });
               
-                  if ((it.type === 'restaurant' && it.item_id) || it.restaurant_id) {
+              if ((it.type === 'restaurant' && it.item_id) || it.restaurant_id) {
                 const restaurantId = it.item_id || it.restaurant_id;
                 console.log('Loading restaurant data from API for ID:', restaurantId);
                 // Используем базовые данные из it.restaurant или it, и загружаем полные данные асинхронно
@@ -333,49 +363,6 @@
                   const p = new URLSearchParams(location.search);
                   if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
                   location.href = '/static/restaurant.html?id=' + restaurantData.id + '&' + p.toString();
-                };
-              } else {
-                // Fallback для блюд или других элементов
-                let cardImage = it.image || 'https://via.placeholder.com/300x200?text=No+Image';
-                let cardTitle = it.title;
-                let cardSubtitle = '';
-                
-                if (it.dish) {
-                  cardImage = it.dish.image || it.image;
-                  cardTitle = it.title || it.dish.name;
-                  cardSubtitle = `${it.dish.price} ₽`;
-                  card.className = 'mini-card dish-card';
-                }
-                
-                // Разная структура для карточек блюд и ресторанов
-                if (it.dish) {
-                  card.innerHTML = `
-                    <img src="${cardImage}" alt="${cardTitle}" onerror="this.src='/static/placeholder-dish.jpg'"/>
-                    <div class="cap">${cardTitle}</div>
-                    <div class="subtitle">
-                      <span class="price">${it.dish.price} ₽</span>
-                      <div class="restaurant-info">
-                        <span class="restaurant-name">${it.restaurant ? it.restaurant.name : 'Неизвестный ресторан'}</span>
-                      </div>
-                    </div>
-                  `;
-                } else {
-                  card.innerHTML = `
-                    <img src="${cardImage}" alt="${cardTitle}"/>
-                    <div class="cap">${cardTitle}</div>
-                    ${cardSubtitle ? `<div class="subtitle">${cardSubtitle}</div>` : ''}
-                  `;
-                }
-                
-                card.onclick = () => {
-                  const p = new URLSearchParams(location.search);
-                  if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-                  
-                  if (it.type === 'dish' && it.item_id) {
-                    location.href = '/static/dish.html?id=' + it.item_id + '&' + p.toString();
-                  } else if (block.kind === 'dishes' && it.dish_id) {
-                    location.href = '/static/dish.html?id=' + it.dish_id + '&' + p.toString();
-                  }
                 };
               }
               

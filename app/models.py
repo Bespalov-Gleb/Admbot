@@ -132,6 +132,7 @@ class Order(Base):
     staff_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     eta_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cutlery_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

@@ -74,6 +74,25 @@ async def notify_user_order_modified(chat_id: int, url: str, text: str | None = 
             return
 
 
+async def notify_user_order_cancelled(chat_id: int, restaurant_name: str, reason: str | None = None) -> None:
+    if not BOT_TOKEN or not chat_id:
+        return
+    api = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
+    reason_text = f"\n\nПричина отмены: {reason}" if reason else ""
+    text = f"Ресторан \"{restaurant_name}\" отменил заказ.{reason_text}"
+    
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            await client.post(api, json=payload)
+        except Exception:
+            return
+
+
 async def notify_user_order_accepted(chat_id: int, url: str, restaurant_name: str, eta_minutes: int) -> None:
     if not BOT_TOKEN or not chat_id:
         return
@@ -96,7 +115,7 @@ async def notify_user_order_delivered(chat_id: int, order_id: int, restaurant_na
     if not BOT_TOKEN or not chat_id:
         return
     
-    review_url = f"{WEBAPP_URL}/static/order.html?order_id={order_id}&show_review=1"
+    review_url = f"{WEBAPP_URL}/static/order.html?id={order_id}&show_review=1"
     
     api = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     text = f"🎉 Ваш заказ из ресторана \"{restaurant_name}\" доставлен!\n\nПожалуйста, оцените качество обслуживания и оставьте отзыв о ресторане."
@@ -143,9 +162,16 @@ async def notify_restaurant_admins(restaurant_id: int, message: str, button_text
             }
             
             if button_text and button_url:
+                # Добавляем uid админа в URL
+                admin_url = button_url
+                if '?' in button_url:
+                    admin_url += f"&uid={admin.user_id}"
+                else:
+                    admin_url += f"?uid={admin.user_id}"
+                
                 payload["reply_markup"] = {
                     "inline_keyboard": [[
-                        {"text": button_text, "web_app": {"url": button_url}}
+                        {"text": button_text, "web_app": {"url": admin_url}}
                     ]]
                 }
             
@@ -220,5 +246,41 @@ async def resolve_username_to_user_id(username: str) -> int | None:
     # Пользователь должен сначала взаимодействовать с ботом
     logger.warning("resolve_username: failed to resolve %s. User must interact with bot first.", username)
     return None
+
+
+async def notify_restaurant_comment(order_id: int, restaurant_id: int, comment: str, user_id: int) -> None:
+    """Отправить уведомление ресторану о комментарии от клиента"""
+    if not BOT_TOKEN:
+        logger.warning("notify_restaurant_comment: missing bot token")
+        return
+    
+    try:
+        # Получаем список администраторов ресторана
+        from app.db import get_session
+        from app.models import RestaurantAdmin
+        
+        with get_session() as db:
+            admins = db.query(RestaurantAdmin).filter(RestaurantAdmin.restaurant_id == restaurant_id).all()
+            
+            if not admins:
+                logger.warning(f"No admins found for restaurant {restaurant_id}")
+                return
+            
+            # Формируем сообщение
+            message = f"💬 <b>Новый комментарий к заказу №{order_id}</b>\n\n"
+            message += f"<b>Комментарий:</b>\n{comment}\n\n"
+            message += f"<b>Заказ:</b> №{order_id}\n"
+            message += f"<b>Клиент:</b> ID {user_id}"
+            
+            # Отправляем каждому администратору ресторана
+            for admin in admins:
+                try:
+                    await send_user_message(admin.user_id, message)
+                    logger.info(f"Comment notification sent to restaurant admin {admin.user_id} for order {order_id}")
+                except Exception as exc:
+                    logger.error(f"Failed to send comment notification to admin {admin.user_id}: {exc}")
+                    
+    except Exception as exc:
+        logger.exception(f"Failed to notify restaurant about comment for order {order_id}: {exc}")
 
 
