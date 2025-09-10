@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from pydantic import BaseModel
 from typing import List
 from app.deps.auth import require_super_admin
@@ -265,6 +265,107 @@ async def broadcast(payload: Broadcast, db: Session = Depends(get_db)) -> dict:
 async def broadcast_telegram(payload: Broadcast, db: Session = Depends(get_db)) -> dict:
     """Алиас для /broadcast endpoint для совместимости с ботом"""
     return await broadcast(payload, db)
+
+
+@router.post("/broadcast-with-media")
+async def broadcast_with_media(
+    text: str = Form(...),
+    recipients: str = Form(...),
+    media: UploadFile = File(None),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Отправляет рассылку с медиа файлом через веб-интерфейс"""
+    try:
+        # Получаем список получателей
+        target_user_ids = get_target_users(recipients, db)
+        
+        if not target_user_ids:
+            return {"status": "error", "message": "Нет получателей для рассылки"}
+        
+        # Отправляем уведомление админу о начале рассылки
+        await send_admin_message(
+            f"📢 Начинаю рассылку для {len(target_user_ids)} получателей\n"
+            f"Тип: {recipients}\n"
+            f"Текст: {text[:100]}{'...' if len(text) > 100 else ''}"
+        )
+        
+        # Счетчики
+        sent_count = 0
+        failed_count = 0
+        
+        # Проверяем, что бот доступен
+        if not bot:
+            return {"status": "error", "message": "Bot not initialized"}
+        
+        # Отправляем сообщения
+        for user_id in target_user_ids:
+            try:
+                if media and media.content_type:
+                    # Проверяем размер файла (максимум 20MB)
+                    content = await media.read()
+                    if len(content) > 20 * 1024 * 1024:  # 20MB
+                        raise HTTPException(status_code=413, detail="Файл слишком большой. Максимальный размер: 20MB")
+                    
+                    # Определяем тип медиа
+                    if media.content_type.startswith('image/'):
+                        # Отправляем как фото
+                        from aiogram.types import BufferedInputFile
+                        photo_file = BufferedInputFile(content, filename=media.filename)
+                        await bot.send_photo(
+                            chat_id=user_id,
+                            photo=photo_file,
+                            caption=text
+                        )
+                    elif media.content_type.startswith('video/'):
+                        # Отправляем как видео
+                        from aiogram.types import BufferedInputFile
+                        video_file = BufferedInputFile(content, filename=media.filename)
+                        await bot.send_video(
+                            chat_id=user_id,
+                            video=video_file,
+                            caption=text
+                        )
+                    else:
+                        # Неподдерживаемый тип файла
+                        await bot.send_message(
+                            chat_id=user_id,
+                            text=f"{text}\n\n📎 Прикреплен файл: {media.filename}"
+                        )
+                else:
+                    # Только текст
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text=text
+                    )
+                sent_count += 1
+                
+                # Небольшая задержка между сообщениями
+                import asyncio
+                await asyncio.sleep(0.05)
+                
+            except Exception as e:
+                failed_count += 1
+                print(f"Failed to send to user {user_id}: {e}")
+                continue
+        
+        # Отправляем отчет админу
+        await send_admin_message(
+            f"✅ Рассылка завершена!\n"
+            f"📊 Отправлено: {sent_count}\n"
+            f"❌ Ошибок: {failed_count}\n"
+            f"📈 Успешность: {sent_count/(sent_count+failed_count)*100:.1f}%"
+        )
+        
+        return {
+            "status": "ok", 
+            "sent": sent_count, 
+            "failed": failed_count,
+            "total": len(target_user_ids)
+        }
+        
+    except Exception as e:
+        await send_admin_message(f"❌ Ошибка рассылки: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 
 # users management

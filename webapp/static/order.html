@@ -4,26 +4,186 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Текущий заказ</title>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/styles.v23.css?v=67" />
   <script src="/static/page-transitions.js"></script>
   <style>
-    /* Стили для улучшенной страницы заказа */
-    
-    
-    .order-item {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e2e8f0;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
     
-    .order-item-content {
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: white;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 120px;
+    }
+    
+    /* Header */
+    .header {
       display: flex;
-      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      background: white;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .back-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: none;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+    }
+    
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    /* Status Banner */
+    .status-banner {
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .status-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    
+    .status-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .status-btn {
+      padding: 8px 16px;
+      border: 1px solid #d1d5db;
+      background: white;
+      border-radius: 8px;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .status-btn:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+    
+    .status-btn.primary {
+      background: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+    
+    .status-btn.primary:hover {
+      background: #b91c1c;
+    }
+    
+    /* Restaurant Tabs */
+    .restaurant-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .restaurant-tab {
+      flex-shrink: 0;
+      padding: 12px 20px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: #f3f4f6;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+    
+    .restaurant-tab.active {
+      background: white;
+      border-color: #dc2626;
+      color: #dc2626;
+    }
+    
+    .restaurant-tab-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .restaurant-tab-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 12px;
+    }
+    
+    .restaurant-tab-price {
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .restaurant-tab-time {
+      color: #666;
+    }
+    
+    /* Order Items */
+    .order-items {
+      padding: 0 16px;
+    }
+    
+    .order-item {
+      display: flex;
       align-items: flex-start;
+      gap: 12px;
+      padding: 16px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .order-item:last-child {
+      border-bottom: none;
     }
     
     .order-item-image {
@@ -40,138 +200,470 @@
       object-fit: cover;
     }
     
-    .order-item-details {
+    .order-item-content {
       flex: 1;
       min-width: 0;
+    }
+    
+    .order-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
     }
     
     .order-item-name {
       font-size: 16px;
       font-weight: 600;
-      color: #1e293b;
-      margin-bottom: 8px;
-      line-height: 1.4;
-    }
-    
-    .order-item-options {
-      font-size: 14px;
-      color: #64748b;
-      margin-bottom: 8px;
-      line-height: 1.4;
+      color: #333;
+      line-height: 1.3;
     }
     
     .order-item-price {
       font-size: 16px;
       font-weight: 600;
-      color: #1e293b;
+      color: #333;
+      white-space: nowrap;
     }
     
-    .order-item-price strong {
-      color: #dc2626;
-      font-weight: 700;
+    .order-item-options {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+      line-height: 1.3;
     }
     
-    .simple-status {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1e293b;
-      text-align: center;
-      padding: 8px 0;
+    .order-item-quantity {
+      font-size: 14px;
+      color: #666;
     }
     
-    .order-total-card {
+    /* Open Menu Button */
+    .open-menu-btn {
+      margin: 16px;
+      width: calc(100% - 32px);
+      padding: 16px;
+      border: 1px solid #e5e7eb;
       background: white;
       border-radius: 12px;
-      padding: 20px;
-      margin-top: 16px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e2e8f0;
-      border-top: 3px solid #dc2626;
+      color: #666;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
     
-    .order-total-amount {
+    .open-menu-btn:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+    
+    /* Bottom Action Bar */
+    .action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      padding: 16px;
+      z-index: 1000;
+    }
+    
+    .action-content {
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    
+    .cutlery-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .cutlery-icon {
+      font-size: 20px;
+      color: #666;
+    }
+    
+    .cutlery-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .cutlery-count {
+      min-width: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 16px;
+      color: #333;
+    }
+
+    /* Стили для модального окна комментария */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 20px 20px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     
-    .delivery-label {
-      font-size: 16px;
-      font-weight: 500;
-      color: #64748b;
-    }
-    
-    .order-total-label {
+    .modal-header h3 {
+      margin: 0;
       font-size: 18px;
-      font-weight: 700;
-      color: #dc2626;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #999;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .order-info {
+      margin: 0 0 15px 0;
+      font-size: 14px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .modal-body textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+      box-sizing: border-box;
+    }
+
+    .modal-body textarea:focus {
+      outline: none;
+      border-color: #ff6b35;
+    }
+
+    .char-count {
+      text-align: right;
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .modal-footer {
+      padding: 0 20px 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #666;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
     
-    /* Адаптивность */
-    @media (max-width: 480px) {
-      .order-item-content {
-        flex-direction: column;
-        gap: 12px;
-      }
-      
-      .order-item-image {
+    .action-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .comment-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      border-radius: 8px;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .comment-btn:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+    
+    .comment-icon {
+      font-size: 16px;
+    }
+    
+    /* Review Section */
+    .review-section {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px;
+      border: 1px solid #e5e7eb;
+      display: none;
+    }
+    
+    .review-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    
+    .stars-display {
+      font-size: 24px;
+      color: #fbbf24;
+      margin-bottom: 12px;
+    }
+    
+    .review-comment {
+      background: #f9fafb;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      color: #374151;
+      line-height: 1.5;
+    }
+    
+    .review-date {
+      font-size: 14px;
+      color: #6b7280;
+      text-align: right;
+    }
+    
+    .stars {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    
+    .star-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #d1d5db;
+      transition: color 0.2s ease;
+    }
+    
+    .star-btn:hover,
+    .star-btn.active {
+      color: #fbbf24;
+    }
+    
+    .review-text {
         width: 100%;
-        height: 120px;
-      }
-      
-      .order-summary {
-        flex-direction: column;
-        gap: 12px;
-      }
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 12px;
+    }
+    
+    .review-send {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .review-send:hover {
+      background: #b91c1c;
+    }
+    
+    .review-send:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    /* Empty State */
+    .empty-order {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+    
+    .empty-order h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    
+    .empty-order p {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    /* Hidden elements */
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="margin-bottom:8px"><a id="back" href="#">Назад</a></div>
-    <div id="banner" class="restaurant" style="text-align:center">
-      <div class="title" id="bannerTitle">Заказ</div>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button id="contact" class="pill">Связаться с нами</button>
-        <button id="contactRest" class="pill">Связаться с рестораном</button>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <button class="back-btn" onclick="goBack()">×</button>
+        <div class="header-title">Заказ</div>
       </div>
-    </div>
-    <div id="status" class="meta"></div>
-    <div id="items"></div>
-    <div id="review" class="restaurant" style="margin-top:12px; display:none">
-      <div class="title">Оцените заказ</div>
-      <div class="meta">
-        <span id="stars">
-          <button data-v="1">★</button>
-          <button data-v="2">★</button>
-          <button data-v="3">★</button>
-          <button data-v="4">★</button>
-          <button data-v="5">★</button>
-        </span>
-      </div>
-      <div class="meta" style="margin-top:6px"><input id="revText" placeholder="Комментарий (необязательно)" style="width:100%"/></div>
-      <div style="margin-top:6px"><button id="revSend" disabled>Отправить</button></div>
     </div>
     
-    <div id="appReview" class="restaurant" style="margin-top:12px; display:none">
-      <div class="title">Отзыв о приложении</div>
-      <div class="meta">
-        <span id="appStars">
-          <button data-v="1">★</button>
-          <button data-v="2">★</button>
-          <button data-v="3">★</button>
-          <button data-v="4">★</button>
-          <button data-v="5">★</button>
-        </span>
-      </div>
-      <div class="meta" style="margin-top:6px"><input id="appRevText" placeholder="Комментарий о приложении (необязательно)" style="width:100%"/></div>
-      <div style="margin-top:6px"><button id="appRevSend" disabled>Отправить отзыв о приложении</button></div>
+    <!-- Status Banner -->
+    <div class="status-banner" id="statusBanner">
+      <div class="status-title" id="statusTitle">Загрузка...</div>
+      <div class="status-actions" id="statusActions"></div>
     </div>
-    <div style="margin-top:12px">
-      <button id="delivered">Доставлено</button>
-      <a href="/static/index.html" style="margin-left:8px">Главная</a>
+    
+    <!-- Restaurant Tabs (hidden by default, shown if multiple restaurants) -->
+    <div class="restaurant-tabs hidden" id="restaurantTabs"></div>
+    
+    <!-- Order Items -->
+    <div class="order-items" id="orderItems"></div>
+    
+    <!-- Open Menu Button -->
+    <button class="open-menu-btn" id="openMenuBtn" onclick="openMenu()">Открыть меню</button>
+    
+    <!-- Review Section -->
+    <div class="review-section" id="reviewSection">
+      <div class="review-title">Оцените заказ</div>
+      <div class="stars" id="stars">
+        <button class="star-btn" data-rating="1">★</button>
+        <button class="star-btn" data-rating="2">★</button>
+        <button class="star-btn" data-rating="3">★</button>
+        <button class="star-btn" data-rating="4">★</button>
+        <button class="star-btn" data-rating="5">★</button>
+      </div>
+      <textarea class="review-text" id="reviewText" placeholder="Комментарий (необязательно)"></textarea>
+      <button class="review-send" id="reviewSend" onclick="sendReview()" disabled>Отправить отзыв</button>
+    </div>
+    
+    <!-- App Review Section -->
+    <div class="review-section" id="appReviewSection">
+      <div class="review-title">Оцените приложение</div>
+      <div class="stars" id="appStars">
+        <button class="star-btn" data-rating="1">★</button>
+        <button class="star-btn" data-rating="2">★</button>
+        <button class="star-btn" data-rating="3">★</button>
+        <button class="star-btn" data-rating="4">★</button>
+        <button class="star-btn" data-rating="5">★</button>
+      </div>
+      <textarea class="review-text" id="appReviewText" placeholder="Комментарий о приложении (необязательно)"></textarea>
+      <button class="review-send" id="appReviewSend" onclick="sendAppReview()" disabled>Отправить отзыв о приложении</button>
+    </div>
+    
+    <!-- Bottom Action Bar -->
+    <div class="action-bar" id="actionBar">
+      <div class="action-content">
+        <div class="cutlery-section">
+          <span class="cutlery-icon">🍴</span>
+          <div class="cutlery-controls">
+            <span class="cutlery-count" id="cutleryCount">0</span>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="comment-btn" onclick="openCommentModal()">
+            <span class="comment-icon">💬</span>
+            <span>Комментарий ресторану</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Модальное окно для комментария ресторану -->
+  <div class="modal-overlay" id="commentModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Комментарий ресторану</h3>
+        <button class="modal-close" onclick="closeCommentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="order-info">Заказ №<span id="commentOrderId"></span></p>
+        <textarea 
+          id="commentText" 
+          placeholder="Напишите ваш комментарий ресторану..."
+          maxlength="500"
+          rows="4"
+        ></textarea>
+        <div class="char-count">
+          <span id="charCount">0</span>/500
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeCommentModal()">Отмена</button>
+        <button class="btn-primary" onclick="sendComment()">Отправить</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
     const api = location.origin + '/api';
     const url = new URL(location.href);
@@ -181,192 +673,559 @@
     const tg = window.Telegram?.WebApp;
     const uid = (p.get('uid') && Number(p.get('uid'))) || (tg?.initDataUnsafe?.user?.id || 0);
     const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-    if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+    
+    let currentOrder = null;
+    let dishesMap = new Map();
+    let optionsMap = new Map();
+    let restaurantsMap = new Map();
+    let cutleryCount = 0;
+    let selectedRating = 0;
+    let selectedAppRating = 0;
+    let activeRestaurantId = null;
 
     async function load() {
+      try {
       const res = await fetch(api + '/orders/' + orderId);
-      if (!res.ok) { document.getElementById('status').textContent = 'Заказ не найден'; return; }
-      const o = await res.json();
-
-      // lookup options for readable names and deltas
-      const optionIds = [...new Set(o.items.flatMap(i => (i.chosen_options || [])))];
-      let optionsMap = new Map();
+        if (!res.ok) {
+          showError('Заказ не найден');
+          return;
+        }
+        
+        currentOrder = await res.json();
+        
+        // Load options
+        const optionIds = [...new Set(currentOrder.items.flatMap(i => (i.chosen_options || [])))];
       if (optionIds.length) {
         const opts = await (await fetch(api + '/options/lookup?ids=' + optionIds.join(','))).json();
         optionsMap = new Map(opts.map(o => [o.id, o]));
       }
 
-      // lookup dishes for images and names
-      const dishIds = [...new Set(o.items.map(i => i.dish_id))];
-      let dishesMap = new Map();
+        // Load dishes
+        const dishIds = [...new Set(currentOrder.items.map(i => i.dish_id))];
       if (dishIds.length) {
-        const dishes = await (await fetch(api + '/dishes?ids=' + dishIds.join(','))).json();
+          const dishes = await (await fetch(api + '/dishes?ids=' + dishIds.join(',') + (uid ? ('&uid=' + uid) : ''), { headers })).json();
         dishesMap = new Map(dishes.map(d => [d.id, d]));
       }
 
-      // recompute subtotal with options (client-side presentation)
-      let subtotal = o.items.reduce((sum, it) => {
-        const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
-        const delta = chosen.reduce((s, op) => s + (op.price_delta || 0), 0);
-        return sum + (it.price + delta) * it.qty;
-      }, 0);
-      let delivery = 0;
-      if (o.delivery_type === 'delivery') {
-        const any = o.items[0];
-        if (any) {
-          const r = await (await fetch(api + '/restaurants/' + o.restaurant_id)).json();
-          delivery = r.delivery_fee || 0;
+        // Load restaurants
+        const restaurantIds = [...new Set(currentOrder.items.map(i => {
+          const dish = dishesMap.get(i.dish_id);
+          return dish?.restaurant_id;
+        }).filter(Boolean))];
+        
+        if (restaurantIds.length) {
+          const restaurants = await (await fetch(api + '/restaurants/_bulk?ids=' + encodeURIComponent(restaurantIds.join(',')) + (uid ? ('&uid=' + uid) : ''), { headers })).json();
+          restaurantsMap = new Map(restaurants.map(r => [r.id, r]));
         }
+        
+        // Set active restaurant
+        if (restaurantIds.length > 0) {
+          activeRestaurantId = restaurantIds[0];
+        }
+        
+        renderOrder();
+        await loadCutleryCount();
+        await loadReviews();
+        await loadAppReview();
+        
+        if (showReview) {
+          showReviewSection();
+        }
+        
+      } catch (error) {
+        console.error('Error loading order:', error);
+        showError('Ошибка загрузки заказа');
       }
-      const presentedTotal = subtotal + delivery;
-
-      const human = { created: 'создан', sent: 'отправлен', accepted: 'принят рестораном', delivered: 'доставлен', cancelled: 'отменён', modified: 'изменён' };
-      const title = (o.status === 'accepted') ? `Ресторан принял заказ. Время доставки ~ ${o.eta_minutes || 60} мин` : 'Заказ отправлен. Ждите подтверждение ресторана';
-      document.getElementById('bannerTitle').textContent = title;
-      // Простое отображение статуса
-      const statusElement = document.getElementById('status');
-      const statusText = human[o.status] || o.status;
-      const capitalizedStatus = statusText.charAt(0).toUpperCase() + statusText.slice(1);
-      
-      statusElement.innerHTML = `<div class="simple-status">${capitalizedStatus}</div>`;
-      // support link
-      try {
-        const cfg = await (await fetch(api + '/config')).json();
-        document.getElementById('contact').onclick = () => { location.href = cfg.support_tg_url; };
-      } catch {}
-      // restaurant phone
-      try {
-        const r = await (await fetch(api + '/restaurants/' + o.restaurant_id)).json();
-        const phone = r.phone || '';
-        const btn = document.getElementById('contactRest');
-        if (phone) {
-          btn.onclick = () => { try { location.href = 'tel:' + phone.replace(/\s+/g,''); } catch { alert('Телефон ресторана: ' + phone); } };
-        } else {
-          btn.disabled = true;
-        }
-      } catch {}
-      const list = document.getElementById('items');
-      list.innerHTML = '';
-      o.items.forEach(it => {
-        const dish = dishesMap.get(it.dish_id);
-        const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
-        const delta = chosen.reduce((s, op) => s + (op.price_delta || 0), 0);
-        const unit = it.price + delta;
-        
-        // Убираем дублирование опций - показываем только если они есть и отличаются от названия блюда
-        const optsLabel = chosen.length ? chosen.map(o => o.name + (o.price_delta ? ` (+${o.price_delta} р)` : '')).join(', ') : '';
-        
-        const el = document.createElement('div');
-        el.className = 'order-item';
-        el.innerHTML = `
-          <div class="order-item-content">
-            <div class="order-item-image">
-              <img src="${dish?.image || '/static/placeholder-dish.jpg'}" alt="${it.name}" />
-            </div>
-            <div class="order-item-details">
-              <div class="order-item-name">${it.name}</div>
-              ${optsLabel ? `<div class="order-item-options">${optsLabel}</div>` : ''}
-              <div class="order-item-price">${unit} ₽ × ${it.qty} = <strong>${unit*it.qty} ₽</strong></div>
-            </div>
-          </div>
-        `;
-        list.appendChild(el);
-      });
-      
-      // Добавляем итоговую сумму после списка товаров
-      const totalElement = document.createElement('div');
-      totalElement.className = 'order-total-card';
-      totalElement.innerHTML = `
-        <div class="order-total-amount">
-          <span class="delivery-label">Доставка: ${delivery} ₽</span>
-          <span class="order-total-label">Итого: ${presentedTotal} ₽</span>
-        </div>
-      `;
-      list.appendChild(totalElement);
-      
-      document.getElementById('delivered').disabled = (o.status === 'delivered');
-
-      // review block
-      if (o.status === 'delivered' || showReview) {
-        const res = await fetch(api + '/reviews/by-order?order_id=' + orderId + (uid ? ('&uid=' + uid) : ''), { headers });
-        const has = res.ok ? await res.json() : { exists: false };
-        if (!has.exists) {
-          document.getElementById('review').style.display = 'block';
-          setupReview(o);
-        }
-        
-        // Проверяем отзыв о приложении
-        const appRes = await fetch(api + '/app-reviews/my' + (uid ? ('?uid=' + uid) : ''), { headers });
-        const appHas = appRes.ok ? await appRes.json() : { exists: false };
-        console.log('App review check:', appHas);
-        
-        if (!appHas.exists) {
-          document.getElementById('appReview').style.display = 'block';
-          setupAppReview();
-        }
-      }
-    }
-
-    async function markDelivered() {
-      await fetch(api + '/orders/' + orderId + '/delivered', { method: 'POST' });
-      await load();
-    }
-
-    document.getElementById('delivered').onclick = markDelivered;
-    document.getElementById('back').onclick = (e) => { e.preventDefault(); const p2 = new URLSearchParams(location.search); if (!p2.get('ngrok-skip-browser-warning')) p2.set('ngrok-skip-browser-warning','1'); location.href = '/static/profile.html?' + p2.toString(); };
-    load();
-
-    function setupReview(order) {
-      let rating = 0;
-      const stars = document.querySelectorAll('#stars button');
-      
-      // Устанавливаем черный цвет по умолчанию
-      stars.forEach(x => x.style.color = '#000');
-      
-      stars.forEach(b => {
-        b.onclick = () => {
-          rating = Number(b.getAttribute('data-v'));
-          stars.forEach(x => x.style.color = (Number(x.getAttribute('data-v')) <= rating ? '#fbbf24' : '#000'));
-          document.getElementById('revSend').disabled = rating === 0;
-        };
-      });
-      document.getElementById('revSend').onclick = async () => {
-        const comment = (document.getElementById('revText').value||'').trim();
-        const res = await fetch(api + '/reviews' + (uid ? ('?uid=' + uid) : ''), { method:'POST', headers, body: JSON.stringify({ order_id: order.id, restaurant_id: order.restaurant_id, rating, comment }) });
-        if (res.ok) {
-          document.getElementById('review').innerHTML = '<div class="meta">Спасибо! Отзыв отправлен.</div>';
-        } else {
-          const err = await res.json().catch(()=>({}));
-          alert('Ошибка: ' + (err.detail || res.status));
-        }
-      };
     }
     
-    function setupAppReview() {
-      let rating = 0;
-      const stars = document.querySelectorAll('#appStars button');
+    function renderOrder() {
+      renderStatusBanner();
+      renderRestaurantTabs();
+      renderOrderItems();
+      setupReview();
+    }
+    
+    function renderStatusBanner() {
+      const statusTitle = document.getElementById('statusTitle');
+      const statusActions = document.getElementById('statusActions');
       
-      // Устанавливаем черный цвет по умолчанию
-      stars.forEach(x => x.style.color = '#000');
+      let title = '';
+      let actions = [];
       
-      stars.forEach(b => {
-        b.onclick = () => {
-          rating = Number(b.getAttribute('data-v'));
-          stars.forEach(x => x.style.color = (Number(x.getAttribute('data-v')) <= rating ? '#fbbf24' : '#000'));
-          document.getElementById('appRevSend').disabled = rating === 0;
+      switch (currentOrder.status) {
+        case 'sent':
+          title = 'Заказ отправлен. Ждите подтверждение ресторана';
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
+          ];
+          break;
+        case 'accepted':
+          title = `Ресторан принял заказ. Время доставки ~ ${currentOrder.eta_minutes || 60} мин`;
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' },
+            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' }
+          ];
+          break;
+        case 'delivered':
+          title = 'Заказ доставлен';
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' },
+            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' }
+          ];
+          break;
+        case 'cancelled':
+          title = 'Заказ отменен';
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
+          ];
+          break;
+        case 'modified':
+          title = 'Заказ изменен';
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
+          ];
+          break;
+        default:
+          title = 'Заказ отправлен. Ждите подтверждение ресторана';
+          actions = [
+            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
+          ];
+      }
+      
+      statusTitle.textContent = title;
+      statusActions.innerHTML = actions.map(action => 
+        `<button class="${action.class}" onclick="${action.onclick}">${action.text}</button>`
+      ).join('');
+    }
+    
+    function renderRestaurantTabs() {
+      const tabs = document.getElementById('restaurantTabs');
+      const restaurantIds = [...new Set(currentOrder.items.map(i => {
+        const dish = dishesMap.get(i.dish_id);
+        return dish?.restaurant_id;
+      }).filter(Boolean))];
+      
+      if (restaurantIds.length <= 1) {
+        tabs.classList.add('hidden');
+        return;
+      }
+      
+      tabs.classList.remove('hidden');
+      tabs.innerHTML = '';
+      
+      restaurantIds.forEach(restId => {
+        const restaurant = restaurantsMap.get(restId);
+        if (!restaurant) return;
+        
+        const total = calcTotalForRestaurant(restId);
+        const deliveryTime = restaurant.delivery_time_minutes 
+          ? `${restaurant.delivery_time_minutes} мин`
+          : '60 мин';
+        
+        const tab = document.createElement('button');
+        tab.className = 'restaurant-tab' + (restId === activeRestaurantId ? ' active' : '');
+        tab.onclick = () => {
+          activeRestaurantId = restId;
+          renderRestaurantTabs();
+          renderOrderItems();
+        };
+        
+        tab.innerHTML = `
+          <div class="restaurant-tab-name">${restaurant.name}</div>
+          <div class="restaurant-tab-info">
+            <span class="restaurant-tab-price">${total} ₽</span>
+            <span class="restaurant-tab-time">${deliveryTime}</span>
+          </div>
+        `;
+        
+        tabs.appendChild(tab);
+      });
+    }
+    
+    function renderOrderItems() {
+      const container = document.getElementById('orderItems');
+      container.innerHTML = '';
+      
+      const items = currentOrder.items.filter(item => {
+        const dish = dishesMap.get(item.dish_id);
+        return dish && dish.restaurant_id === activeRestaurantId;
+      });
+      
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-order">
+            <h3>Нет товаров</h3>
+            <p>В этом ресторане нет товаров в заказе</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Group items by dish_id and options
+      const groupedItems = new Map();
+      
+      items.forEach(item => {
+        const dish = dishesMap.get(item.dish_id);
+        if (!dish) return;
+        
+        const optionsKey = (item.chosen_options || []).sort().join(',');
+        const groupKey = `${item.dish_id}_${optionsKey}`;
+        
+        if (groupedItems.has(groupKey)) {
+          const existing = groupedItems.get(groupKey);
+          existing.qty += item.qty;
+        } else {
+          groupedItems.set(groupKey, {
+            dish_id: item.dish_id,
+            chosen_options: item.chosen_options || [],
+            qty: item.qty,
+            dish: dish
+          });
+        }
+      });
+      
+      groupedItems.forEach(group => {
+        const dish = group.dish;
+        const chosen = group.chosen_options.map(id => optionsMap.get(id)).filter(Boolean);
+        const delta = chosen.reduce((s, o) => s + (o.price_delta || 0), 0);
+        const unitPrice = (dish.price || 0) + delta;
+        const totalPrice = unitPrice * group.qty;
+        
+        const optsLabel = chosen.length ? chosen.map(o => o.name + (o.price_delta ? ` (+${o.price_delta} р)` : '')).join(', ') : '';
+        
+        const itemEl = document.createElement('div');
+        itemEl.className = 'order-item';
+        
+        itemEl.innerHTML = `
+          <div class="order-item-image">
+            <img src="${dish.image || '/static/placeholder-dish.jpg'}" alt="${dish.name}" />
+          </div>
+          <div class="order-item-content">
+            <div class="order-item-header">
+              <div class="order-item-name">${dish.name}</div>
+              <div class="order-item-price">${totalPrice} ₽</div>
+            </div>
+              ${optsLabel ? `<div class="order-item-options">${optsLabel}</div>` : ''}
+            <div class="order-item-quantity">${unitPrice} ₽ × ${group.qty}</div>
+          </div>
+        `;
+        
+        container.appendChild(itemEl);
+      });
+    }
+    
+    function calcTotalForRestaurant(restaurantId) {
+      const items = currentOrder.items.filter(item => {
+        const dish = dishesMap.get(item.dish_id);
+        return dish && dish.restaurant_id === restaurantId;
+      });
+      
+      return items.reduce((sum, item) => {
+        const dish = dishesMap.get(item.dish_id);
+        const chosen = (item.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
+        const delta = chosen.reduce((s, o) => s + (o.price_delta || 0), 0);
+        const unitPrice = (dish?.price || 0) + delta;
+        return sum + unitPrice * item.qty;
+      }, 0);
+    }
+    
+    function setupReview() {
+      // Настройка звездочек для отзыва о ресторане
+      const stars = document.querySelectorAll('#stars .star-btn');
+      
+      stars.forEach(star => {
+        star.onclick = () => {
+          selectedRating = Number(star.getAttribute('data-rating'));
+          stars.forEach((s, index) => {
+            s.classList.toggle('active', index < selectedRating);
+          });
+          document.getElementById('reviewSend').disabled = selectedRating === 0;
         };
       });
-      document.getElementById('appRevSend').onclick = async () => {
-        const comment = (document.getElementById('appRevText').value||'').trim();
-        const res = await fetch(api + '/app-reviews' + (uid ? ('?uid=' + uid) : ''), { method:'POST', headers, body: JSON.stringify({ rating, comment }) });
+      
+      // Настройка звездочек для отзыва о приложении
+      const appStars = document.querySelectorAll('#appStars .star-btn');
+      
+      appStars.forEach(star => {
+        star.onclick = () => {
+          selectedAppRating = Number(star.getAttribute('data-rating'));
+          appStars.forEach((s, index) => {
+            s.classList.toggle('active', index < selectedAppRating);
+          });
+          document.getElementById('appReviewSend').disabled = selectedAppRating === 0;
+        };
+      });
+      
+      // Секция отзыва о приложении будет показана в loadAppReview() если отзыва нет
+    }
+    
+    function showReviewSection() {
+      document.getElementById('reviewSection').style.display = 'block';
+    }
+    
+    async function sendReview() {
+      if (selectedRating === 0) return;
+      
+      try {
+        const comment = document.getElementById('reviewText').value.trim();
+        const res = await fetch(api + '/reviews' + (uid ? ('?uid=' + uid) : ''), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            order_id: currentOrder.id,
+            restaurant_id: currentOrder.restaurant_id,
+            rating: selectedRating,
+            comment
+          })
+        });
+        
         if (res.ok) {
-          document.getElementById('appReview').innerHTML = '<div class="meta">Спасибо! Отзыв о приложении отправлен.</div>';
+          document.getElementById('reviewSection').innerHTML = '<div class="review-title">Спасибо! Отзыв отправлен.</div>';
         } else {
-          const err = await res.json().catch(()=>({}));
+          const err = await res.json().catch(() => ({}));
           alert('Ошибка: ' + (err.detail || res.status));
         }
-      };
+      } catch (error) {
+        console.error('Error sending review:', error);
+        alert('Ошибка отправки отзыва');
+      }
     }
+    
+    async function sendAppReview() {
+      if (selectedAppRating === 0) return;
+      
+      try {
+        const comment = document.getElementById('appReviewText').value.trim();
+        const res = await fetch(api + '/app-reviews' + (uid ? ('?uid=' + uid) : ''), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            rating: selectedAppRating,
+            comment
+          })
+        });
+        
+        if (res.ok) {
+          document.getElementById('appReviewSection').innerHTML = '<div class="review-title">Спасибо! Отзыв о приложении отправлен.</div>';
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert('Ошибка: ' + (err.detail || res.status));
+        }
+      } catch (error) {
+        console.error('Error sending app review:', error);
+        alert('Ошибка отправки отзыва о приложении');
+      }
+    }
+    
+    async function loadCutleryCount() {
+      try {
+        if (currentOrder && currentOrder.cutlery_count !== undefined) {
+          cutleryCount = currentOrder.cutlery_count;
+          document.getElementById('cutleryCount').textContent = cutleryCount;
+        } else {
+          cutleryCount = 0;
+          document.getElementById('cutleryCount').textContent = cutleryCount;
+        }
+      } catch (error) {
+        console.error('Error loading cutlery count:', error);
+        // Оставляем значение по умолчанию 0
+        cutleryCount = 0;
+        document.getElementById('cutleryCount').textContent = cutleryCount;
+      }
+    }
+    
+    async function loadReviews() {
+      try {
+        const res = await fetch(api + '/reviews/by-order?order_id=' + orderId + (uid ? ('&uid=' + uid) : ''), { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.exists && data.review) {
+            displayReview(data.review);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+      }
+    }
+    
+    async function loadAppReview() {
+      try {
+        const res = await fetch(api + '/app-reviews/my' + (uid ? ('?uid=' + uid) : ''), { headers });
+        if (res.ok) {
+          const reviews = await res.json();
+          if (reviews && reviews.length > 0) {
+            const review = reviews[0];
+            displayAppReview(review);
+          } else {
+            // Если отзыва нет, показываем форму для создания отзыва
+            document.getElementById('appReviewSection').style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading app review:', error);
+        // В случае ошибки показываем форму
+        document.getElementById('appReviewSection').style.display = 'block';
+      }
+    }
+    
+    function displayReview(review) {
+      const reviewSection = document.getElementById('reviewSection');
+      if (reviewSection) {
+        reviewSection.innerHTML = `
+          <div class="review-title">Ваш отзыв</div>
+          <div class="stars-display">
+            ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
+          </div>
+          ${review.comment ? `<div class="review-comment">${review.comment}</div>` : ''}
+          <div class="review-date">${new Date(review.created_at).toLocaleDateString('ru-RU')}</div>
+        `;
+        reviewSection.style.display = 'block';
+      }
+    }
+    
+    function displayAppReview(review) {
+      const appReviewSection = document.getElementById('appReviewSection');
+      if (appReviewSection) {
+        appReviewSection.innerHTML = `
+          <div class="review-title">Ваш отзыв о приложении</div>
+          <div class="stars-display">
+            ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
+          </div>
+          ${review.comment ? `<div class="review-comment">${review.comment}</div>` : ''}
+          <div class="review-date">${new Date(review.created_at).toLocaleDateString('ru-RU')}</div>
+        `;
+        appReviewSection.style.display = 'block';
+      }
+    }
+    
+    function openMenu() {
+      if (activeRestaurantId) {
+        location.href = `/static/restaurant.html?id=${activeRestaurantId}`;
+      }
+    }
+    
+    function openCommentModal() {
+      // TODO: Implement comment modal
+      alert('Функция комментария будет реализована позже');
+    }
+    
+    async function contactSupport() {
+      try {
+        const cfg = await (await fetch(api + '/config')).json();
+        location.href = cfg.support_tg_url;
+      } catch (error) {
+        console.error('Error getting support URL:', error);
+        alert('Ошибка получения контактов поддержки');
+      }
+    }
+    
+    async function contactRestaurant() {
+      if (currentOrder.status !== 'accepted' && currentOrder.status !== 'delivered') {
+        alert('Связь с рестораном доступна только после принятия заказа');
+        return;
+      }
+      
+      try {
+        const restaurant = restaurantsMap.get(activeRestaurantId);
+        if (!restaurant || !restaurant.phone) {
+          alert('Телефон ресторана недоступен');
+          return;
+        }
+        
+        location.href = 'tel:' + restaurant.phone.replace(/\s+/g, '');
+      } catch (error) {
+        console.error('Error contacting restaurant:', error);
+        alert('Ошибка связи с рестораном');
+      }
+    }
+    
+    function goBack() {
+      location.href = '/static/profile.html';
+    }
+    
+    function showError(message) {
+      document.getElementById('statusTitle').textContent = message;
+      document.getElementById('statusActions').innerHTML = '';
+    }
+
+    // Функции для работы с комментариями
+    function openCommentModal() {
+      if (!currentOrder) {
+        alert('Информация о заказе не загружена');
+        return;
+      }
+      
+      document.getElementById('commentOrderId').textContent = currentOrder.id;
+      document.getElementById('commentText').value = '';
+      document.getElementById('charCount').textContent = '0';
+      document.getElementById('commentModal').style.display = 'flex';
+      
+      // Фокус на textarea и добавление обработчика
+      setTimeout(() => {
+        const textarea = document.getElementById('commentText');
+        textarea.focus();
+        textarea.addEventListener('input', updateCharCount);
+      }, 100);
+    }
+
+    function closeCommentModal() {
+      document.getElementById('commentModal').style.display = 'none';
+    }
+
+    function updateCharCount() {
+      const textarea = document.getElementById('commentText');
+      const charCount = document.getElementById('charCount');
+      const count = textarea.value.length;
+      charCount.textContent = count;
+      
+      // Меняем цвет при приближении к лимиту
+      if (count > 450) {
+        charCount.style.color = '#ff6b35';
+      } else if (count > 400) {
+        charCount.style.color = '#ffa500';
+      } else {
+        charCount.style.color = '#999';
+      }
+    }
+
+    async function sendComment() {
+      const text = document.getElementById('commentText').value.trim();
+      
+      if (!text) {
+        alert('Введите комментарий');
+        return;
+      }
+      
+      if (text.length > 500) {
+        alert('Комментарий слишком длинный (максимум 500 символов)');
+        return;
+      }
+      
+      try {
+        const response = await fetch(api + '/orders/' + orderId + '/comment', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            comment: text
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Ошибка отправки комментария');
+        }
+        
+        alert('Комментарий отправлен ресторану');
+        closeCommentModal();
+        
+      } catch (error) {
+        console.error('Error sending comment:', error);
+        alert('Ошибка отправки комментария: ' + error.message);
+      }
+    }
+    
+    // Initialize
+    load();
   </script>
 </body>
 </html>

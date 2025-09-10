@@ -455,6 +455,23 @@
       color: #6b7280;
     }
     
+    .order-comment-section {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+    }
+    
+    .order-comment-section .order-detail-item {
+      margin-bottom: 0;
+    }
+    
+    .order-comment-section .order-detail-label {
+      color: #1e40af;
+      font-weight: 700;
+    }
+    
     .order-actions-section {
       margin-bottom: 20px;
     }
@@ -832,8 +849,8 @@
             if (olist) {
               if (orders.length > 0) {
                 let html = '<div class="meta">Заказы загружены:</div>';
-                // Сортируем заказы с последнего по первый
-                orders.slice().reverse().forEach(order => {
+                // Заказы уже отсортированы с последнего по первый в API
+                orders.forEach(order => {
                   html += `<div class="order-item" onclick="openOrderDetails(${order.id})" style="cursor: pointer;">
           <div class="order-header">
                       <span class="order-id">Заказ #${order.id}</span>
@@ -980,89 +997,186 @@
     }
     
     // ===== ФУНКЦИЯ ПРИНУДИТЕЛЬНОГО ОТКРЫТИЯ МОДАЛЬНОГО ОКНА =====
-    function forceOpenModal() {
+    async function forceOpenModal() {
       console.log('=== FORCE OPEN MODAL ===');
       
       // Получаем order_id из URL
       const urlParams = new URLSearchParams(window.location.search);
-      const orderId = urlParams.get('order_id') || '21'; // По умолчанию 21 если нет в URL
+      let orderId = urlParams.get('order_id');
+      
+      // Если order_id не указан в URL, получаем последний заказ со статусом "sent" динамически
+      if (!orderId) {
+        try {
+          const ordersRes = await fetch(api + '/ra/orders', { headers });
+          if (ordersRes.ok) {
+            const orders = await ordersRes.json();
+            if (orders.length > 0) {
+              // Ищем последний заказ со статусом "sent" (новый, необработанный)
+              const sentOrder = orders.find(order => order.status === 'sent');
+              if (sentOrder) {
+                orderId = sentOrder.id;
+                console.log('Автоматически выбран последний заказ со статусом "sent":', orderId);
+              } else {
+                // Если нет заказов со статусом "sent", берем последний заказ
+                if (orders.length > 0) {
+                  orderId = orders[0].id;
+                  console.log('Нет заказов со статусом "sent", выбран последний заказ:', orderId);
+                } else {
+                  alert('Нет доступных заказов');
+                  return;
+                }
+              }
+            } else {
+              alert('Нет доступных заказов');
+              return;
+            }
+          } else {
+            throw new Error('Ошибка загрузки списка заказов');
+          }
+        } catch (error) {
+          console.error('Ошибка при получении последнего заказа:', error);
+          alert('Ошибка загрузки заказов');
+          return;
+        }
+      }
       
       console.log('Force opening modal for order:', orderId);
       
-      // Создаем модальное окно
-      const modal = document.createElement('div');
-      modal.className = 'order-modal-overlay';
-      modal.innerHTML = `
-        <div class="order-modal">
-          <button class="order-modal-close" onclick="this.closest('.order-modal-overlay').remove()">×</button>
-          <div class="order-modal-title">Обработка заказа #${orderId}</div>
-          
-          <div class="order-details-section">
-            <div class="order-detail-item">
-              <span class="order-detail-label">Заказ номер:</span> ${orderId}
-            </div>
-            <div class="order-detail-item">
-              <span class="order-detail-label">Статус заказа:</span> Новый
-            </div>
-            <div class="order-detail-item">
-              <span class="order-detail-label">Действие:</span> Выберите действие ниже
-            </div>
-          </div>
-          
-          <div class="order-actions-section">
-            <div class="action-option" onclick="selectAction(this, 'accept-30')">
-              <input type="radio" name="action" value="accept-30" id="accept-30">
-              <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'accept-60')">
-              <input type="radio" name="action" value="accept-60" id="accept-60">
-              <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'accept-90')">
-              <input type="radio" name="action" value="accept-90" id="accept-90">
-              <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'accept-120')">
-              <input type="radio" name="action" value="accept-120" id="accept-120">
-              <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'accept-180')">
-              <input type="radio" name="action" value="accept-180" id="accept-180">
-              <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'modify')">
-              <input type="radio" name="action" value="modify" id="modify">
-              <label class="action-option-label" for="modify">Изменить заказ</label>
-            </div>
-            <div class="action-option" onclick="selectAction(this, 'cancel')">
-              <input type="radio" name="action" value="cancel" id="cancel">
-              <label class="action-option-label" for="cancel">Отменить заказ</label>
-            </div>
-          </div>
-          
-          <button class="order-modal-submit" onclick="processOrderAction(${orderId})" disabled>
-            Отправить
-          </button>
-        </div>
-      `;
+      // Проверяем, что orderId валидный
+      if (!orderId || orderId === 0) {
+        alert('Неверный ID заказа');
+        return;
+      }
       
-      console.log('Modal created, appending to DOM...');
-      document.body.appendChild(modal);
-      console.log('Modal appended! Check if visible...');
-      
-      // Проверяем видимость
-      setTimeout(() => {
-        const modalElement = document.querySelector('.order-modal-overlay');
-        if (modalElement) {
-          console.log('Modal found in DOM:', modalElement);
-          console.log('Modal display style:', window.getComputedStyle(modalElement).display);
-          console.log('Modal visibility style:', window.getComputedStyle(modalElement).visibility);
-          console.log('Modal opacity style:', window.getComputedStyle(modalElement).opacity);
-          console.log('Modal z-index style:', window.getComputedStyle(modalElement).zIndex);
-        } else {
-          console.error('Modal not found in DOM!');
+      try {
+        // Загружаем данные заказа
+        const res = await fetch(api + '/ra/orders/' + orderId, { headers });
+        if (!res.ok) {
+          throw new Error(`Ошибка загрузки заказа: ${res.status}`);
         }
-      }, 100);
+        
+        const order = await res.json();
+        console.log('Order data loaded:', order);
+        
+        // Проверяем статус заказа - модальное окно обработки должно показываться только для статуса "sent"
+        if (order.status !== 'sent') {
+          alert('Этот заказ уже обработан. Окно обработки доступно только для новых заказов.');
+          return;
+        }
+        
+        // Форматируем дату и время
+        const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Форматируем состав заказа
+        const itemsText = order.items ? order.items.map(item => 
+          `${item.name} × ${item.qty}`
+        ).join(', ') : 'Нет данных';
+        
+        // Создаем модальное окно с полной информацией о заказе
+        const modal = document.createElement('div');
+        modal.className = 'order-modal-overlay';
+        modal.innerHTML = `
+          <div class="order-modal">
+            <div class="order-modal-title">Обработка заказа #${orderId}</div>
+            
+            <div class="order-details-section">
+              <div class="order-detail-item">
+                <span class="order-detail-label">Заказ номер:</span> ${orderId}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Статус заказа:</span> ${getStatusText(order.status)}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Адрес:</span> ${order.address || 'Самовывоз'}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Способ оплаты:</span> ${order.payment_method === 'cash' ? 'Наличные' : 'Карта'}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Состав заказа:</span> ${itemsText}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Итоговая стоимость:</span> ${order.total_price} ₽
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Дата и время:</span> ${orderDate}
+              </div>
+            </div>
+            
+            <div class="order-comment-section">
+              <div class="order-detail-item">
+                <span class="order-detail-label">Комментарий клиента:</span> ${order.client_comment || 'Нет комментария'}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Приборы:</span> ${order.cutlery_count || 0} комплектов
+              </div>
+            </div>
+            
+            <div class="order-actions-section">
+              <div class="action-option" onclick="selectAction(this, 'accept-30')">
+                <input type="radio" name="action" value="accept-30" id="accept-30">
+                <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'accept-60')">
+                <input type="radio" name="action" value="accept-60" id="accept-60">
+                <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'accept-90')">
+                <input type="radio" name="action" value="accept-90" id="accept-90">
+                <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'accept-120')">
+                <input type="radio" name="action" value="accept-120" id="accept-120">
+                <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'accept-180')">
+                <input type="radio" name="action" value="accept-180" id="accept-180">
+                <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'modify')">
+                <input type="radio" name="action" value="modify" id="modify">
+                <label class="action-option-label" for="modify">Изменить заказ</label>
+              </div>
+              <div class="action-option" onclick="selectAction(this, 'cancel')">
+                <input type="radio" name="action" value="cancel" id="cancel">
+                <label class="action-option-label" for="cancel">Отменить заказ</label>
+              </div>
+            </div>
+            
+            <button class="order-modal-submit" onclick="processOrderAction(${orderId})" disabled>
+              Отправить
+            </button>
+          </div>
+        `;
+        
+        console.log('Modal created, appending to DOM...');
+        document.body.appendChild(modal);
+        console.log('Modal appended! Check if visible...');
+        
+        // Проверяем видимость
+        setTimeout(() => {
+          const modalElement = document.querySelector('.order-modal-overlay');
+          if (modalElement) {
+            console.log('Modal found in DOM:', modalElement);
+            console.log('Modal display style:', window.getComputedStyle(modalElement).display);
+            console.log('Modal visibility style:', window.getComputedStyle(modalElement).visibility);
+            console.log('Modal opacity style:', window.getComputedStyle(modalElement).opacity);
+            console.log('Modal z-index style:', window.getComputedStyle(modalElement).zIndex);
+          } else {
+            console.error('Modal not found in DOM!');
+          }
+        }, 100);
+        
+      } catch (error) {
+        console.error('Error loading order data:', error);
+        alert('Ошибка загрузки данных заказа: ' + error.message);
+      }
     }
     
     // ===== ФУНКЦИИ ДЛЯ ОТМЕНЫ ЗАКАЗА =====
@@ -1379,28 +1493,135 @@
     }
     
     // ===== ФУНКЦИИ ДЛЯ ОТКРЫТИЯ ДЕТАЛЕЙ ЗАКАЗА =====
-    function openOrderDetails(orderId) {
+    async function openOrderProcessingModal(orderId) {
+      console.log('Opening order processing modal for order:', orderId);
+      
+      try {
+        // Загружаем данные заказа
+        const res = await fetch(api + '/ra/orders/' + orderId, { headers });
+        if (!res.ok) {
+          throw new Error(`Ошибка загрузки заказа: ${res.status}`);
+        }
+        
+        const order = await res.json();
+        console.log('Order data loaded:', order);
+        
+        // Форматируем дату и время
+        const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Форматируем состав заказа
+        const itemsText = order.items ? order.items.map(item => 
+          `${item.name} × ${item.qty}`
+        ).join(', ') : 'Нет данных';
+        
+        // Создаем модальное окно с полной информацией о заказе
+        const modal = document.createElement('div');
+        modal.className = 'order-modal-overlay';
+        modal.innerHTML = `
+          <div class="order-modal">
+            <div class="order-modal-title">Обработка заказа #${orderId}</div>
+            
+            <div class="order-details-section">
+              <div class="order-detail-item">
+                <span class="order-detail-label">Заказ номер:</span> ${orderId}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Статус заказа:</span> ${order.status}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Адрес:</span> ${order.address || 'Не указан'}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Способ оплаты:</span> ${order.payment_method || 'Не указан'}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Состав заказа:</span> ${itemsText}
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Итоговая стоимость:</span> ${order.total_price} ₽
+              </div>
+              <div class="order-detail-item">
+                <span class="order-detail-label">Дата и время:</span> ${orderDate}
+              </div>
+            </div>
+            
+            <div class="order-actions">
+              <button class="order-modal-submit" onclick="processOrderAction(${orderId})" disabled>
+                Принять заказ и доставить за...
+              </button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Загружаем время доставки
+        const timeSelect = modal.querySelector('.order-modal-submit');
+        if (timeSelect) {
+          timeSelect.disabled = false;
+        }
+        
+      } catch (error) {
+        console.error('Error opening order processing modal:', error);
+        alert('Ошибка загрузки данных заказа');
+      }
+    }
+
+    async function openOrderDetails(orderId) {
       console.log('Opening order details for order:', orderId);
       console.log('Current uid:', uid);
       
-      // Переходим на страницу деталей заказа
-      const p = new URLSearchParams(location.search);
-      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-      p.set('order_id', orderId);
-      
-      // Обязательно добавляем uid в URL
-      if (uid) {
-        p.set('uid', uid);
-        console.log('Added uid to URL:', uid);
-      } else {
-        console.error('No uid available!');
-        alert('Ошибка: не удалось определить пользователя');
-        return;
+      try {
+        // Сначала получаем данные заказа для проверки статуса
+        const orderRes = await fetch(api + '/ra/orders/' + orderId, { headers });
+        if (!orderRes.ok) {
+          alert('Ошибка загрузки заказа');
+          return;
+        }
+        
+        const order = await orderRes.json();
+        console.log('Order status:', order.status);
+        console.log('Order status type:', typeof order.status);
+        console.log('Full order data:', order);
+        
+        // Проверяем статус заказа - для статуса "sent" открываем модальное окно обработки
+        if (order.status === 'sent') {
+          // Для новых заказов открываем модальное окно обработки
+          await openOrderProcessingModal(orderId);
+          return;
+        }
+        
+        // Для обработанных заказов просто переходим на страницу деталей
+        
+        // Переходим на страницу деталей заказа
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        p.set('order_id', orderId);
+        
+        // Обязательно добавляем uid в URL
+        if (uid) {
+          p.set('uid', uid);
+          console.log('Added uid to URL:', uid);
+        } else {
+          console.error('No uid available!');
+          alert('Ошибка: не удалось определить пользователя');
+          return;
+        }
+        
+        const targetUrl = '/static/ra_order_details.html?' + p.toString();
+        console.log('Navigating to:', targetUrl);
+        window.location.href = targetUrl;
+        
+      } catch (error) {
+        console.error('Error checking order status:', error);
+        alert('Ошибка при проверке статуса заказа');
       }
-      
-      const targetUrl = '/static/ra_order_details.html?' + p.toString();
-      console.log('Navigating to:', targetUrl);
-      window.location.href = targetUrl;
     }
     
     // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
@@ -1472,77 +1693,149 @@
         console.log('Will open modal automatically after loading orders...');
         
         // Ждем загрузки заказов и открываем модальное окно
-        setTimeout(() => {
+        setTimeout(async () => {
           console.log('=== OPENING MODAL AUTOMATICALLY ===');
           console.log('Opening modal for order:', orderId);
           console.log('Current time:', new Date().toISOString());
           
-          // Создаем простое модальное окно для обработки заказа
-          const modal = document.createElement('div');
-          modal.className = 'order-modal-overlay';
-          modal.innerHTML = `
-            <div class="order-modal">
-              <button class="order-modal-close" onclick="this.closest('.order-modal-overlay').remove()">×</button>
-              <div class="order-modal-title">Обработка заказа #${orderId}</div>
-              
-              <div class="order-details-section">
-                <div class="order-detail-item">
-                  <span class="order-detail-label">Заказ номер:</span> ${orderId}
-                </div>
-                <div class="order-detail-item">
-                  <span class="order-detail-label">Статус заказа:</span> Новый
-                </div>
-                <div class="order-detail-item">
-                  <span class="order-detail-label">Действие:</span> Выберите действие ниже
-                </div>
-              </div>
-              
-              <div class="order-actions-section">
-                <div class="action-option" onclick="selectAction(this, 'accept-30')">
-                  <input type="radio" name="action" value="accept-30" id="accept-30">
-                  <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'accept-60')">
-                  <input type="radio" name="action" value="accept-60" id="accept-60">
-                  <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'accept-90')">
-                  <input type="radio" name="action" value="accept-90" id="accept-90">
-                  <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'accept-120')">
-                  <input type="radio" name="action" value="accept-120" id="accept-120">
-                  <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'accept-180')">
-                  <input type="radio" name="action" value="accept-180" id="accept-180">
-                  <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'modify')">
-                  <input type="radio" name="action" value="modify" id="modify">
-                  <label class="action-option-label" for="modify">Изменить заказ</label>
-                </div>
-                <div class="action-option" onclick="selectAction(this, 'cancel')">
-                  <input type="radio" name="action" value="cancel" id="cancel">
-                  <label class="action-option-label" for="cancel">Отменить заказ</label>
-                </div>
-              </div>
-              
-              <button class="order-modal-submit" onclick="processOrderAction(${orderId})" disabled>
-                Отправить
-              </button>
-            </div>
-          `;
           
-          console.log('Modal HTML created, appending to DOM');
-          console.log('Modal element:', modal);
-          console.log('Modal HTML:', modal.outerHTML);
-          console.log('Document body:', document.body);
-          
-          document.body.appendChild(modal);
-          console.log('Modal appended to DOM - should be visible now!');
-          console.log('Modal in DOM:', document.querySelector('.order-modal-overlay'));
-          console.log('Modal computed style:', window.getComputedStyle(modal));
+          try {
+            // Загружаем данные заказа
+            const res = await fetch(api + '/ra/orders/' + orderId, { headers });
+            if (!res.ok) {
+              throw new Error(`Ошибка загрузки заказа: ${res.status}`);
+            }
+            
+            const order = await res.json();
+            console.log('Order data loaded:', order);
+            console.log('Order status:', order.status);
+            console.log('Order status type:', typeof order.status);
+            
+            // Проверяем статус заказа - модальное окно обработки должно показываться только для статуса "sent"
+            if (order.status !== 'sent') {
+              alert(`Этот заказ уже обработан. Статус: "${order.status}". Окно обработки доступно только для новых заказов.`);
+              return;
+            }
+            
+            // Форматируем дату и время
+            const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit', 
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            // Форматируем состав заказа
+            const itemsText = order.items ? order.items.map(item => 
+              `${item.name} × ${item.qty}`
+            ).join(', ') : 'Нет данных';
+            
+            // Создаем модальное окно с полной информацией о заказе
+            const modal = document.createElement('div');
+            modal.className = 'order-modal-overlay';
+            modal.innerHTML = `
+              <div class="order-modal">
+                <div class="order-modal-title">Обработка заказа #${orderId}</div>
+                
+                <div class="order-details-section">
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Заказ номер:</span> ${orderId}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Статус заказа:</span> ${getStatusText(order.status)}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Адрес:</span> ${order.address || 'Самовывоз'}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Способ оплаты:</span> ${order.payment_method === 'cash' ? 'Наличные' : 'Карта'}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Состав заказа:</span> ${itemsText}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Итоговая стоимость:</span> ${order.total_price} ₽
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Дата и время:</span> ${orderDate}
+                  </div>
+                </div>
+                
+                <div class="order-comment-section">
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Комментарий клиента:</span> ${order.client_comment || 'Нет комментария'}
+                  </div>
+                  <div class="order-detail-item">
+                    <span class="order-detail-label">Приборы:</span> ${order.cutlery_count || 0} комплектов
+                  </div>
+                </div>
+                
+                <div class="order-actions-section">
+                  <div class="action-option" onclick="selectAction(this, 'accept-30')">
+                    <input type="radio" name="action" value="accept-30" id="accept-30">
+                    <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'accept-60')">
+                    <input type="radio" name="action" value="accept-60" id="accept-60">
+                    <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'accept-90')">
+                    <input type="radio" name="action" value="accept-90" id="accept-90">
+                    <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'accept-120')">
+                    <input type="radio" name="action" value="accept-120" id="accept-120">
+                    <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'accept-180')">
+                    <input type="radio" name="action" value="accept-180" id="accept-180">
+                    <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'modify')">
+                    <input type="radio" name="action" value="modify" id="modify">
+                    <label class="action-option-label" for="modify">Изменить заказ</label>
+                  </div>
+                  <div class="action-option" onclick="selectAction(this, 'cancel')">
+                    <input type="radio" name="action" value="cancel" id="cancel">
+                    <label class="action-option-label" for="cancel">Отменить заказ</label>
+                  </div>
+                </div>
+                
+                <button class="order-modal-submit" onclick="processOrderAction(${orderId})" disabled>
+                  Отправить
+                </button>
+              </div>
+            `;
+            
+            console.log('Modal HTML created, appending to DOM');
+            console.log('Modal element:', modal);
+            console.log('Modal HTML:', modal.outerHTML);
+            console.log('Document body:', document.body);
+            
+            document.body.appendChild(modal);
+            console.log('Modal appended to DOM - should be visible now!');
+            console.log('Modal in DOM:', document.querySelector('.order-modal-overlay'));
+            console.log('Modal computed style:', window.getComputedStyle(modal));
+            
+            // Дополнительная проверка видимости
+            setTimeout(() => {
+              const modalElement = document.querySelector('.order-modal-overlay');
+              if (modalElement) {
+                console.log('Modal found after timeout:', modalElement);
+                console.log('Modal display:', window.getComputedStyle(modalElement).display);
+                console.log('Modal visibility:', window.getComputedStyle(modalElement).visibility);
+                console.log('Modal opacity:', window.getComputedStyle(modalElement).opacity);
+                console.log('Modal z-index:', window.getComputedStyle(modalElement).zIndex);
+              } else {
+                console.error('Modal not found in DOM after timeout!');
+              }
+            }, 100);
+            
+          } catch (error) {
+            console.error('Error loading order data:', error);
+            alert('Ошибка загрузки данных заказа: ' + error.message);
+          }
           
         }, 3000); // Ждем 3 секунды после загрузки страницы
           } else {

@@ -1,8 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Literal
-from datetime import datetime
-from app.services.telegram import send_admin_message, send_user_message, WEBAPP_URL, notify_user_order_delivered, notify_restaurant_admins
+from datetime import datetime, timezone, timedelta
+
+# Функция для получения московского времени
+def moscow_now():
+    moscow_tz = timezone(timedelta(hours=3))
+    return datetime.now(moscow_tz)
+from app.services.telegram import send_admin_message, send_user_message, WEBAPP_URL, notify_user_order_delivered, notify_restaurant_admins, notify_restaurant_comment
+from app.deps.auth import require_user_id
 from app.logging_config import get_logger
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -10,6 +16,12 @@ from app.models import Option as OOption, Restaurant as ORestaurant, Order as DB
 from app.store import ensure_user
 from app.email_service import email_service
 import json
+
+def safe_dish_name(name: str | None) -> str:
+    """Безопасное получение названия блюда с проверкой на undefined и пустые значения"""
+    if not name or not name.strip() or name == "undefined":
+        return "Неизвестное блюдо"
+    return name.strip()
 
 
 router = APIRouter()
@@ -40,6 +52,7 @@ class Order(BaseModel):
     staff_comment: str | None = None
     accepted_at: datetime | None = None
     eta_minutes: int | None = None
+    cutlery_count: int = 0
     created_at: datetime
     items: List[OrderItem]
 
@@ -56,6 +69,7 @@ class OrderCreate(BaseModel):
     phone: str
     payment_method: Literal["cash", "card_to_courier", "transfer"]
     client_comment: str | None = None
+    cutlery_count: int = 0
     items: List[OrderItem]
 
 
@@ -94,7 +108,9 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 if op:
                     delta += op.price_delta or 0
                     opts.append(op.name + (f"+{op.price_delta}" if op.price_delta else ""))
-        name_with_opts = it.name + (f" ({', '.join(opts)})" if opts else "")
+        # Защита от пустых названий блюд
+        dish_name = safe_dish_name(it.name)
+        name_with_opts = dish_name + (f" ({', '.join(opts)})" if opts else "")
         snapped_items.append(
             OrderItem(
                 dish_id=it.dish_id,
@@ -124,7 +140,8 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
         phone=payload.phone,
         payment_method=payload.payment_method,
         client_comment=payload.client_comment,
-        created_at=datetime.utcnow(),
+        cutlery_count=payload.cutlery_count,
+        created_at=moscow_now(),
     )
     db.add(db_order)
     db.commit()
@@ -142,7 +159,7 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
     # journal notification (админ‑канал)
     try:
         def fmt_item(it: OrderItem) -> str:
-            return f"{it.name}×{it.qty}"
+            return f"{safe_dish_name(it.name)}×{it.qty}"
 
         items_txt = ", ".join(fmt_item(it) for it in snapped_items)
         msg = (
@@ -158,11 +175,11 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
     # Уведомление админам ресторана
     try:
         if WEBAPP_URL:
-            # URL для открытия модального окна обработки заказа
+            # URL для открытия страницы обработки заказа
             admin_url = f"{WEBAPP_URL}/static/ra.html?order_id={db_order.id}"
             
             def fmt_item(it: OrderItem) -> str:
-                return f"{it.name}×{it.qty}"
+                return f"{safe_dish_name(it.name)}×{it.qty}"
             
             items_txt = ", ".join(fmt_item(it) for it in snapped_items)
             admin_msg = (
@@ -171,7 +188,7 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 f"🚚 Тип: {db_order.delivery_type}\n"
                 f"💳 Оплата: {db_order.payment_method}\n"
                 f"📍 Адрес: {db_order.address or 'Самовывоз'}\n"
-                f"📱 Телефон: {db_order.phone}\n"
+                f"📱 Телефон: [Скрыт до принятия заказа]\n"
                 f"📝 Состав: {items_txt}\n"
                 f"💬 Комментарий: {db_order.client_comment or 'Нет'}"
             )
@@ -229,7 +246,7 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 "------------------------------",
             ]
             for it in snapped_items:
-                lines.append(f"{it.name} × {it.qty} — {it.price} р")
+                lines.append(f"{safe_dish_name(it.name)} × {it.qty} — {it.price} р")
             lines.append("------------------------------")
             lines.append(f"ИТОГО: {db_order.total_price} р")
             lines.append("")
@@ -270,8 +287,9 @@ async def get_order(order_id: int, db: Session = Depends(get_db)) -> Order:
         staff_comment=o.staff_comment,
         accepted_at=o.accepted_at,
         eta_minutes=o.eta_minutes,
+        cutlery_count=o.cutlery_count or 0,
         created_at=o.created_at,
-        items=[OrderItem(dish_id=it.dish_id, name=it.name, price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
+        items=[OrderItem(dish_id=it.dish_id, name=safe_dish_name(it.name), price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
     )
 
 
@@ -295,8 +313,9 @@ async def list_orders(user_id: int, db: Session = Depends(get_db)) -> List[Order
             staff_comment=o.staff_comment,
             accepted_at=o.accepted_at,
             eta_minutes=o.eta_minutes,
+            cutlery_count=o.cutlery_count or 0,
             created_at=o.created_at,
-            items=[OrderItem(dish_id=it.dish_id, name=it.name, price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
+            items=[OrderItem(dish_id=it.dish_id, name=safe_dish_name(it.name), price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
         ))
     return result
 
@@ -321,14 +340,15 @@ async def list_orders_by_restaurant(restaurant_id: int, db: Session = Depends(ge
             staff_comment=o.staff_comment,
             accepted_at=o.accepted_at,
             eta_minutes=o.eta_minutes,
+            cutlery_count=o.cutlery_count or 0,
             created_at=o.created_at,
-            items=[OrderItem(dish_id=it.dish_id, name=it.name, price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
+            items=[OrderItem(dish_id=it.dish_id, name=safe_dish_name(it.name), price=it.price, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]")) for it in items]
         ))
     return result
 
 
 @router.post("/{order_id}/accept")
-async def accept_order(order_id: int, eta_minutes: int = 60, db: Session = Depends(get_db)) -> dict:
+async def accept_order(order_id: int, eta_minutes: int = 60, uid: int = Depends(require_user_id), db: Session = Depends(get_db)) -> dict:
     o = db.query(DBOrder).filter(DBOrder.id == order_id).first()
     if not o:
         return {"status": "not_found"}
@@ -338,7 +358,7 @@ async def accept_order(order_id: int, eta_minutes: int = 60, db: Session = Depen
         return {"status": "already_accepted"}
     
     o.status = "accepted"
-    o.accepted_at = datetime.utcnow()
+    o.accepted_at = moscow_now()
     o.eta_minutes = eta_minutes
     db.commit()
     
@@ -348,6 +368,34 @@ async def accept_order(order_id: int, eta_minutes: int = 60, db: Session = Depen
         )
     except Exception:
         pass
+    
+    # Отправляем ресторану уведомление с номером телефона клиента после принятия заказа
+    try:
+        # Получаем состав заказа
+        items = db.query(DBOrderItem).filter(DBOrderItem.order_id == o.id).all()
+        items_txt = ", ".join([f"{safe_dish_name(it.name)}×{it.qty}" for it in items])
+        
+        # Формируем сообщение с номером телефона
+        admin_msg_with_phone = (
+            f"✅ ЗАКАЗ №{o.id} ПРИНЯТ\n\n"
+            f"📱 Телефон клиента: {o.phone}\n"
+            f"⏰ Время доставки: {eta_minutes} мин\n"
+            f"💰 Сумма: {o.total_price} ₽\n"
+            f"🚚 Тип: {o.delivery_type}\n"
+            f"💳 Оплата: {o.payment_method}\n"
+            f"📍 Адрес: {o.address or 'Самовывоз'}\n"
+            f"📝 Состав: {items_txt}\n"
+            f"💬 Комментарий: {o.client_comment or 'Нет'}"
+        )
+        
+        await notify_restaurant_admins(
+            restaurant_id=o.restaurant_id,
+            message=admin_msg_with_phone,
+            button_text="📋 Управление заказом",
+            button_url=f"{WEBAPP_URL}/static/ra_order_details.html?order_id={o.id}&uid={uid}" if WEBAPP_URL else None
+        )
+    except Exception as exc:
+        logger.exception("Failed to send phone notification to restaurant: %s", repr(exc))
     
     return {"status": "ok"}
 
@@ -376,4 +424,49 @@ async def delivered_order(order_id: int, db: Session = Depends(get_db)) -> dict:
         logger.exception("Failed to send delivery notification to user: %s", repr(exc))
     
     return {"status": "ok"}
+
+
+class OrderComment(BaseModel):
+    comment: str
+
+
+@router.post("/{order_id}/comment")
+async def add_order_comment(
+    order_id: int,
+    payload: OrderComment,
+    uid: int = Depends(require_user_id),
+    db: Session = Depends(get_db)
+):
+    """Добавить комментарий к заказу от клиента"""
+    logger = get_logger("orders")
+    
+    # Проверяем, что заказ существует и принадлежит пользователю
+    order = db.query(DBOrder).filter(DBOrder.id == order_id, DBOrder.user_id == uid).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    # Валидация комментария
+    comment_text = payload.comment.strip()
+    if not comment_text:
+        raise HTTPException(status_code=400, detail="Комментарий не может быть пустым")
+    
+    if len(comment_text) > 500:
+        raise HTTPException(status_code=400, detail="Комментарий слишком длинный (максимум 500 символов)")
+    
+    try:
+        # Получаем информацию о ресторане
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == order.restaurant_id).first()
+        if not restaurant:
+            raise HTTPException(status_code=404, detail="Ресторан не найден")
+        
+        # Отправляем уведомление ресторану
+        await notify_restaurant_comment(order_id, restaurant.id, comment_text, order.user_id)
+        
+        logger.info(f"Comment sent for order {order_id} to restaurant {restaurant.id}")
+        
+        return {"status": "ok", "message": "Комментарий отправлен ресторану"}
+        
+    except Exception as exc:
+        logger.exception("Failed to send comment to restaurant: %s", repr(exc))
+        raise HTTPException(status_code=500, detail="Ошибка отправки комментария")
 

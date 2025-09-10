@@ -185,3 +185,27 @@ async def clear_cart(restaurant_id: int | None = None, user_id: int = Depends(re
     db.commit()
     return {"status": "ok", "removed": str(deleted)}
 
+
+class CutleryUpdate(BaseModel):
+    cutlery_count: int
+
+
+@router.put("/cutlery")
+async def update_cutlery(
+    payload: CutleryUpdate,
+    user_id: int = Depends(require_user_id),
+    db: Session = Depends(get_db)
+) -> Dict[str, str]:
+    """Обновить количество приборов в корзине"""
+    if payload.cutlery_count < 0:
+        raise HTTPException(status_code=400, detail="Количество приборов не может быть отрицательным")
+    
+    if payload.cutlery_count > 10:
+        raise HTTPException(status_code=400, detail="Максимальное количество приборов: 10")
+    
+    c = _get_cart_db(user_id, db)
+    c.cutlery_count = payload.cutlery_count
+    db.commit()
+    
+    return {"status": "ok", "message": f"Количество приборов обновлено: {payload.cutlery_count}"}
+

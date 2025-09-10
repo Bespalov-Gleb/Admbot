@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from typing import List, Optional
 from app.deps.auth import require_user_id
 from app.store import get_restaurant_for_admin
-from app.services.telegram import send_admin_message, notify_user_order_modified, notify_user_order_accepted, WEBAPP_URL
+from app.services.telegram import send_admin_message, notify_user_order_modified, notify_user_order_accepted, notify_user_order_delivered, notify_user_order_cancelled, WEBAPP_URL
 from app.services.image_processor import ImageProcessor
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,7 +10,21 @@ from app.db import get_db, get_session
 from app.models import Restaurant as ORestaurant, Option as OOption, Order as DBOrder, OrderItem as DBOrderItem, RestaurantAdmin as DBRestaurantAdmin
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+def safe_dish_name(name: str | None) -> str:
+    """Безопасное получение названия блюда с проверкой на undefined и пустые значения"""
+    if not name or not name.strip() or name == "undefined":
+        return "Неизвестное блюдо"
+    return name.strip()
+
+# Функция для получения московского времени
+def moscow_now():
+    moscow_tz = timezone(timedelta(hours=3))
+    return datetime.now(moscow_tz)
+from app.logging_config import get_logger
+
+logger = get_logger("ra")
 
 
 router = APIRouter()
@@ -45,7 +59,7 @@ async def ra_me(rid: int = Depends(require_restaurant_id), db: Session = Depends
 @router.get("/ra/orders")
 async def ra_list_orders(rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> List[dict]:
     print(f"DEBUG: ra_list_orders called with rid={rid}")
-    orders = db.query(DBOrder).filter(DBOrder.restaurant_id == rid).all()
+    orders = db.query(DBOrder).filter(DBOrder.restaurant_id == rid).order_by(DBOrder.created_at.desc()).all()
     print(f"DEBUG: Found {len(orders)} orders for restaurant {rid}")
     
     data: List[dict] = []
@@ -60,14 +74,15 @@ async def ra_list_orders(rid: int = Depends(require_restaurant_id), db: Session 
             "total_price": o.total_price,
             "delivery_type": o.delivery_type,
             "address": o.address,
-            "phone": o.phone,
+            "phone": o.phone if o.status in ["accepted", "delivered"] else "[Скрыт до принятия заказа]",
             "payment_method": o.payment_method,
             "client_comment": o.client_comment,
             "staff_comment": o.staff_comment,
             "accepted_at": o.accepted_at,
             "eta_minutes": o.eta_minutes,
+            "cutlery_count": o.cutlery_count or 0,
             "created_at": o.created_at,
-            "items": [{"name": it.name, "qty": it.qty} for it in items],
+            "items": [{"name": safe_dish_name(it.name), "qty": it.qty} for it in items],
         })
     
     print(f"DEBUG: Returning {len(data)} orders")
@@ -90,14 +105,15 @@ async def ra_get_order(order_id: int, rid: int = Depends(require_restaurant_id),
         "total_price": o.total_price,
         "delivery_type": o.delivery_type,
         "address": o.address,
-        "phone": o.phone,
+        "phone": o.phone if o.status in ["accepted", "delivered"] else "[Скрыт до принятия заказа]",
         "payment_method": o.payment_method,
         "client_comment": o.client_comment,
         "staff_comment": o.staff_comment,
         "accepted_at": o.accepted_at,
         "eta_minutes": o.eta_minutes,
+        "cutlery_count": o.cutlery_count or 0,
         "created_at": o.created_at,
-        "items": [{"name": it.name, "qty": it.qty} for it in items],
+        "items": [{"name": safe_dish_name(it.name), "qty": it.qty} for it in items],
     }
 
 
@@ -107,7 +123,7 @@ async def ra_accept(order_id: int, eta_minutes: int = 60, rid: int = Depends(req
     if not o:
         raise HTTPException(status_code=404, detail="not_found")
     o.status = "accepted"
-    o.accepted_at = __import__('datetime').datetime.utcnow()
+    o.accepted_at = moscow_now()
     o.eta_minutes = eta_minutes
     db.commit()
     try:
@@ -133,8 +149,13 @@ async def ra_cancel(order_id: int, reason: str = "", rid: int = Depends(require_
     db.commit()
     try:
         await send_admin_message(f"[ra] Заказ №{o.id} отменён рестораном {rid}. Причина: {reason}")
-    except Exception:
-        pass
+        
+        # Отправляем уведомление клиенту об отмене заказа
+        r = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
+        if r:
+            await notify_user_order_cancelled(o.user_id, r.name, reason)
+    except Exception as exc:
+        logger.exception("Failed to send cancellation notification: %s", repr(exc))
     return {"status": "ok"}
 
 
@@ -147,8 +168,13 @@ async def ra_delivered(order_id: int, rid: int = Depends(require_restaurant_id),
     db.commit()
     try:
         await send_admin_message(f"[ra] Заказ №{o.id} доставлен рестораном {rid}")
-    except Exception:
-        pass
+        
+        # Отправляем уведомление клиенту с предложением оценки
+        r = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
+        if r:
+            await notify_user_order_delivered(o.user_id, o.id, r.name)
+    except Exception as exc:
+        logger.exception("Failed to send delivery notification: %s", repr(exc))
     return {"status": "ok"}
 
 
@@ -172,7 +198,7 @@ async def ra_modify(order_id: int, comment: str, rid: int = Depends(require_rest
                 f"Комментарий: {comment}\n"
                 + (f"Телефон ресторана: {phone}\n" if phone else "")
             )
-            await notify_user_order_modified(o.user_id, f"{WEBAPP_URL}/static/order.html?id={o.id}", text=text)
+            await notify_user_order_modified(o.user_id, f"{WEBAPP_URL}/static/cart.html?order_id={o.id}", text=text)
     except Exception:
         pass
     return {"status": "ok"}
@@ -282,7 +308,7 @@ async def ra_modify_items(order_id: int, payload: ModifyItemsRequest, rid: int =
                 f"Комментарий: {payload.comment}\n"
                 + (f"Телефон ресторана: {phone}\n" if phone else "")
             )
-            await notify_user_order_modified(o.user_id, f"{WEBAPP_URL}/static/order.html?id={o.id}", text=text)
+            await notify_user_order_modified(o.user_id, f"{WEBAPP_URL}/static/cart.html?order_id={o.id}", text=text)
     except Exception:
         pass
     return {"status": "ok", "total": o.total_price}
