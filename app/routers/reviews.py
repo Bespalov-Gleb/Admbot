@@ -5,7 +5,7 @@ from app.deps.auth import require_user_id
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.db import get_db
-from app.models import Review as DBReview, Order as DBOrder, AppReview as DBAppReview, Restaurant as DBRestaurant
+from app.models import Review as DBReview, Order as DBOrder, AppReview as DBAppReview, Restaurant as DBRestaurant, User as DBUser, OrderItem as DBOrderItem
 
 
 router = APIRouter()
@@ -140,16 +140,29 @@ async def get_restaurant_reviews(restaurant_id: int, db: Session = Depends(get_d
         DBReview.is_deleted == False
     ).scalar()
     
+    # Получаем данные для каждого отзыва
+    reviews_data = []
+    for r in reviews:
+        # Получаем имя пользователя
+        user = db.query(DBUser).filter(DBUser.id == r.user_id).first()
+        user_name = user.name if user and user.name else "Аноним"
+        
+        # Получаем состав заказа
+        order_items = db.query(DBOrderItem).filter(DBOrderItem.order_id == r.order_id).all()
+        ordered_items = ", ".join([f"{item.name} x{item.qty}" for item in order_items]) if order_items else None
+        
+        reviews_data.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "user_name": user_name,
+            "rating": r.rating,
+            "comment": r.comment,
+            "created_at": r.created_at,
+            "ordered_items": ordered_items
+        })
+    
     return {
-        "reviews": [
-            {
-                "id": r.id,
-                "user_id": r.user_id,
-                "rating": r.rating,
-                "comment": r.comment,
-                "created_at": r.created_at
-            } for r in reviews
-        ],
+        "reviews": reviews_data,
         "average_rating": round(avg_rating or 0.0, 1),
         "total_reviews": len(reviews)
     }

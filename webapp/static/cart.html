@@ -970,10 +970,19 @@
     }
 
     function goBack() {
-      // Корзина → главная страница
-      const params = new URLSearchParams(location.search);
-      if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
-      location.href = '/static/index.html?' + params.toString();
+      // Пытаемся вернуться на предыдущую страницу
+      if (window.history.length > 1) {
+        // Если есть история, возвращаемся назад
+        window.history.back();
+      } else if (document.referrer && document.referrer.includes('/static/')) {
+        // Если нет истории, но есть referrer, используем его
+        location.href = document.referrer;
+      } else {
+        // В крайнем случае идем на главную страницу
+        const params = new URLSearchParams(location.search);
+        if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/index.html?' + params.toString();
+      }
     }
 
     async function deleteItem(itemId) {

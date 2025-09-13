@@ -24,6 +24,30 @@
           <label>Имя <input id="fName" type="text"/></label>
           <label>Адрес <input id="fAddress" type="text"/></label>
           <label>Дата рождения <input id="fBirth" type="date"/></label>
+      <label>Часовой пояс 
+        <select id="fTimezone">
+          <option value="UTC+9">UTC+9 (Владивосток)</option>
+          <option value="UTC+8">UTC+8 (Иркутск)</option>
+          <option value="UTC+7">UTC+7 (Красноярск)</option>
+          <option value="UTC+6">UTC+6 (Омск)</option>
+          <option value="UTC+5">UTC+5 (Екатеринбург)</option>
+          <option value="UTC+4">UTC+4 (Самара)</option>
+          <option value="UTC+3">UTC+3 (Москва)</option>
+          <option value="UTC+2">UTC+2 (Калининград)</option>
+          <option value="UTC+1">UTC+1 (Берлин)</option>
+          <option value="UTC+0">UTC+0 (Лондон)</option>
+          <option value="UTC-1">UTC-1 (Азорские острова)</option>
+          <option value="UTC-2">UTC-2 (Среднеатлантическое время)</option>
+          <option value="UTC-3">UTC-3 (Бразилия)</option>
+          <option value="UTC-4">UTC-4 (Атлантическое время)</option>
+          <option value="UTC-5">UTC-5 (Восточное время США)</option>
+          <option value="UTC-6">UTC-6 (Центральное время США)</option>
+          <option value="UTC-7">UTC-7 (Горное время США)</option>
+          <option value="UTC-8">UTC-8 (Тихоокеанское время США)</option>
+          <option value="UTC-9">UTC-9 (Аляска)</option>
+          <option value="UTC-10">UTC-10 (Гавайи)</option>
+        </select>
+      </label>
           <div>
             <button id="saveProfile">Сохранить</button>
           </div>
@@ -83,6 +107,7 @@
           document.getElementById('fName').value = prof.name || '';
           document.getElementById('fAddress').value = prof.address || '';
           if (prof.birth_date) document.getElementById('fBirth').value = prof.birth_date;
+          document.getElementById('fTimezone').value = prof.timezone || 'UTC+9';
         } catch {}
         const res = await fetch(api + '/orders?user_id=' + userId);
         const data = await res.json();
@@ -107,6 +132,7 @@
         name: (document.getElementById('fName').value || null),
         address: (document.getElementById('fAddress').value || null),
         birth_date: (document.getElementById('fBirth').value || null),
+        timezone: (document.getElementById('fTimezone').value || 'UTC+9'),
       };
       await fetch(api + '/users/me?uid=' + userId, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Telegram-User-Id': String(userId) }, body: JSON.stringify(body) });
       alert('Сохранено');

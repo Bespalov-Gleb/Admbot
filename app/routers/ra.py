@@ -52,7 +52,8 @@ async def ra_me(rid: int = Depends(require_restaurant_id), db: Session = Depends
     return {
         "restaurant_id": rid,
         "restaurant_name": restaurant.name,
-        "is_enabled": restaurant.is_enabled
+        "is_enabled": restaurant.is_enabled,
+        "timezone": restaurant.timezone
     }
 
 
@@ -316,9 +317,6 @@ async def ra_modify_items(order_id: int, payload: ModifyItemsRequest, rid: int =
 
 # --- Дополнительные RA-эндпоинты: профиль ресторана и переключение статуса ---
 
-@router.get("/ra/me")
-async def ra_me(rid: int = Depends(require_restaurant_id)) -> dict:
-    return {"restaurant_id": rid}
 
 
 @router.get("/ra/restaurant")
@@ -340,6 +338,7 @@ async def ra_restaurant(rid: int = Depends(require_restaurant_id), db: Session =
         "image": r.image,
         "work_open_min": r.work_open_min,
         "work_close_min": r.work_close_min,
+        "timezone": r.timezone,
     }
 
 
@@ -365,6 +364,7 @@ class RestaurantPatch(BaseModel):
     delivery_min_sum: Optional[int] = None
     delivery_time_minutes: Optional[int] = None
     description: Optional[str] = None
+    timezone: Optional[str] = None
 
 
 @router.patch("/ra/restaurant")
@@ -401,6 +401,7 @@ async def ra_update_restaurant(payload: RestaurantPatch, rid: int = Depends(requ
         "image": r.image,
         "work_open_min": r.work_open_min,
         "work_close_min": r.work_close_min,
+        "timezone": r.timezone,
     }}
 
 

@@ -818,6 +818,43 @@
     const uid = Number(q.get('uid')) || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0);
     const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     
+    // Переменная для хранения timezone ресторана
+    let restaurantTimezone = 'UTC+9'; // По умолчанию
+    
+    // ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ВРЕМЕНЕМ =====
+    function parseTimezone(timezone) {
+      // Парсим timezone вида "UTC+9" или "UTC-5"
+      const match = timezone.match(/UTC([+-]?\d+)/);
+      if (match) {
+        return parseInt(match[1]);
+      }
+      return 9; // По умолчанию UTC+9
+    }
+    
+    function formatDateWithTimezone(dateString, timezone) {
+      const offset = parseTimezone(timezone);
+      const date = new Date(dateString);
+      
+      // Время в базе данных - московское (UTC+3)
+      // Нужно конвертировать в timezone ресторана
+      // Например: Москва 14:36 (UTC+3) -> Якутск 20:36 (UTC+9)
+      // Разница: 9 - 3 = 6 часов
+      const moscowOffset = 3; // Москва UTC+3
+      const timeDifference = offset - moscowOffset; // Разница между timezone ресторана и Москвой
+      
+      const adjustedDate = new Date(date.getTime() + (timeDifference * 60 * 60 * 1000));
+      
+      console.log(`Formatting date: ${dateString} (Moscow UTC+3) to ${timezone} (offset: +${offset}) -> difference: +${timeDifference}h -> ${adjustedDate.toLocaleString('ru-RU')}`);
+      
+      return adjustedDate.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
     // ===== ЛОГИРОВАНИЕ =====
     // Variables initialized
     
@@ -835,6 +872,14 @@
           const testData = await testRes.json();
           // API test data loaded
           
+          // Сохраняем timezone ресторана
+          if (testData.timezone) {
+            restaurantTimezone = testData.timezone;
+            console.log('Restaurant timezone loaded:', restaurantTimezone);
+          } else {
+            console.log('No timezone in response, using default:', restaurantTimezone);
+          }
+          
           // Теперь загружаем заказы
       // Loading orders
           const ordersRes = await fetch(api + '/ra/orders', { headers });
@@ -849,7 +894,7 @@
             if (olist) {
               if (orders.length > 0) {
                 let html = '<div class="meta">Заказы загружены:</div>';
-                // Заказы уже отсортированы с последнего по первый в API
+                // Заказы уже отсортированы от новых к старым в API
                 orders.forEach(order => {
                   html += `<div class="order-item" onclick="openOrderDetails(${order.id})" style="cursor: pointer;">
           <div class="order-header">
@@ -866,7 +911,7 @@
                       ${Array.isArray(order.items) ? order.items.map(i => `${i.name} × ${i.qty}`).join(', ') : 'Нет данных'}
           </div>
           <div class="order-details">
-                      ${new Date(new Date(order.created_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleString('ru-RU')}
+                      ${formatDateWithTimezone(order.created_at, restaurantTimezone)}
           </div>
           </div>`;
                 });
@@ -1002,51 +1047,9 @@
       
       // Получаем order_id из URL
       const urlParams = new URLSearchParams(window.location.search);
-      let orderId = urlParams.get('order_id');
-      
-      // Если order_id не указан в URL, получаем последний заказ со статусом "sent" динамически
-      if (!orderId) {
-        try {
-          const ordersRes = await fetch(api + '/ra/orders', { headers });
-          if (ordersRes.ok) {
-            const orders = await ordersRes.json();
-            if (orders.length > 0) {
-              // Ищем последний заказ со статусом "sent" (новый, необработанный)
-              const sentOrder = orders.find(order => order.status === 'sent');
-              if (sentOrder) {
-                orderId = sentOrder.id;
-                console.log('Автоматически выбран последний заказ со статусом "sent":', orderId);
-              } else {
-                // Если нет заказов со статусом "sent", берем последний заказ
-                if (orders.length > 0) {
-                  orderId = orders[0].id;
-                  console.log('Нет заказов со статусом "sent", выбран последний заказ:', orderId);
-                } else {
-                  alert('Нет доступных заказов');
-                  return;
-                }
-              }
-            } else {
-              alert('Нет доступных заказов');
-              return;
-            }
-          } else {
-            throw new Error('Ошибка загрузки списка заказов');
-          }
-        } catch (error) {
-          console.error('Ошибка при получении последнего заказа:', error);
-          alert('Ошибка загрузки заказов');
-          return;
-        }
-      }
+      const orderId = urlParams.get('order_id') || '21'; // По умолчанию 21 если нет в URL
       
       console.log('Force opening modal for order:', orderId);
-      
-      // Проверяем, что orderId валидный
-      if (!orderId || orderId === 0) {
-        alert('Неверный ID заказа');
-        return;
-      }
       
       try {
         // Загружаем данные заказа
@@ -1065,13 +1068,7 @@
         }
         
         // Форматируем дату и время
-        const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
-          day: '2-digit',
-          month: '2-digit', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        const orderDate = formatDateWithTimezone(order.created_at, restaurantTimezone);
         
         // Форматируем состав заказа
         const itemsText = order.items ? order.items.map(item => 
@@ -1507,13 +1504,7 @@
         console.log('Order data loaded:', order);
         
         // Форматируем дату и время
-        const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
-          day: '2-digit',
-          month: '2-digit', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        const orderDate = formatDateWithTimezone(order.created_at, restaurantTimezone);
         
         // Форматируем состав заказа
         const itemsText = order.items ? order.items.map(item => 
@@ -1718,13 +1709,7 @@
             }
             
             // Форматируем дату и время
-            const orderDate = new Date(order.created_at).toLocaleString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit', 
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
+            const orderDate = formatDateWithTimezone(order.created_at, restaurantTimezone);
             
             // Форматируем состав заказа
             const itemsText = order.items ? order.items.map(item => 
@@ -1765,9 +1750,6 @@
                 <div class="order-comment-section">
                   <div class="order-detail-item">
                     <span class="order-detail-label">Комментарий клиента:</span> ${order.client_comment || 'Нет комментария'}
-                  </div>
-                  <div class="order-detail-item">
-                    <span class="order-detail-label">Приборы:</span> ${order.cutlery_count || 0} комплектов
                   </div>
                 </div>
                 

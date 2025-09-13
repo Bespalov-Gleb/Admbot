@@ -199,6 +199,22 @@ async def ra_delete_dish(dish_id: int, rid: int = Depends(require_restaurant_id)
 
 
 # option groups & options
+@router.get("/ra/option-groups")
+async def ra_get_groups(dish_id: int = None, rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> List[dict]:
+    query = db.query(OGroup)
+    if dish_id:
+        query = query.filter(OGroup.dish_id == dish_id)
+    groups = query.all()
+    return [{"id": g.id, "dish_id": g.dish_id, "name": g.name, "min_select": g.min_select, "max_select": g.max_select, "required": g.required} for g in groups]
+
+@router.get("/ra/options")
+async def ra_get_options(group_id: int = None, rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> List[dict]:
+    query = db.query(OOption)
+    if group_id:
+        query = query.filter(OOption.group_id == group_id)
+    options = query.all()
+    return [{"id": o.id, "group_id": o.group_id, "name": o.name, "price_delta": o.price_delta} for o in options]
+
 @router.post("/ra/option-groups")
 async def ra_create_group(payload: GroupCreate, rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> dict:
     d = db.query(ODish).filter(ODish.id == payload.dish_id, ODish.restaurant_id == rid).first()

@@ -49,6 +49,89 @@
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
+    /* Анимация свайпа влево */
+    .swipe-animation {
+      transition: transform 0.3s ease-out;
+    }
+    
+    .swipe-closing {
+      transform: translateX(-100%);
+    }
+    
+    /* Скрываем скроллбар во время анимации */
+    .swipe-animation body {
+      overflow: hidden;
+    }
+    
+    /* Стили для кликабельного рейтинга */
+    .clickable-rating {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 8px;
+      padding: 4px 8px;
+    }
+    
+    .clickable-rating:hover {
+      background-color: #f5f5f5;
+      transform: scale(1.02);
+    }
+    
+    .reviews-arrow {
+      margin-left: 8px;
+      color: #666;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+    
+    .clickable-rating:hover .reviews-arrow {
+      transform: translateX(2px);
+    }
+    
+    /* Стили для отзывов */
+    .review-item {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 0;
+    }
+    
+    .review-item:last-child {
+      border-bottom: none;
+    }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .review-rating {
+      color: #ffa500;
+      font-size: 16px;
+    }
+    
+    .review-date {
+      color: #666;
+      font-size: 12px;
+    }
+    
+    .review-comment {
+      color: #333;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    
+    .no-reviews {
+      text-align: center;
+      color: #666;
+      padding: 40px 20px;
+    }
+    
+    .loading-text {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+    }
+    
     .cat-row button.active {
       background: #dc2626 !important;
       border-color: #dc2626 !important;
@@ -63,39 +146,194 @@
     
     /* Стили для модального окна с информацией о ресторане */
     .restaurant-info-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: rgba(0, 0, 0, 0.5) !important;
+      z-index: 1001 !important;
       display: none;
       opacity: 0;
       transition: opacity 0.3s ease;
     }
     
     .restaurant-info-modal.show {
-      display: flex;
-      opacity: 1;
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
     
     .modal-content {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: #fff;
-      border-radius: 20px 20px 0 0;
-      transform: translateY(100%);
-      transition: transform 0.3s ease;
-      max-height: 80vh;
-      overflow-y: auto;
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 80vh !important;
+      background: #fff !important;
+      border-radius: 20px 20px 0 0 !important;
+      transform: translateY(100%) !important;
+      transition: transform 0.3s ease !important;
+      overflow-y: auto !important;
+      z-index: 1002 !important;
+      min-height: 400px !important;
     }
     
-    .restaurant-info-modal.show .modal-content {
-      transform: translateY(0);
-    }
+      .restaurant-info-modal.show .modal-content {
+        transform: translateY(0) !important;
+      }
+      
+      /* Стили для нового заголовка модального окна */
+      .modal-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 16px 20px !important;
+        border-bottom: 1px solid #e0e0e0 !important;
+        background: #fff !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+      }
+      
+      .back-button {
+        background: none !important;
+        border: none !important;
+        font-size: 24px !important;
+        color: #333 !important;
+        cursor: pointer !important;
+        padding: 8px !important;
+        border-radius: 50% !important;
+        transition: background-color 0.2s !important;
+      }
+      
+      .back-button:hover {
+        background-color: #f5f5f5 !important;
+      }
+      
+      .modal-title {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        margin: 0 !important;
+        text-align: center !important;
+        flex: 1 !important;
+      }
+      
+      .header-spacer {
+        width: 40px !important;
+        height: 40px !important;
+      }
+      
+      /* Стили для элементов отзывов */
+      .review-item {
+        padding: 16px 20px !important;
+        border-bottom: 1px solid #f0f0f0 !important;
+        background: #fff !important;
+      }
+      
+      .review-item:last-child {
+        border-bottom: none !important;
+      }
+      
+      .review-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 8px !important;
+      }
+      
+      .reviewer-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+      }
+      
+      .thumbs-up-icon {
+        width: 28px !important;
+        height: 28px !important;
+        background: #4CAF50 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        flex-shrink: 0 !important;
+      }
+      
+      .thumbs-up-icon::before {
+        content: '' !important;
+        width: 12px !important;
+        height: 12px !important;
+        background: #fff !important;
+        border-radius: 2px 2px 0 0 !important;
+        position: relative !important;
+        transform: rotate(-45deg) !important;
+        margin-top: 2px !important;
+      }
+      
+      .thumbs-up-icon::after {
+        content: '' !important;
+        width: 8px !important;
+        height: 8px !important;
+        background: #fff !important;
+        border-radius: 0 0 2px 2px !important;
+        position: absolute !important;
+        bottom: 6px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+      }
+      
+      .reviewer-name {
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        color: #333 !important;
+      }
+      
+      .review-date {
+        font-size: 14px !important;
+        color: #666 !important;
+      }
+      
+      .review-text {
+        font-size: 15px !important;
+        color: #333 !important;
+        line-height: 1.4 !important;
+        margin-bottom: 8px !important;
+      }
+      
+      .ordered-items {
+        font-size: 13px !important;
+        color: #888 !important;
+        line-height: 1.3 !important;
+        font-style: italic !important;
+      }
+      
+      .no-reviews {
+        text-align: center !important;
+        padding: 40px 20px !important;
+        color: #666 !important;
+        font-size: 16px !important;
+      }
+      
+      /* Улучшенные стили для свайпа */
+      body {
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out !important;
+        cursor: grab !important;
+      }
+      
+      body:active {
+        cursor: grabbing !important;
+      }
+      
+      .swipe-animation {
+        transition: transform 0.25s ease-in, opacity 0.25s ease-in !important;
+      }
+      
+      .swipe-closing {
+        transform: translateX(-100%) !important;
+        opacity: 0 !important;
+      }
     
     .modal-header {
       display: flex;
@@ -615,8 +853,9 @@
       <div class="restaurant-info">
         <h1 id="restaurantName">Загрузка...</h1>
         <div class="restaurant-details-row">
-          <div class="rating-section">
+          <div class="rating-section clickable-rating" onclick="showReviewsModal()">
             <span id="restaurantRating">★ --</span>
+      <span class="reviews-arrow">→</span>
             <span id="restaurantReviews">-- отзывов</span>
           </div>
           <div class="delivery-section">
@@ -691,10 +930,25 @@
           <h4>Юридическая информация</h4>
           <p id="modalLegalName">Название компании загружается...</p>
           <p id="modalLegalAddress">Юридический адрес загружается...</p>
-          <p id="modalLegalDetails">Реквизиты загружаются...</p>
-        </div>
+      <p id="modalLegalDetails">Реквизиты загружаются...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно для отзывов -->
+<div class="restaurant-info-modal" id="reviewsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">Отзывы о ресторане</h2>
+      <button class="close-modal" id="closeReviewsModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="reviewsList">
+        <div class="loading-text">Загрузка отзывов...</div>
       </div>
     </div>
+  </div>
+</div>
   </div>
   
   <!-- Навигация -->
@@ -890,7 +1144,7 @@
               <p class="dish-description">${dish.description || 'Описание отсутствует'}</p>
               <div class="dish-price">${dish.price || 0} ₽</div>
               <div class="dish-controls">
-                <div class="controls" data-dish="${dish.id}">
+                <div class="controls" data-dish="${dish.id}" data-category="${dish.category_id}">
                   <button class="add-btn">+</button>
                 </div>
               </div>
@@ -906,6 +1160,7 @@
             
             const p = new URLSearchParams(location.search);
             if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
+            p.set('category_id', dish.category_id);
             location.href = '/static/dish.html?id=' + dish.id + '&' + p.toString();
           };
           
@@ -996,7 +1251,9 @@
             if (dish?.has_options) {
               const p = new URLSearchParams(location.search);
               if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
-              location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
+              const categoryId = c.getAttribute('data-category');
+        p.set('category_id', categoryId);
+        location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
               return;
             }
             // Если опций нет, добавляем в корзину с анимацией
@@ -1030,7 +1287,9 @@
               console.log('DEBUG: Redirecting to dish page for options');
               const p = new URLSearchParams(location.search);
               if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
-              location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
+              const categoryId = c.getAttribute('data-category');
+        p.set('category_id', categoryId);
+        location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
               return;
             }
             console.log('DEBUG: Adding to cart directly');
@@ -1264,11 +1523,235 @@
     // Primary initialization
     loadMenu();
     
+    // Проверяем, нужно ли скроллить к категории
+    const urlParams = new URLSearchParams(location.search);
+    const scrollToCategoryId = urlParams.get('scroll_to_category');
+    if (scrollToCategoryId) {
+      // Ждем загрузки меню и скроллим к категории
+      setTimeout(() => {
+        scrollToCategory(scrollToCategoryId);
+      }, 500);
+    }
+    
     // Add scroll handler for updating active category
     window.addEventListener('scroll', updateActiveCategory);
     
     // Modal close handler
     document.getElementById('closeModal').onclick = hideRestaurantInfo;
+    document.getElementById('closeReviewsModal').onclick = hideReviewsModal;
+    // Инициализируем свайп при загрузке страницы
+    initSwipe();
+    
+    // Функции для работы с отзывами
+    async function showReviewsModal() {
+      console.log('Opening reviews modal...');
+      
+      // Создаем модальное окно динамически
+      const existingModal = document.getElementById('reviewsModal');
+      if (existingModal) {
+        existingModal.remove();
+      }
+      
+      const modal = document.createElement('div');
+      modal.id = 'reviewsModal';
+      modal.className = 'restaurant-info-modal show';
+      modal.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        z-index: 1001 !important;
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+      `;
+      
+      const modalContent = document.createElement('div');
+      modalContent.className = 'modal-content';
+      modalContent.style.cssText = `
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 80vh !important;
+        background: #fff !important;
+        border-radius: 20px 20px 0 0 !important;
+        transform: translateY(0) !important;
+        transition: transform 0.3s ease !important;
+        overflow-y: auto !important;
+        z-index: 1002 !important;
+        min-height: 400px !important;
+      `;
+      
+      modalContent.innerHTML = `
+        <div class="modal-header">
+          <button class="back-button" onclick="hideReviewsModal()">←</button>
+          <h2 class="modal-title">Отзывы</h2>
+          <div class="header-spacer"></div>
+        </div>
+        <div class="modal-body">
+          <div id="reviewsList">
+            <div class="loading-text">Загрузка отзывов...</div>
+          </div>
+        </div>
+      `;
+      
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      console.log('Modal created and added to DOM');
+      console.log('Modal dimensions:', modal.offsetWidth, 'x', modal.offsetHeight);
+      console.log('Modal content dimensions:', modalContent.offsetWidth, 'x', modalContent.offsetHeight);
+      
+      // Загружаем отзывы
+      try {
+        const reviewsList = document.getElementById('reviewsList');
+        reviewsList.innerHTML = '<div class="loading-text">Загрузка отзывов...</div>';
+        
+        const response = await fetch(api + '/reviews/restaurant/' + restaurantId);
+        if (response.ok) {
+          const data = await response.json();
+          displayReviews(data.reviews || []);
+        } else {
+          reviewsList.innerHTML = '<div class="no-reviews">Ошибка загрузки отзывов</div>';
+        }
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+        reviewsList.innerHTML = '<div class="no-reviews">Ошибка загрузки отзывов</div>';
+      }
+      
+      // Обработчик клика вне модального окна
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          hideReviewsModal();
+        }
+      });
+    }
+    
+    function hideReviewsModal() {
+      const modal = document.getElementById('reviewsModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+    
+    // Функция для форматирования даты
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        return `Вчера в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (diffDays === 2) {
+        return `Позавчера в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (diffDays <= 7) {
+        return `${diffDays} дн. назад в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      } else {
+        return `${date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+    }
+    
+    function displayReviews(reviews) {
+      const reviewsList = document.getElementById('reviewsList');
+      
+      if (reviews.length === 0) {
+        reviewsList.innerHTML = '<div class="no-reviews">Пока нет отзывов о этом ресторане</div>';
+        return;
+      }
+      
+      reviewsList.innerHTML = reviews.map(review => `
+        <div class="review-item">
+          <div class="review-header">
+            <div class="reviewer-info">
+              <div class="thumbs-up-icon"></div>
+              <span class="reviewer-name">${review.user_name || 'Аноним'}</span>
+            </div>
+            <span class="review-date">${formatDate(review.created_at)}</span>
+          </div>
+          <div class="review-text">${review.comment || 'Без комментария'}</div>
+          ${review.ordered_items ? `<div class="ordered-items">${review.ordered_items}</div>` : ''}
+        </div>
+      `).join('');
+    }
+    
+    // Функция для инициализации свайпа
+    function initSwipe() {
+      let startX = 0;
+      let startY = 0;
+      let currentX = 0;
+      let isSwipeActive = false;
+      let swipeThreshold = 0;
+      const minSwipeDistance = 80; // Уменьшена минимальная дистанция
+      const maxVerticalDistance = 80; // Увеличено вертикальное отклонение
+      const swipeZone = 50; // Зона от края экрана для начала свайпа
+      
+      document.addEventListener('touchstart', (e) => {
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        
+        // Начинаем свайп только если касание в правой части экрана
+        if (touchX > window.innerWidth - swipeZone) {
+          startX = touchX;
+          startY = touchY;
+          isSwipeActive = true;
+          swipeThreshold = 0;
+        }
+      }, { passive: true });
+      
+      document.addEventListener('touchmove', (e) => {
+        if (!isSwipeActive) return;
+        
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        const deltaY = Math.abs(e.touches[0].clientY - startY);
+        
+        // Если свайп влево и вертикальное отклонение не слишком большое
+        if (deltaX < 0 && deltaY < maxVerticalDistance) {
+          const swipeDistance = Math.abs(deltaX);
+          const progress = Math.min(swipeDistance / (window.innerWidth * 0.3), 1);
+          
+          // Более плавная анимация с лучшим откликом
+          document.body.style.transform = `translateX(${deltaX * 0.4}px)`;
+          document.body.style.opacity = Math.max(0.3, 1 - progress * 0.7);
+          
+          // Визуальная обратная связь - меняем курсор
+          document.body.style.cursor = 'grabbing';
+          
+          // Устанавливаем порог для срабатывания
+          swipeThreshold = progress;
+        }
+      }, { passive: true });
+      
+      document.addEventListener('touchend', (e) => {
+        if (!isSwipeActive) return;
+        
+        const deltaX = currentX - startX;
+        const deltaY = Math.abs(e.changedTouches[0].clientY - startY);
+        
+        // Сбрасываем стили
+        document.body.style.transform = '';
+        document.body.style.opacity = '';
+        document.body.style.cursor = '';
+        
+        // Проверяем условия для закрытия
+        if (deltaX < -minSwipeDistance && deltaY < maxVerticalDistance && swipeThreshold > 0.3) {
+          // Добавляем класс для анимации
+          document.body.classList.add('swipe-animation', 'swipe-closing');
+          
+          // Закрываем страницу после анимации
+          setTimeout(() => {
+            goBack();
+          }, 250);
+        }
+        
+        isSwipeActive = false;
+        swipeThreshold = 0;
+      }, { passive: true });
+    }
   </script>
 </body>
 </html>
