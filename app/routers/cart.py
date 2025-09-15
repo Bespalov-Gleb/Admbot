@@ -34,13 +34,13 @@ _MAX_RESTAURANTS = 4
 
 
 def _get_cart_db(user_id: int, db: Session) -> DBCart:
-    # ensure user exists to satisfy FK constraint
-    u = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if not u:
-        db.add(DBUser(id=user_id))
-        db.commit()
+    # Оптимизированная функция с одним запросом для получения корзины
     c = db.query(DBCart).filter(DBCart.user_id == user_id).first()
     if not c:
+        # Создаем пользователя и корзину в одной транзакции
+        u = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if not u:
+            db.add(DBUser(id=user_id))
         c = DBCart(user_id=user_id, cutlery_count=0)
         db.add(c)
         db.commit()
@@ -50,10 +50,17 @@ def _get_cart_db(user_id: int, db: Session) -> DBCart:
 @router.get("")
 async def get_cart(user_id: int = Depends(require_user_id), db: Session = Depends(get_db)) -> Cart:
     c = _get_cart_db(user_id, db)
+    # Оптимизированный запрос - получаем все элементы корзины одним запросом
     items = db.query(DBCartItem).filter(DBCartItem.cart_id == c.id).all()
     return Cart(
         items=[
-            CartItem(id=it.id, restaurant_id=it.restaurant_id, dish_id=it.dish_id, qty=it.qty, chosen_options=json.loads(it.chosen_options or "[]"))
+            CartItem(
+                id=it.id, 
+                restaurant_id=it.restaurant_id, 
+                dish_id=it.dish_id, 
+                qty=it.qty, 
+                chosen_options=json.loads(it.chosen_options or "[]")
+            )
             for it in items
         ],
         cutlery_count=c.cutlery_count or 0,
@@ -77,7 +84,8 @@ async def add_item(item: CartItem, force: bool = False, user_id: int = Depends(r
     print(f"DEBUG: Cart ID: {c.id}")
     
     print("DEBUG: Checking existing restaurants...")
-    existing_restaurants = {it.restaurant_id for it in db.query(DBCartItem).filter(DBCartItem.cart_id == c.id).all()}
+    # Оптимизированный запрос - получаем только restaurant_id одним запросом
+    existing_restaurants = {it.restaurant_id for it in db.query(DBCartItem.restaurant_id).filter(DBCartItem.cart_id == c.id).all()}
     print(f"DEBUG: Existing restaurants: {existing_restaurants}")
     
     is_new_restaurant = item.restaurant_id not in existing_restaurants

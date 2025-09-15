@@ -10,11 +10,11 @@ class ImageProcessor:
     
     # Размеры для разных типов изображений
     SIZES = {
-        'dish_card': (200, 200),      # Карточка блюда в меню
-        'dish_detail': (400, 400),    # Детальный просмотр блюда
-        'restaurant_banner': (800, 400),  # Баннер ресторана
-        'restaurant_card': (400, 200),    # Карточка ресторана в списке
-        'selection_card': (300, 200),     # Карточка в подборках
+        'dish_card': (400, 400),      # Карточка блюда в меню (увеличено для Retina)
+        'dish_detail': (800, 800),    # Детальный просмотр блюда (увеличено)
+        'restaurant_banner': (1200, 600),  # Баннер ресторана (увеличено)
+        'restaurant_card': (600, 300),    # Карточка ресторана в списке (увеличено)
+        'selection_card': (600, 400),     # Карточка в подборках (увеличено)
     }
     
     @staticmethod
@@ -61,19 +61,27 @@ class ImageProcessor:
             # Создаем версии разных размеров
             urls = {}
             for size_name, (width, height) in ImageProcessor.SIZES.items():
-                # Создаем копию изображения
+                # Изменяем размер с обрезкой по центру (crop to fit)
+                # Это гарантирует, что изображение заполнит весь размер без белых областей
                 resized_image = image.copy()
                 
-                # Изменяем размер с сохранением пропорций
-                resized_image.thumbnail((width, height), Image.Resampling.LANCZOS)
+                # Вычисляем соотношение сторон
+                img_ratio = resized_image.width / resized_image.height
+                target_ratio = width / height
                 
-                # Создаем новое изображение нужного размера с белым фоном
-                final_image = Image.new('RGB', (width, height), (255, 255, 255))
+                if img_ratio > target_ratio:
+                    # Изображение шире - обрезаем по ширине
+                    new_width = int(resized_image.height * target_ratio)
+                    left = (resized_image.width - new_width) // 2
+                    resized_image = resized_image.crop((left, 0, left + new_width, resized_image.height))
+                else:
+                    # Изображение выше - обрезаем по высоте
+                    new_height = int(resized_image.width / target_ratio)
+                    top = (resized_image.height - new_height) // 2
+                    resized_image = resized_image.crop((0, top, resized_image.width, top + new_height))
                 
-                # Центрируем изображение
-                x = (width - resized_image.width) // 2
-                y = (height - resized_image.height) // 2
-                final_image.paste(resized_image, (x, y))
+                # Изменяем размер до точного размера
+                final_image = resized_image.resize((width, height), Image.Resampling.LANCZOS)
                 
                 # Сохраняем
                 filename = f"{base_filename}{file_extension}"
@@ -81,7 +89,7 @@ class ImageProcessor:
                 
                 # Сохраняем с оптимизацией
                 if file_extension.lower() in ['.jpg', '.jpeg']:
-                    final_image.save(file_path, 'JPEG', quality=85, optimize=True)
+                    final_image.save(file_path, 'JPEG', quality=95, optimize=True)
                 else:
                     final_image.save(file_path, 'PNG', optimize=True)
                 
@@ -94,7 +102,7 @@ class ImageProcessor:
                 os.makedirs(os.path.join(base_dir, "original"))
             
             if file_extension.lower() in ['.jpg', '.jpeg']:
-                image.save(original_path, 'JPEG', quality=90, optimize=True)
+                image.save(original_path, 'JPEG', quality=95, optimize=True)
             else:
                 image.save(original_path, 'PNG', optimize=True)
             

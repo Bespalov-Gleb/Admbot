@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,6 +34,9 @@ class LargeFileMiddleware(BaseHTTPMiddleware):
             # Устанавливаем максимальный размер тела запроса
             request._body = await request.body()
         return await call_next(request)
+
+# Добавляем gzip сжатие для всех ответов больше 1000 байт
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(LargeFileMiddleware)
 app.add_middleware(

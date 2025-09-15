@@ -199,18 +199,6 @@
       </div>
     </div>
 
-    <!-- App Reviews Section -->
-    <div class="admin-section">
-      <h3 id="appReviewsToggle" style="cursor: pointer; user-select: none;">
-        <span id="appReviewsIcon">▶</span> Отзывы о приложении
-      </h3>
-      <div id="appReviewsContent" style="display: none;">
-        <div class="form-group">
-          <button id="appRevLoad">📱 Загрузить отзывы о приложении</button>
-        </div>
-        <div id="appReviews"></div>
-      </div>
-    </div>
   </div>
   <script>
     const api = location.origin + '/api';
@@ -1266,40 +1254,6 @@
       };
     }
 
-    // Загрузка отзывов о приложении
-    async function loadAppReviews() {
-      try {
-        const res = await fetch(api + '/app-reviews', { headers });
-        if (!res.ok) {
-          document.getElementById('appReviews').innerHTML = '<div class="meta">Ошибка загрузки</div>';
-          return;
-        }
-        const data = await res.json();
-        const root = document.getElementById('appReviews');
-        root.innerHTML = '';
-        
-        if (!data.reviews || !data.reviews.length) {
-          root.innerHTML = '<div class="meta">Отзывов о приложении нет</div>';
-          return;
-        }
-        
-        data.reviews.forEach(r => {
-          const el = document.createElement('div');
-          el.className = 'restaurant';
-          const stars = '⭐'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
-          const date = new Date(r.created_at).toLocaleDateString('ru-RU');
-          el.innerHTML = `
-            <div class="title">Пользователь #${r.user_id} - ${stars}</div>
-            <div class="meta">Дата: ${date}</div>
-            ${r.comment ? `<div class="meta">Комментарий: ${r.comment}</div>` : ''}
-          `;
-          root.appendChild(el);
-        });
-      } catch (error) {
-        console.error('Ошибка загрузки отзывов о приложении:', error);
-        document.getElementById('appReviews').innerHTML = '<div class="meta">Ошибка загрузки</div>';
-      }
-    }
 
     // Functions for collection image upload
     function switchUploadType() {
@@ -1404,7 +1358,6 @@
     };
     
     document.getElementById('loadCollections').onclick = loadCollections;
-    document.getElementById('appRevLoad').onclick = loadAppReviews;
 
     // Функции для сворачивания/разворачивания секций
     function toggleSection(contentId, iconId) {
@@ -1449,9 +1402,6 @@
       toggleSection('reviewsContent', 'reviewsIcon');
     };
     
-    document.getElementById('appReviewsToggle').onclick = () => {
-      toggleSection('appReviewsContent', 'appReviewsIcon');
-    };
 
     // Функции для модального окна рассылки
     function openBroadcastModal() {
