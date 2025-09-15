@@ -39,6 +39,16 @@
             <label>Рассылка</label>
             <button id="openBroadcastModal" class="broadcast-btn">📢 Создать рассылку</button>
           </div>
+          
+        </div>
+      </div>
+      
+      <!-- Отдельная секция для управления меню -->
+      <div class="admin-section">
+        <h3>🍽️ Управление меню ресторанов</h3>
+        <div class="menu-admin-content">
+          <p class="menu-admin-description">Редактирование категорий и блюд для всех ресторанов</p>
+          <button id="openMenuAdmin" class="menu-admin-btn-large">Открыть редактор меню</button>
         </div>
       </div>
       
@@ -378,6 +388,13 @@
         button.textContent = originalText;
         button.disabled = false;
       }
+    };
+
+    // Обработчик для кнопки редактирования меню
+    document.getElementById('openMenuAdmin').onclick = () => {
+      const uid = tg?.initDataUnsafe?.user?.id || Number(q.get('uid')) || 0;
+      const url = `/static/admin-menu.html?uid=${uid}`;
+      window.open(url, '_blank');
     };
 
     async function loadUsers() {

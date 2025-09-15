@@ -487,6 +487,25 @@
              <button onclick="updateField('deliveryTime')" class="save-btn">💾 Сохранить</button>
            </div>
          </div>
+         
+         <div class="field-item">
+           <label class="field-label">Часовой пояс</label>
+           <select id="timezoneInput" class="field-input">
+             <option value="UTC+3">UTC+3 (Москва)</option>
+             <option value="UTC+4">UTC+4 (Самара)</option>
+             <option value="UTC+5">UTC+5 (Екатеринбург)</option>
+             <option value="UTC+6">UTC+6 (Омск)</option>
+             <option value="UTC+7">UTC+7 (Красноярск)</option>
+             <option value="UTC+8">UTC+8 (Иркутск)</option>
+             <option value="UTC+9" selected>UTC+9 (Якутск)</option>
+             <option value="UTC+10">UTC+10 (Владивосток)</option>
+             <option value="UTC+11">UTC+11 (Магадан)</option>
+             <option value="UTC+12">UTC+12 (Камчатка)</option>
+           </select>
+           <div class="field-actions">
+             <button onclick="updateField('timezone')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
        </div>
      </div>
 
@@ -577,6 +596,7 @@ const api = location.origin + '/api';
        document.getElementById('workingHoursInput').value = formatWorkingHours(r.work_open_min, r.work_close_min) === 'Не задано' ? '' : formatWorkingHours(r.work_open_min, r.work_close_min);
        document.getElementById('minOrderInput').value = r.delivery_min_sum || '';
        document.getElementById('deliveryTimeInput').value = r.delivery_time_minutes || '';
+       document.getElementById('timezoneInput').value = r.timezone || 'UTC+9';
 
        // Обновляем кнопку статуса
        const toggleBtn = document.getElementById('btnToggleStatus');
@@ -650,6 +670,9 @@ const api = location.origin + '/api';
              return;
            }
            data.delivery_time_minutes = deliveryTime;
+           break;
+         case 'timezone':
+           data.timezone = document.getElementById('timezoneInput').value;
            break;
        }
        

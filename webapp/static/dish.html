@@ -10,7 +10,10 @@
 </head>
 <body>
   <div class="container" style="padding-bottom: 120px;">
-    <div style="margin-bottom:8px"><a id="back" href="#">Назад</a></div>
+    <!-- Кнопка назад -->
+    <div class="back-button-container">
+      <button class="back-btn" onclick="goBack()">← Назад</button>
+    </div>
     <div class="dish-hero"><img id="heroImg" src="" alt=""/></div>
     <div id="header"></div>
     <div id="desc" class="meta"></div>
@@ -46,6 +49,46 @@
       </a>
     </div>
   </div>
+  <style>
+    /* Стили для кнопки назад */
+    .back-button-container {
+      padding: 16px 16px 0;
+    }
+    
+    .back-btn {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .back-btn:hover {
+      background: #f8f8f8;
+      border-color: #d0d0d0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Анимация свайпа влево */
+    .swipe-animation {
+      transition: transform 0.3s ease-out;
+    }
+    
+    .swipe-closing {
+      transform: translateX(-100%);
+    }
+    
+    /* Скрываем скроллбар во время анимации */
+    .swipe-animation body {
+      overflow: hidden;
+    }
+  </style>
+  
   <script>
     console.log('Script started');
     
@@ -450,7 +493,76 @@
       document.getElementById('navCart').onclick = (e) => { e.preventDefault(); location.href = toUrl('/static/cart.html'); };
       document.getElementById('navProfile').onclick = (e) => { e.preventDefault(); location.href = toUrl('/static/profile.html'); };
       document.getElementById('navMenu').onclick = (e) => { e.preventDefault(); const q = new URLSearchParams(location.search); if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1'); location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString(); };
-      document.getElementById('back').onclick = (e) => { e.preventDefault(); const q = new URLSearchParams(location.search); if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1'); location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString(); };
+      
+      // Инициализируем свайп
+      initSwipe();
+    }
+    
+    // Функция для возврата назад
+    function goBack() {
+      const q = new URLSearchParams(location.search);
+      if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1');
+      const categoryId = q.get('category_id');
+      if (categoryId) {
+        q.set('scroll_to_category', categoryId);
+      }
+      location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString();
+    }
+    
+    // Функция для инициализации свайпа
+    function initSwipe() {
+      let startX = 0;
+      let startY = 0;
+      let currentX = 0;
+      let isSwipeActive = false;
+      const minSwipeDistance = 100; // Минимальная дистанция для срабатывания
+      const maxVerticalDistance = 50; // Максимальное вертикальное отклонение
+      
+      document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isSwipeActive = true;
+      }, { passive: true });
+      
+      document.addEventListener('touchmove', (e) => {
+        if (!isSwipeActive) return;
+        
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        const deltaY = Math.abs(e.touches[0].clientY - startY);
+        
+        // Если свайп влево и вертикальное отклонение не слишком большое
+        if (deltaX < 0 && deltaY < maxVerticalDistance) {
+          // Следуем за пальцем (но не более чем на 50% экрана)
+          const progress = Math.min(Math.abs(deltaX) / window.innerWidth, 0.5);
+          document.body.style.transform = `translateX(${deltaX * 0.3}px)`;
+          document.body.style.opacity = 1 - progress;
+        }
+      }, { passive: true });
+      
+      document.addEventListener('touchend', (e) => {
+        if (!isSwipeActive) return;
+        
+        const deltaX = currentX - startX;
+        const deltaY = Math.abs(e.changedTouches[0].clientY - startY);
+        
+        // Сбрасываем стили
+        document.body.style.transform = '';
+        document.body.style.opacity = '';
+        
+        // Проверяем условия для закрытия
+        if (deltaX < -minSwipeDistance && deltaY < maxVerticalDistance) {
+          // Добавляем класс для анимации
+          document.body.classList.add('swipe-animation', 'swipe-closing');
+          
+          // Закрываем страницу после анимации
+          setTimeout(() => {
+            goBack();
+          }, 300);
+        }
+        
+        isSwipeActive = false;
+      }, { passive: true });
     }
     
     

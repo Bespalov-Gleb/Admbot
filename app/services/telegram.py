@@ -115,7 +115,7 @@ async def notify_user_order_delivered(chat_id: int, order_id: int, restaurant_na
     if not BOT_TOKEN or not chat_id:
         return
     
-    review_url = f"{WEBAPP_URL}/static/order.html?id={order_id}&show_review=1"
+    review_url = f"{WEBAPP_URL}/static/order.html?order_id={order_id}&show_review=1"
     
     api = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     text = f"🎉 Ваш заказ из ресторана \"{restaurant_name}\" доставлен!\n\nПожалуйста, оцените качество обслуживания и оставьте отзыв о ресторане."

@@ -12,8 +12,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from app.db import get_db
-from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder
+from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption
 import os
+import uuid
+import shutil
 
 
 router = APIRouter(dependencies=[Depends(require_super_admin)])
@@ -605,4 +607,216 @@ async def update_admin_code(payload: AdminCodeUpdate) -> dict:
         pass
     
     return {"status": "ok", "admin_code": new_code}
+
+# === УПРАВЛЕНИЕ КАТЕГОРИЯМИ ===
+
+@router.post("/categories")
+async def create_category(payload: dict, db: Session = Depends(get_db)):
+    """Создание новой категории"""
+    if "name" not in payload or "restaurant_id" not in payload:
+        raise HTTPException(status_code=400, detail="name and restaurant_id are required")
+    
+    category = DBCategory(
+        name=payload["name"],
+        restaurant_id=payload["restaurant_id"]
+    )
+    
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    
+    return {"message": "Category created successfully", "category": {
+        "id": category.id,
+        "name": category.name,
+        "restaurant_id": category.restaurant_id
+    }}
+
+@router.patch("/categories/{category_id}")
+async def update_category(category_id: int, payload: dict, db: Session = Depends(get_db)):
+    """Обновление категории"""
+    category = db.query(DBCategory).filter(DBCategory.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    if "name" in payload:
+        category.name = payload["name"]
+    
+    db.commit()
+    
+    return {"message": "Category updated successfully", "category": {
+        "id": category.id,
+        "name": category.name,
+        "restaurant_id": category.restaurant_id
+    }}
+
+@router.delete("/categories/{category_id}")
+async def delete_category(category_id: int, db: Session = Depends(get_db)):
+    """Удаление категории и всех блюд в ней"""
+    category = db.query(DBCategory).filter(DBCategory.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    # Удаляем все блюда в категории
+    db.query(DBDish).filter(DBDish.category_id == category_id).delete()
+    
+    # Удаляем категорию
+    db.delete(category)
+    db.commit()
+    
+    return {"message": "Category and all dishes deleted successfully"}
+
+# === УПРАВЛЕНИЕ БЛЮДАМИ ===
+
+@router.post("/upload-dish-image")
+async def upload_dish_image(file: UploadFile = File(...)):
+    """Загрузка изображения блюда"""
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Создаем уникальное имя файла
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    
+    # Путь для сохранения
+    upload_dir = "uploads/dish_card"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Сохраняем файл
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Возвращаем относительный путь
+    return {"filename": unique_filename, "path": f"/uploads/dish_card/{unique_filename}"}
+
+@router.post("/dishes")
+async def create_dish(payload: dict, db: Session = Depends(get_db)):
+    """Создание нового блюда"""
+    required_fields = ["name", "price", "category_id", "restaurant_id"]
+    for field in required_fields:
+        if field not in payload:
+            raise HTTPException(status_code=400, detail=f"{field} is required")
+    
+    dish = DBDish(
+        name=payload["name"],
+        description=payload.get("description", ""),
+        price=payload["price"],
+        image=payload.get("image", ""),
+        category_id=payload["category_id"],
+        restaurant_id=payload["restaurant_id"]
+    )
+    
+    db.add(dish)
+    db.commit()
+    db.refresh(dish)
+    
+    # Создаем группы опций и опции, если они переданы
+    option_groups = payload.get("option_groups", [])
+    for group_data in option_groups:
+        group = DBOptionGroup(
+            dish_id=dish.id,
+            name=group_data["name"],
+            min_select=group_data.get("min_select", 0),
+            max_select=group_data.get("max_select", 1),
+            required=group_data.get("required", False)
+        )
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+        
+        # Создаем опции для группы
+        options = group_data.get("options", [])
+        for option_data in options:
+            option = DBOption(
+                group_id=group.id,
+                name=option_data["name"],
+                price_delta=option_data.get("price_delta", 0)
+            )
+            db.add(option)
+    
+    db.commit()
+    
+    return {"message": "Dish created successfully", "dish": {
+        "id": dish.id,
+        "name": dish.name,
+        "description": dish.description,
+        "price": dish.price,
+        "image": dish.image,
+        "category_id": dish.category_id,
+        "restaurant_id": dish.restaurant_id
+    }}
+
+@router.patch("/dishes/{dish_id}")
+async def update_dish(dish_id: int, payload: dict, db: Session = Depends(get_db)):
+    """Обновление блюда"""
+    dish = db.query(DBDish).filter(DBDish.id == dish_id).first()
+    if not dish:
+        raise HTTPException(status_code=404, detail="Dish not found")
+    
+    if "name" in payload:
+        dish.name = payload["name"]
+    if "description" in payload:
+        dish.description = payload["description"]
+    if "price" in payload:
+        dish.price = payload["price"]
+    if "image" in payload:
+        dish.image = payload["image"]
+    
+    # Обновляем опции, если они переданы
+    if "option_groups" in payload:
+        # Удаляем существующие опции
+        existing_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish_id).all()
+        for group in existing_groups:
+            # Удаляем опции группы
+            db.query(DBOption).filter(DBOption.group_id == group.id).delete()
+            # Удаляем группу
+            db.delete(group)
+        
+        # Создаем новые опции
+        option_groups = payload["option_groups"]
+        for group_data in option_groups:
+            group = DBOptionGroup(
+                dish_id=dish.id,
+                name=group_data["name"],
+                min_select=group_data.get("min_select", 0),
+                max_select=group_data.get("max_select", 1),
+                required=group_data.get("required", False)
+            )
+            db.add(group)
+            db.commit()
+            db.refresh(group)
+            
+            # Создаем опции для группы
+            options = group_data.get("options", [])
+            for option_data in options:
+                option = DBOption(
+                    group_id=group.id,
+                    name=option_data["name"],
+                    price_delta=option_data.get("price_delta", 0)
+                )
+                db.add(option)
+    
+    db.commit()
+    
+    return {"message": "Dish updated successfully", "dish": {
+        "id": dish.id,
+        "name": dish.name,
+        "description": dish.description,
+        "price": dish.price,
+        "image": dish.image,
+        "category_id": dish.category_id,
+        "restaurant_id": dish.restaurant_id
+    }}
+
+@router.delete("/dishes/{dish_id}")
+async def delete_dish(dish_id: int, db: Session = Depends(get_db)):
+    """Удаление блюда"""
+    dish = db.query(DBDish).filter(DBDish.id == dish_id).first()
+    if not dish:
+        raise HTTPException(status_code=404, detail="Dish not found")
+    
+    db.delete(dish)
+    db.commit()
+    
+    return {"message": "Dish deleted successfully"}
 
