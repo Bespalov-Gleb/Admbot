@@ -46,6 +46,10 @@ class RestaurantAdmin(Base):
 
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = (
+        Index("ix_categories_restaurant_id", "restaurant_id"),
+        Index("ix_categories_restaurant_sort", "restaurant_id", "sort"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"))
     name: Mapped[str] = mapped_column(String(200))
@@ -54,6 +58,12 @@ class Category(Base):
 
 class Dish(Base):
     __tablename__ = "dishes"
+    __table_args__ = (
+        Index("ix_dishes_restaurant_id", "restaurant_id"),
+        Index("ix_dishes_category_id", "category_id"),
+        Index("ix_dishes_restaurant_category", "restaurant_id", "category_id"),
+        Index("ix_dishes_available", "is_available"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"))
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"))
@@ -67,6 +77,9 @@ class Dish(Base):
 
 class OptionGroup(Base):
     __tablename__ = "option_groups"
+    __table_args__ = (
+        Index("ix_option_groups_dish_id", "dish_id"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     dish_id: Mapped[int] = mapped_column(Integer, ForeignKey("dishes.id"))
     name: Mapped[str] = mapped_column(String(200))
@@ -77,6 +90,9 @@ class OptionGroup(Base):
 
 class Option(Base):
     __tablename__ = "options"
+    __table_args__ = (
+        Index("ix_options_group_id", "group_id"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     group_id: Mapped[int] = mapped_column(Integer, ForeignKey("option_groups.id"))
     name: Mapped[str] = mapped_column(String(200))
@@ -154,6 +170,9 @@ class OrderItem(Base):
 
 class Cart(Base):
     __tablename__ = "carts"
+    __table_args__ = (
+        Index("ix_carts_user_id", "user_id"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), unique=True)
     cutlery_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -161,6 +180,11 @@ class Cart(Base):
 
 class CartItem(Base):
     __tablename__ = "cart_items"
+    __table_args__ = (
+        Index("ix_cart_items_cart_id", "cart_id"),
+        Index("ix_cart_items_restaurant_id", "restaurant_id"),
+        Index("ix_cart_items_dish_id", "dish_id"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cart_id: Mapped[int] = mapped_column(Integer, ForeignKey("carts.id"))
     restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"))

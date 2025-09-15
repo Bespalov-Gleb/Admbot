@@ -115,35 +115,35 @@
     const selected = new Map(); // group_id -> Set<option_id>
 
     async function load() {
-      console.log('Load function called');
+      // console.log('Load function called');
       try {
         const [dRes, oRes] = await Promise.all([
           fetch(api + '/dishes/' + dishId, { headers }),
           fetch(api + '/dishes/' + dishId + '/options', { headers }),
         ]);
-        console.log('Fetch responses received');
+        // console.log('Fetch responses received');
         
         dish = await dRes.json();
-        console.log('Loaded dish:', dish);
-        console.log('Dish restaurant_id:', dish.restaurant_id);
-        console.log('Dish id:', dish.id);
+        // console.log('Loaded dish:', dish);
+        // console.log('Dish restaurant_id:', dish.restaurant_id);
+        // console.log('Dish id:', dish.id);
         
         const data = await oRes.json();
         groups = data.groups || [];
         options = data.options || [];
-        console.log('Loaded options data:', data);
-        console.log('Groups loaded:', groups);
-        console.log('Options loaded:', options);
+        // console.log('Loaded options data:', data);
+        // console.log('Groups loaded:', groups);
+        // console.log('Options loaded:', options);
         
         // Проверяем обязательные группы
         const requiredGroups = groups.filter(g => g.required);
-        console.log('Required groups found:', requiredGroups);
+        // console.log('Required groups found:', requiredGroups);
         
         renderHeader();
         renderOptions();
         bindNav();
         updateValidity();
-        console.log('Load function completed successfully');
+        // console.log('Load function completed successfully');
       } catch (error) {
         console.error('Error in load function:', error);
       }
@@ -372,12 +372,16 @@
       const addBtn = document.getElementById('add');
       const sumBtn = document.getElementById('sumBtn');
       
-      // Если кнопка уже в режиме "Далее", переходим в корзину
+      // Если кнопка уже в режиме "Далее", переходим к списку блюд ресторана
       if (addBtn.textContent.includes('Далее')) {
-        console.log('Button is in "Далее" mode, redirecting to cart');
+        console.log('Button is in "Далее" mode, redirecting to restaurant menu');
         const q = new URLSearchParams(location.search);
         if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1');
-        location.href = '/static/cart.html?' + q.toString();
+        const categoryId = q.get('category_id');
+        if (categoryId) {
+          q.set('scroll_to_category', categoryId);
+        }
+        location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString();
         return;
       }
       
@@ -483,9 +487,9 @@
       }
     };
 
-    console.log('About to call load() function');
+      // console.log('About to call load() function');
     load();
-    console.log('load() function called');
+    // console.log('load() function called');
 
     function bindNav() {
       const toUrl = (path) => { const q = new URLSearchParams(location.search); if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1'); return path + '?' + q.toString(); };
@@ -506,7 +510,18 @@
       if (categoryId) {
         q.set('scroll_to_category', categoryId);
       }
-      location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString();
+      // Передаем позицию прокрутки обратно к ресторану
+      const scrollPosition = q.get('scroll_position');
+      if (scrollPosition) {
+        q.set('scroll_position', scrollPosition);
+      }
+      q.set('from', 'dish'); // Указываем, что переход со страницы блюда
+      
+      // Очищаем старые параметры id и добавляем новый
+      q.delete('id');
+      q.set('id', (dish?.restaurant_id || 0).toString());
+      
+      location.href = '/static/restaurant.html?' + q.toString();
     }
     
     // Функция для инициализации свайпа

@@ -118,6 +118,16 @@
       background: #b91c1c;
     }
     
+    .status-btn.success {
+      background: #059669;
+      color: white;
+      border-color: #059669;
+    }
+    
+    .status-btn.success:hover {
+      background: #047857;
+    }
+    
     /* Restaurant Tabs */
     .restaurant-tabs {
       display: flex;
@@ -605,19 +615,6 @@
       <button class="review-send" id="reviewSend" onclick="sendReview()" disabled>Отправить отзыв</button>
     </div>
     
-    <!-- App Review Section -->
-    <div class="review-section" id="appReviewSection">
-      <div class="review-title">Оцените приложение</div>
-      <div class="stars" id="appStars">
-        <button class="star-btn" data-rating="1">★</button>
-        <button class="star-btn" data-rating="2">★</button>
-        <button class="star-btn" data-rating="3">★</button>
-        <button class="star-btn" data-rating="4">★</button>
-        <button class="star-btn" data-rating="5">★</button>
-      </div>
-      <textarea class="review-text" id="appReviewText" placeholder="Комментарий о приложении (необязательно)"></textarea>
-      <button class="review-send" id="appReviewSend" onclick="sendAppReview()" disabled>Отправить отзыв о приложении</button>
-    </div>
     
     <!-- Bottom Action Bar -->
     <div class="action-bar" id="actionBar">
@@ -680,7 +677,6 @@
     let restaurantsMap = new Map();
     let cutleryCount = 0;
     let selectedRating = 0;
-    let selectedAppRating = 0;
     let activeRestaurantId = null;
 
     async function load() {
@@ -726,7 +722,6 @@
         renderOrder();
         await loadCutleryCount();
         await loadReviews();
-        await loadAppReview();
         
         if (showReview) {
           showReviewSection();
@@ -763,7 +758,8 @@
           title = `Ресторан принял заказ. Время доставки ~ ${currentOrder.eta_minutes || 60} мин`;
           actions = [
             { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' },
-            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' }
+            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' },
+            { text: 'Доставлено', class: 'status-btn success', onclick: 'markAsDelivered()' }
           ];
           break;
         case 'delivered':
@@ -943,20 +939,6 @@
         };
       });
       
-      // Настройка звездочек для отзыва о приложении
-      const appStars = document.querySelectorAll('#appStars .star-btn');
-      
-      appStars.forEach(star => {
-        star.onclick = () => {
-          selectedAppRating = Number(star.getAttribute('data-rating'));
-          appStars.forEach((s, index) => {
-            s.classList.toggle('active', index < selectedAppRating);
-          });
-          document.getElementById('appReviewSend').disabled = selectedAppRating === 0;
-        };
-      });
-      
-      // Секция отзыва о приложении будет показана в loadAppReview() если отзыва нет
     }
     
     function showReviewSection() {
@@ -991,31 +973,6 @@
       }
     }
     
-    async function sendAppReview() {
-      if (selectedAppRating === 0) return;
-      
-      try {
-        const comment = document.getElementById('appReviewText').value.trim();
-        const res = await fetch(api + '/app-reviews' + (uid ? ('?uid=' + uid) : ''), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            rating: selectedAppRating,
-            comment
-          })
-        });
-        
-        if (res.ok) {
-          document.getElementById('appReviewSection').innerHTML = '<div class="review-title">Спасибо! Отзыв о приложении отправлен.</div>';
-        } else {
-          const err = await res.json().catch(() => ({}));
-          alert('Ошибка: ' + (err.detail || res.status));
-        }
-      } catch (error) {
-        console.error('Error sending app review:', error);
-        alert('Ошибка отправки отзыва о приложении');
-      }
-    }
     
     async function loadCutleryCount() {
       try {
@@ -1048,25 +1005,6 @@
       }
     }
     
-    async function loadAppReview() {
-      try {
-        const res = await fetch(api + '/app-reviews/my' + (uid ? ('?uid=' + uid) : ''), { headers });
-        if (res.ok) {
-          const reviews = await res.json();
-          if (reviews && reviews.length > 0) {
-            const review = reviews[0];
-            displayAppReview(review);
-          } else {
-            // Если отзыва нет, показываем форму для создания отзыва
-            document.getElementById('appReviewSection').style.display = 'block';
-          }
-        }
-      } catch (error) {
-        console.error('Error loading app review:', error);
-        // В случае ошибки показываем форму
-        document.getElementById('appReviewSection').style.display = 'block';
-      }
-    }
     
     function displayReview(review) {
       const reviewSection = document.getElementById('reviewSection');
@@ -1083,20 +1021,6 @@
       }
     }
     
-    function displayAppReview(review) {
-      const appReviewSection = document.getElementById('appReviewSection');
-      if (appReviewSection) {
-        appReviewSection.innerHTML = `
-          <div class="review-title">Ваш отзыв о приложении</div>
-          <div class="stars-display">
-            ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
-          </div>
-          ${review.comment ? `<div class="review-comment">${review.comment}</div>` : ''}
-          <div class="review-date">${new Date(review.created_at).toLocaleDateString('ru-RU')}</div>
-        `;
-        appReviewSection.style.display = 'block';
-      }
-    }
     
     function openMenu() {
       if (activeRestaurantId) {
@@ -1136,6 +1060,37 @@
       } catch (error) {
         console.error('Error contacting restaurant:', error);
         alert('Ошибка связи с рестораном');
+      }
+    }
+    
+    async function markAsDelivered() {
+      if (currentOrder.status !== 'accepted') {
+        alert('Заказ может быть отмечен как доставленный только после принятия рестораном');
+        return;
+      }
+      
+      if (!confirm('Отметить заказ как доставленный?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(api + '/orders/' + orderId + '/delivered', {
+          method: 'POST',
+          headers
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Обновляем статус заказа
+        currentOrder.status = 'delivered';
+        renderStatusBanner();
+        
+        alert('Заказ отмечен как доставленный!');
+      } catch (error) {
+        console.error('Error marking order as delivered:', error);
+        alert('Ошибка при отметке заказа как доставленного');
       }
     }
     
