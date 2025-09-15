@@ -140,16 +140,30 @@ async def get_restaurant_reviews(restaurant_id: int, db: Session = Depends(get_d
         DBReview.is_deleted == False
     ).scalar()
     
-    # Получаем данные для каждого отзыва
+    # Оптимизированный запрос - получаем всех пользователей одним запросом
+    user_ids = [r.user_id for r in reviews]
+    users = db.query(DBUser).filter(DBUser.id.in_(user_ids)).all()
+    users_map = {u.id: u for u in users}
+    
+    # Получаем все элементы заказов одним запросом
+    order_ids = [r.order_id for r in reviews]
+    order_items = db.query(DBOrderItem).filter(DBOrderItem.order_id.in_(order_ids)).all()
+    order_items_map = {}
+    for item in order_items:
+        if item.order_id not in order_items_map:
+            order_items_map[item.order_id] = []
+        order_items_map[item.order_id].append(item)
+    
+    # Формируем данные отзывов
     reviews_data = []
     for r in reviews:
-        # Получаем имя пользователя
-        user = db.query(DBUser).filter(DBUser.id == r.user_id).first()
+        # Получаем имя пользователя из кэша
+        user = users_map.get(r.user_id)
         user_name = user.name if user and user.name else "Аноним"
         
-        # Получаем состав заказа
-        order_items = db.query(DBOrderItem).filter(DBOrderItem.order_id == r.order_id).all()
-        ordered_items = ", ".join([f"{item.name} x{item.qty}" for item in order_items]) if order_items else None
+        # Получаем состав заказа из кэша
+        items = order_items_map.get(r.order_id, [])
+        ordered_items = ", ".join([f"{item.name} x{item.qty}" for item in items]) if items else None
         
         reviews_data.append({
             "id": r.id,

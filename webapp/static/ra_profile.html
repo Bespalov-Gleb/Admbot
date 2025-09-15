@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Профиль ресторана</title>
-     <link rel="stylesheet" href="/static/styles.v23.css?v=49" />
+     <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <style>
     /* ===== СОВРЕМЕННЫЙ ДИЗАЙН ПРОФИЛЯ РЕСТОРАНА ===== */
     
@@ -566,7 +566,7 @@ const api = location.origin + '/api';
        const card = document.getElementById('card');
        card.innerHTML = `
          <div class="restaurant-header">
-           <img src="${r.image || '/static/placeholder-restaurant.jpg'}" alt="${r.name}" class="restaurant-logo">
+           ${r.image ? `<img src="${r.image}" alt="${r.name}" class="restaurant-logo">` : ''}
            <div class="restaurant-info">
              <h3>${r.name}</h3>
              <div class="restaurant-status ${r.is_enabled ? 'status-enabled' : 'status-disabled'}">
@@ -803,6 +803,13 @@ const api = location.origin + '/api';
     }
 
     
+
+    // Добавляем обработчик для загрузки изображения
+    document.getElementById('imageInput').addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        uploadRestaurantImage();
+      }
+    });
 
     load();
   </script>
