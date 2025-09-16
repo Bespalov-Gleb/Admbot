@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from app.db import get_db
-from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption
+from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption, CartItem
 import os
 import uuid
 import shutil
@@ -828,7 +828,25 @@ async def delete_dish(dish_id: int, db: Session = Depends(get_db)):
     dish = db.query(DBDish).filter(DBDish.id == dish_id).first()
     if not dish:
         raise HTTPException(status_code=404, detail="Dish not found")
+    # Каскадное удаление: сначала удаляем все связанные записи
     
+    # 1. Удаляем опции (options) через группы опций
+    groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish_id).all()
+    group_ids = [g.id for g in groups]
+    if group_ids:
+        # Удаляем все опции в группах
+        db.query(DBOption).filter(DBOption.group_id.in_(group_ids)).delete(synchronize_session=False)
+        # Удаляем группы опций
+        db.query(DBOptionGroup).filter(DBOptionGroup.id.in_(group_ids)).delete(synchronize_session=False)
+    
+    # 2. Удаляем позиции из корзин (cart_items)
+    db.query(CartItem).filter(CartItem.dish_id == dish_id).delete(synchronize_session=False)
+    
+    # 3. Удаляем позиции из заказов (order_items) 
+    from app.models import OrderItem as DBOrderItem
+    db.query(DBOrderItem).filter(DBOrderItem.dish_id == dish_id).delete(synchronize_session=False)
+    
+    # 4. Теперь можно безопасно удалить само блюдо
     db.delete(dish)
     db.commit()
     
