@@ -1215,6 +1215,30 @@
     async function addToCart(dishId, deltaQty) {
       const dish = dishesMap.get(dishId);
       
+      // Пытаемся найти уже существующую позицию этого блюда без опций в текущей корзине
+      const existing = cart?.items?.find(i => 
+        i.dish_id === dish.id &&
+        i.restaurant_id === dish.restaurant_id &&
+        (!i.chosen_options || i.chosen_options.length === 0)
+      );
+      
+      if (existing) {
+        // Если позиция уже есть, увеличиваем количество PATCH-запросом
+        const newQty = (existing.qty || 0) + (deltaQty || 1);
+        const patchRes = await fetch(api + '/cart/items/' + existing.id + '?qty=' + newQty + (uid ? ('&uid=' + uid) : ''), {
+          method: 'PATCH',
+          headers
+        });
+        if (!patchRes.ok) {
+          const errorText = await patchRes.text();
+          console.error('Error response (PATCH):', errorText);
+          throw new Error(`HTTP ${patchRes.status}: ${errorText}`);
+        }
+        await loadCartAndSync();
+        return;
+      }
+      
+      // Иначе создаём новую позицию
       const cartData = { 
         restaurant_id: dish.restaurant_id, 
         dish_id: dish.id, 

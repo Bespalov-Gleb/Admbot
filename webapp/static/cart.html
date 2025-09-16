@@ -998,18 +998,25 @@
         return;
       }
       
-      // Пытаемся вернуться на предыдущую страницу
-      if (window.history.length > 1) {
-        // Если есть история, возвращаемся назад
-        window.history.back();
-      } else if (document.referrer && document.referrer.includes('/static/')) {
-        // Если нет истории, но есть referrer, используем его
-        location.href = document.referrer;
+      // Определяем целевой ресторан: активный, из параметров или из первой позиции корзины
+      let rid = activeRestaurantId;
+      if (!rid) {
+        const paramsIn = new URLSearchParams(location.search);
+        rid = Number(paramsIn.get('r')) || undefined;
+      }
+      if (!rid && cart.items && cart.items.length) {
+        const first = cart.items[0];
+        const d = dishesMap.get(first.dish_id);
+        rid = d ? d.restaurant_id : undefined;
+      }
+      
+      // Если нашли ресторан — открываем его страницу; иначе переходим на главную
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      if (rid) {
+        location.href = '/static/restaurant.html?id=' + rid + '&' + p.toString();
       } else {
-        // В крайнем случае идем на главную страницу
-        const params = new URLSearchParams(location.search);
-        if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
-        location.href = '/static/index.html?' + params.toString();
+        location.href = '/static/index.html?' + p.toString();
       }
     }
 

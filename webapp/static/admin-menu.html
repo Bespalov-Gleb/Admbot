@@ -820,14 +820,18 @@
       if (!confirm('Удалить категорию? Все блюда в ней также будут удалены.')) return;
       
       try {
-        await fetch(api + `/admin/categories/${categoryId}`, {
+        const res = await fetch(api + `/admin/categories/${categoryId}`, {
           method: 'DELETE',
           headers
         });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(`Delete failed: ${res.status} ${msg}`);
+        }
         loadMenu(); // Перезагружаем меню
       } catch (error) {
         console.error('Error deleting category:', error);
-        alert('Ошибка удаления категории');
+        alert('Ошибка удаления категории: ' + (error.message || 'Unknown error'));
       }
     }
     
@@ -968,13 +972,18 @@
       if (!confirm('Удалить блюдо?')) return;
       
       try {
-        await fetch(api + `/admin/dishes/${dishId}`, {
-          method: 'DELETE'
+        const res = await fetch(api + `/admin/dishes/${dishId}`, {
+          method: 'DELETE',
+          headers
         });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(`Delete failed: ${res.status} ${msg}`);
+        }
         loadMenu(); // Перезагружаем меню
       } catch (error) {
         console.error('Error deleting dish:', error);
-        alert('Ошибка удаления блюда');
+        alert('Ошибка удаления блюда: ' + (error.message || 'Unknown error'));
       }
     }
     

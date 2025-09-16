@@ -1318,7 +1318,7 @@
             const formData = new FormData();
             formData.append('image', file);
             
-            const uploadResponse = await fetch(api + '/collections/upload-collection-image', {
+            const uploadResponse = await fetch(api + '/collections/upload-image', {
               method: 'POST',
               headers: {
                 'X-Telegram-User-Id': String(uid)
@@ -1331,7 +1331,7 @@
             }
             
             const uploadResult = await uploadResponse.json();
-            imageUrl = uploadResult.url;
+            imageUrl = uploadResult.image_url;
           }
         } else {
           imageUrl = document.getElementById('collectionImageUrl').value.trim();
