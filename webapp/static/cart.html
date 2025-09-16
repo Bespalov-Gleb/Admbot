@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Корзина</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
+    <link rel="stylesheet" href="/static/styles.v23.css?v=83" />
   <script src="/static/page-transitions.js"></script>
+  <script src="/static/loading-system.js"></script>
+  <script src="/static/optimistic-updates.js"></script>
+  <script src="/static/preload-system.js"></script>
+  <script src="/static/micro-animations.js"></script>
+  <script src="/static/toast-system.js"></script>
   <style>
     * {
       margin: 0;
@@ -466,7 +471,7 @@
     <div class="cart-items" id="cartItems"></div>
     
     <!-- Open Menu Button -->
-    <button class="open-menu-btn" id="openMenuBtn" onclick="openMenu()">Открыть меню</button>
+        <button class="open-menu-btn" id="openMenuBtn" onclick="openMenu()">Выбрать ресторан</button>
     
     <!-- Bottom Checkout Bar -->
     <div class="checkout-bar" id="checkout-bar">
@@ -970,6 +975,12 @@
 
 
     function openMenu() {
+      // Если корзина пустая или нет активного ресторана, идем на главную
+      if (!activeRestaurantId || activeRestaurantId === 0) {
+        location.href = '/static/index.html';
+        return;
+      }
+      
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       location.href = '/static/restaurant.html?id=' + activeRestaurantId + '&' + p.toString();

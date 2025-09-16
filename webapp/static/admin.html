@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Админка</title>
-  <link rel="stylesheet" href="/static/admin.css?v=22" />
+  <link rel="stylesheet" href="/static/admin.css?v=26" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -109,41 +109,8 @@
         </h3>
         <div id="collectionsContent" style="display: none;">
           <div class="form-group">
-            <label>Создать подборку</label>
-            <input id="collectionName" placeholder="Название подборки"/>
-            <input id="collectionDescription" placeholder="Описание подборки"/>
-            <div class="image-upload-section">
-              <label>Изображение подборки:</label>
-              <div class="image-upload-options">
-                <div class="upload-option">
-                  <input type="radio" id="uploadTypeFile" name="uploadType" value="file" checked>
-                  <label for="uploadTypeFile">Загрузить файл</label>
-                </div>
-                <div class="upload-option">
-                  <input type="radio" id="uploadTypeUrl" name="uploadType" value="url">
-                  <label for="uploadTypeUrl">URL изображения</label>
-                </div>
-              </div>
-              
-              <div id="fileUploadSection" class="upload-section">
-                <input type="file" id="collectionImageFile" accept="image/*" style="display: none;">
-                <button type="button" class="file-upload-btn" onclick="document.getElementById('collectionImageFile').click()">
-                  📎 Выбрать изображение
-                </button>
-                <div id="imagePreview" class="image-preview" style="display: none;">
-                  <img id="previewImg" style="max-width: 200px; max-height: 150px; border-radius: 8px;">
-                  <button type="button" class="remove-image" onclick="removeCollectionImage()">×</button>
-                </div>
-              </div>
-              
-              <div id="urlUploadSection" class="upload-section" style="display: none;">
-                <input id="collectionImageUrl" placeholder="URL изображения"/>
-              </div>
-            </div>
-            <div class="form-row">
-              <button id="createCollection">📚 Создать подборку</button>
-              <button id="loadCollections">🔄 Обновить список</button>
-            </div>
+            <button id="createCollectionBtn" class="create-collection-btn">📚 Создать подборку</button>
+            <button id="loadCollections" class="refresh-btn">🔄 Обновить список</button>
           </div>
           <div id="collectionsList"></div>
         </div>
@@ -702,10 +669,12 @@
         collections.forEach(collection => {
           const el = document.createElement('div');
           el.className = 'collection-item';
+          const typeIcon = collection.kind === 'restaurants' ? '🍽️' : '🍕';
+          const typeName = collection.kind === 'restaurants' ? 'Рестораны' : 'Блюда';
+          
           el.innerHTML = `
-            <div class="title">📚 ${collection.name}</div>
-            <div class="meta">${collection.description || 'Без описания'}</div>
-            <div class="meta">Элементов: ${collection.items_count} | Статус: ${collection.is_enabled ? '✅ Включена' : '❌ Выключена'}</div>
+            <div class="title">${typeIcon} ${collection.name}</div>
+            <div class="meta">Тип: ${typeName} | Элементов: ${collection.items_count} | Статус: ${collection.is_enabled ? '✅ Включена' : '❌ Выключена'}</div>
             <div class="form-row" style="margin-top: 8px;">
               <button data-id="${collection.id}" data-act="toggle">${collection.is_enabled ? '❌ Выключить' : '✅ Включить'}</button>
               <button data-id="${collection.id}" data-act="edit">✏️ Редактировать</button>
@@ -756,8 +725,17 @@
              <input id="editName" value="${collection.name}" placeholder="Название подборки"/>
            </div>
            <div class="form-group">
-             <label>Описание</label>
-             <input id="editDescription" value="${collection.description}" placeholder="Описание подборки"/>
+             <label>Тип подборки:</label>
+             <div class="collection-type-selector">
+               <div class="type-option">
+                 <input type="radio" id="editTypeRestaurants" name="editCollectionType" value="restaurants" ${collection.kind === 'restaurants' ? 'checked' : ''}>
+                 <label for="editTypeRestaurants">🍽️ Рестораны</label>
+               </div>
+               <div class="type-option">
+                 <input type="radio" id="editTypeDishes" name="editCollectionType" value="dishes" ${collection.kind === 'dishes' ? 'checked' : ''}>
+                 <label for="editTypeDishes">🍕 Блюда</label>
+               </div>
+             </div>
            </div>
            <div class="form-group">
              <label>Изображение</label>
@@ -825,7 +803,7 @@
        
        document.getElementById('saveEdit').onclick = async () => {
         const name = document.getElementById('editName').value.trim();
-        const description = document.getElementById('editDescription').value.trim();
+        const kind = document.querySelector('input[name="editCollectionType"]:checked').value;
         const image = document.getElementById('editImage').value.trim();
         const sort_order = parseInt(document.getElementById('editSortOrder').value) || 0;
         
@@ -838,7 +816,7 @@
           await fetch(api + '/collections/' + collection.id, {
             method: 'PATCH',
             headers,
-            body: JSON.stringify({ name, description, image, sort_order })
+            body: JSON.stringify({ name, kind, image, sort_order })
           });
           document.body.removeChild(modal);
           loadCollections();
@@ -1255,109 +1233,355 @@
     }
 
 
-    // Functions for collection image upload
-    function switchUploadType() {
-      const fileType = document.querySelector('input[name="uploadType"]:checked').value;
-      const fileSection = document.getElementById('fileUploadSection');
-      const urlSection = document.getElementById('urlUploadSection');
-      
-      if (fileType === 'file') {
-        fileSection.style.display = 'block';
-        urlSection.style.display = 'none';
-      } else {
-        fileSection.style.display = 'none';
-        urlSection.style.display = 'block';
-      }
-    }
 
-    function removeCollectionImage() {
-      document.getElementById('collectionImageFile').value = '';
-      document.getElementById('imagePreview').style.display = 'none';
-    }
-
-    // Event listeners for upload type switching
-    document.querySelectorAll('input[name="uploadType"]').forEach(radio => {
-      radio.addEventListener('change', switchUploadType);
-    });
-
-    // Event listener for file upload
-    document.getElementById('collectionImageFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const preview = document.getElementById('imagePreview');
-          const img = document.getElementById('previewImg');
-          img.src = e.target.result;
-          preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
-    });
 
     // Event listeners for collections
-    document.getElementById('createCollection').onclick = async () => {
-      const name = document.getElementById('collectionName').value.trim();
-      const description = document.getElementById('collectionDescription').value.trim();
-      const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
-      
-      if (!name) {
-        showMessage('Введите название подборки', 'error');
-        return;
-      }
-      
-      try {
-        let imageUrl = '';
-        
-        if (uploadType === 'file') {
-          const fileInput = document.getElementById('collectionImageFile');
-          const file = fileInput.files[0];
-          
-          if (file) {
-            // Загружаем файл на сервер
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            const uploadResponse = await fetch(api + '/collections/upload-image', {
-              method: 'POST',
-              headers: {
-                'X-Telegram-User-Id': String(uid)
-              },
-              body: formData
-            });
-            
-            if (!uploadResponse.ok) {
-              throw new Error('Ошибка загрузки изображения');
-            }
-            
-            const uploadResult = await uploadResponse.json();
-            imageUrl = uploadResult.image_url;
-          }
-        } else {
-          imageUrl = document.getElementById('collectionImageUrl').value.trim();
-        }
-        
-        await fetch(api + '/collections', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ name, description, image: imageUrl })
-        });
-        
-        // Очищаем поля
-        document.getElementById('collectionName').value = '';
-        document.getElementById('collectionDescription').value = '';
-        document.getElementById('collectionImageUrl').value = '';
-        document.getElementById('collectionImageFile').value = '';
-        document.getElementById('imagePreview').style.display = 'none';
-        
-        loadCollections();
-        showMessage('Подборка создана', 'success');
-      } catch (error) {
-        showMessage('Ошибка создания подборки', 'error');
-      }
+    document.getElementById('createCollectionBtn').onclick = () => {
+      showCreateCollectionModal();
     };
     
     document.getElementById('loadCollections').onclick = loadCollections;
+
+    // Функция создания модального окна для создания подборки
+    function showCreateCollectionModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px;">
+          <h3>✨ Создать подборку</h3>
+          
+          <div class="form-group">
+            <label>📝 Название подборки</label>
+            <input id="newCollectionName" placeholder="Введите название подборки" style="padding: 12px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; width: 100%; transition: all 0.2s ease;" />
+          </div>
+          
+          <div class="form-group">
+            <label>🎯 Тип подборки:</label>
+            <div class="collection-type-selector">
+              <div class="type-option">
+                <input type="radio" id="newTypeRestaurants" name="newCollectionType" value="restaurants" checked>
+                <label for="newTypeRestaurants">🍽️ Рестораны</label>
+              </div>
+              <div class="type-option">
+                <input type="radio" id="newTypeDishes" name="newCollectionType" value="dishes">
+                <label for="newTypeDishes">🍕 Блюда</label>
+              </div>
+            </div>
+          </div>
+          
+          <div id="restaurantSelector" class="restaurant-selector" style="display: none;">
+            <label>🏪 Выберите ресторан:</label>
+            <select id="collectionRestaurantSelect">
+              <option value="">Загрузка ресторанов...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>📋 Выберите элементы:</label>
+            <div id="itemsSelector" class="items-container">
+              <div class="loading">⏳ Загрузка...</div>
+            </div>
+          </div>
+          
+          <div class="form-row" style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
+            <button id="saveNewCollection" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);">
+              ✨ Создать подборку
+            </button>
+            <button id="cancelNewCollection" style="background: linear-gradient(135deg, #6c757d, #495057); color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);">
+              ❌ Отмена
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Небольшая задержка для обновления DOM
+      setTimeout(() => {
+        // Загружаем элементы в зависимости от выбранного типа
+        loadItemsForCollection();
+      }, 100);
+      
+      // Обработчик изменения типа
+      document.querySelectorAll('input[name="newCollectionType"]').forEach(radio => {
+        radio.addEventListener('change', handleTypeChange);
+      });
+      
+      // Обработчик изменения ресторана
+      document.getElementById('collectionRestaurantSelect').addEventListener('change', loadItemsForCollection);
+      
+      // Обработчик сохранения
+      document.getElementById('saveNewCollection').onclick = async () => {
+        const name = document.getElementById('newCollectionName').value.trim();
+        const type = document.querySelector('input[name="newCollectionType"]:checked').value;
+        const selectedItems = getSelectedItems();
+        
+        if (!name) {
+          showMessage('Введите название подборки', 'error');
+          return;
+        }
+        
+        if (selectedItems.length === 0) {
+          showMessage('Выберите хотя бы один элемент', 'error');
+          return;
+        }
+        
+        try {
+          // Создаем подборку
+          const collectionResponse = await fetch(api + '/collections', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+              name, 
+              kind: type
+            })
+          });
+          
+          if (!collectionResponse.ok) {
+            throw new Error('Ошибка создания подборки');
+          }
+          
+          const collectionResult = await collectionResponse.json();
+          const collectionId = collectionResult.id;
+          
+          // Добавляем элементы в подборку
+          for (const item of selectedItems) {
+            await fetch(api + '/collections/' + collectionId + '/items', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                collection_id: collectionId,
+                item_type: type === 'restaurants' ? 'restaurant' : 'dish',
+                item_id: item.id,
+                title: item.name,
+                subtitle: item.subtitle || '',
+                image: item.image || '',
+                link_url: item.link_url || ''
+              })
+            });
+          }
+          
+          document.body.removeChild(modal);
+          loadCollections();
+          showMessage('Подборка создана', 'success');
+        } catch (error) {
+          showMessage('Ошибка создания подборки', 'error');
+        }
+      };
+      
+      // Обработчик отмены
+      document.getElementById('cancelNewCollection').onclick = () => {
+        document.body.removeChild(modal);
+      };
+    }
+    
+    // Функция обработки изменения типа подборки
+    async function handleTypeChange() {
+      const type = document.querySelector('input[name="newCollectionType"]:checked').value;
+      const restaurantSelector = document.getElementById('restaurantSelector');
+      const itemsContainer = document.getElementById('itemsSelector');
+      
+      if (type === 'dishes') {
+        // Показываем селектор ресторана для блюд
+        restaurantSelector.style.display = 'block';
+        // Небольшая задержка для обновления DOM
+        setTimeout(async () => {
+          await loadRestaurantsForSelector();
+        }, 100);
+        itemsContainer.innerHTML = '<div class="loading">⏳ Выберите ресторан для загрузки блюд...</div>';
+      } else {
+        // Скрываем селектор ресторана для ресторанов
+        restaurantSelector.style.display = 'none';
+        loadItemsForCollection();
+      }
+    }
+    
+    // Функция загрузки ресторанов для селектора
+    async function loadRestaurantsForSelector() {
+      const select = document.getElementById('collectionRestaurantSelect');
+      select.innerHTML = '<option value="">Загрузка ресторанов...</option>';
+      
+      try {
+        console.log('Загружаем рестораны с URL:', api + '/collections/restaurants');
+        console.log('Заголовки:', headers);
+        
+        const response = await fetch(api + '/collections/restaurants', { headers });
+        console.log('Ответ сервера:', response.status, response.statusText);
+        
+        if (response.ok) {
+          const restaurants = await response.json();
+          console.log('Получены рестораны:', restaurants);
+          console.log('Элемент select:', select);
+          
+          if (select) {
+            select.innerHTML = '<option value="">Выберите ресторан</option>';
+            console.log('Очистили select, добавляем рестораны...');
+            
+            restaurants.forEach((restaurant, index) => {
+              const option = document.createElement('option');
+              option.value = restaurant.id;
+              option.textContent = restaurant.name;
+              select.appendChild(option);
+              console.log(`Добавлен ресторан ${index + 1}:`, restaurant.name);
+            });
+            
+            console.log('Финальное содержимое select:', select.innerHTML);
+            
+            if (restaurants.length === 0) {
+              select.innerHTML = '<option value="">Нет доступных ресторанов</option>';
+            }
+          } else {
+            console.error('Элемент select не найден!');
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('Ошибка сервера:', response.status, errorText);
+          select.innerHTML = '<option value="">Ошибка загрузки ресторанов</option>';
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки ресторанов:', error);
+        select.innerHTML = '<option value="">Ошибка загрузки ресторанов</option>';
+      }
+    }
+    
+    // Функция загрузки элементов для подборки
+    async function loadItemsForCollection() {
+      const type = document.querySelector('input[name="newCollectionType"]:checked').value;
+      const container = document.getElementById('itemsSelector');
+      
+      console.log('loadItemsForCollection вызвана с типом:', type);
+      console.log('Контейнер:', container);
+      
+      container.innerHTML = '<div class="loading">⏳ Загрузка...</div>';
+      
+      try {
+        let items = [];
+        
+        if (type === 'restaurants') {
+          const response = await fetch(api + '/collections/restaurants', { headers });
+          if (response.ok) {
+            items = await response.json();
+          }
+        } else {
+          const selectedRestaurantId = document.getElementById('collectionRestaurantSelect').value;
+          if (!selectedRestaurantId) {
+            container.innerHTML = '<div class="meta">⚠️ Выберите ресторан для загрузки блюд</div>';
+            return;
+          }
+          
+          const response = await fetch(api + '/collections/dishes?restaurant_id=' + selectedRestaurantId, { headers });
+          if (response.ok) {
+            items = await response.json();
+          }
+        }
+        
+        container.innerHTML = '';
+        
+        if (items.length === 0) {
+          container.innerHTML = '<div class="meta">📭 Нет доступных элементов</div>';
+          return;
+        }
+        
+        items.forEach((item, index) => {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'collection-item-selector';
+          itemEl.style.animationDelay = `${index * 0.1}s`;
+          itemEl.innerHTML = `
+            <div class="item-content">
+              <input type="checkbox" id="item_${item.id}" value="${item.id}" data-item='${JSON.stringify(item)}' onchange="toggleItemSelection(this)">
+              <label for="item_${item.id}" class="item-label">
+                <div class="item-image">
+                  ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<div class="no-image">📷</div>'}
+                </div>
+                <div class="item-info">
+                  <div class="item-name">${item.name}</div>
+                  ${item.subtitle ? `<div class="item-subtitle">${item.subtitle}</div>` : ''}
+                </div>
+              </label>
+            </div>
+            <div class="item-upload">
+              <input type="file" id="upload_${item.id}" accept="image/*" style="display: none;" onchange="uploadItemImage(${item.id}, this)">
+              <button type="button" onclick="event.stopPropagation(); document.getElementById('upload_${item.id}').click()" title="Загрузить фото">📷</button>
+            </div>
+          `;
+          
+          // Делаем всю карточку кликабельной
+          itemEl.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+              const checkbox = itemEl.querySelector('input[type="checkbox"]');
+              checkbox.checked = !checkbox.checked;
+              toggleItemSelection(checkbox);
+            }
+          });
+          
+          container.appendChild(itemEl);
+        });
+      } catch (error) {
+        container.innerHTML = '<div class="error">❌ Ошибка загрузки элементов</div>';
+      }
+    }
+    
+    // Функция переключения выбора элемента
+    function toggleItemSelection(checkbox) {
+      const itemSelector = checkbox.closest('.collection-item-selector');
+      if (checkbox.checked) {
+        itemSelector.classList.add('selected');
+      } else {
+        itemSelector.classList.remove('selected');
+      }
+    }
+    
+    // Функция получения выбранных элементов
+    function getSelectedItems() {
+      const selected = [];
+      document.querySelectorAll('#itemsSelector input[type="checkbox"]:checked').forEach(checkbox => {
+        const itemData = JSON.parse(checkbox.dataset.item);
+        selected.push(itemData);
+      });
+      return selected;
+    }
+    
+    // Функция загрузки изображения для элемента
+    async function uploadItemImage(itemId, fileInput) {
+      const file = fileInput.files[0];
+      if (!file) return;
+      
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch(api + '/collections/upload-image', {
+          method: 'POST',
+          headers: { 'X-Telegram-User-Id': String(uid) },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Обновляем изображение в интерфейсе
+          const itemEl = document.querySelector(`#item_${itemId}`).closest('.collection-item-selector');
+          const imgEl = itemEl.querySelector('.item-image img');
+          if (imgEl) {
+            imgEl.src = result.image_url;
+          } else {
+            itemEl.querySelector('.item-image').innerHTML = `<img src="${result.image_url}" alt="">`;
+          }
+          
+          // Обновляем данные элемента
+          const checkbox = document.querySelector(`#item_${itemId}`);
+          const itemData = JSON.parse(checkbox.dataset.item);
+          itemData.image = result.image_url;
+          checkbox.dataset.item = JSON.stringify(itemData);
+          
+          showMessage('Изображение загружено', 'success');
+        } else {
+          showMessage('Ошибка загрузки изображения', 'error');
+        }
+      } catch (error) {
+        showMessage('Ошибка загрузки изображения', 'error');
+      }
+    }
 
     // Функции для сворачивания/разворачивания секций
     function toggleSection(contentId, iconId) {
@@ -1580,8 +1804,6 @@
     loadAdminCode();
     loadCollections();
     
-    // Инициализация переключения типов загрузки изображений
-    switchUploadType();
   </script>
   
   <!-- Модальное окно для рассылки -->

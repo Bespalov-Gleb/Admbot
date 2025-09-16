@@ -1034,6 +1034,771 @@ img {
   transform: translateY(0);
 }
 
+/* ===== SKELETON SCREENS ===== */
+
+.skeleton-container {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.skeleton-card, .skeleton-list-item, .skeleton-grid-item, .skeleton-restaurant {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  animation: shimmer 1.5s infinite;
+  border: 1px solid #e9ecef;
+}
+
+.skeleton-hero {
+  width: 100%;
+  height: 180px;
+  background: #e9ecef;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 120px;
+  background: #e9ecef;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.skeleton-content {
+  flex: 1;
+}
+
+.skeleton-text, .skeleton-text-line {
+  height: 16px;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-text.short {
+  width: 60%;
+}
+
+.skeleton-price {
+  width: 80px;
+  height: 20px;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  background: #e9ecef;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.skeleton-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.skeleton-badge {
+  width: 60px;
+  height: 24px;
+  background: #e9ecef;
+  border-radius: 12px;
+}
+
+.skeleton-grid-item {
+  text-align: center;
+}
+
+.skeleton-grid-item .skeleton-image {
+  height: 100px;
+  margin-bottom: 8px;
+}
+
+.skeleton-grid-item .skeleton-text {
+  width: 80%;
+  margin: 0 auto;
+}
+
+/* Анимации для skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton-card, .skeleton-list-item, .skeleton-grid-item, .skeleton-restaurant {
+  background: linear-gradient(90deg, #f8f9fa 25%, #e9ecef 50%, #f8f9fa 75%);
+  background-size: 200px 100%;
+}
+
+.skeleton-appear {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.skeleton-fade-out {
+  animation: fadeOut 0.2s ease-in;
+}
+
+.content-appear {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* Loading spinner */
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e9ecef;
+  border-top: 3px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #6c757d;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Error states */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  gap: 16px;
+}
+
+.error-icon {
+  font-size: 48px;
+  opacity: 0.7;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.retry-btn {
+  background: #1976d2;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: #1565c0;
+  transform: translateY(-1px);
+}
+
+/* Empty states */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-message {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+/* Page loading overlay */
+.page-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.page-loading-overlay .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
+
+.page-loading-overlay .loading-text {
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+.overlay-show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ===== TOAST УВЕДОМЛЕНИЯ ===== */
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-left: 4px solid #1976d2;
+  z-index: 10000;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 300px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.toast-show {
+  transform: translateX(0);
+}
+
+.toast-success {
+  border-left-color: #28a745;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+}
+
+.toast-error {
+  border-left-color: #dc3545;
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+}
+
+.toast-warning {
+  border-left-color: #ffc107;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  color: #856404;
+}
+
+.toast-info {
+  border-left-color: #17a2b8;
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  color: #0c5460;
+}
+
+/* Анимация появления toast */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* ===== УЛУЧШЕННЫЕ ПЕРЕХОДЫ СТРАНИЦ ===== */
+
+.page-transition {
+  animation: pageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-transition-out {
+  animation: pageSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes pageSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.98);
+  }
+}
+
+/* ===== УЛУЧШЕННЫЕ АНИМАЦИИ КНОПОК ===== */
+
+.button-press {
+  animation: buttonPress 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-hover {
+  animation: buttonHover 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes buttonPress {
+  0% { 
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% { 
+    transform: scale(0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+  100% { 
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes buttonHover {
+  0% { 
+    transform: scale(1) translateY(0);
+  }
+  100% { 
+    transform: scale(1.02) translateY(-1px);
+  }
+}
+
+/* ===== УЛУЧШЕННЫЕ АНИМАЦИИ КАРТОЧЕК ===== */
+
+.card-appear {
+  animation: cardAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Hover эффекты для карточек */
+.card:hover, .mini-card:hover, .restaurant-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== АНИМАЦИИ ДЛЯ ИНТЕРАКТИВНЫХ ЭЛЕМЕНТОВ ===== */
+
+/* Анимация для счетчиков */
+.cart-counter {
+  animation: counterPulse 0.3s ease-out;
+}
+
+@keyframes counterPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Анимация для успешных действий */
+.success-animation {
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+    background-color: #1976d2;
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: #28a745;
+  }
+  100% {
+    transform: scale(1);
+    background-color: #28a745;
+  }
+}
+
+/* Анимация для ошибок */
+.error-shake {
+  animation: errorShake 0.5s ease-out;
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+
+/* ===== МИКРОАНИМАЦИИ ===== */
+
+/* Ripple эффект для кнопок */
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Анимации для кнопок */
+.button-press {
+  animation: buttonPress 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-hover {
+  animation: buttonHover 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes buttonPress {
+  0% { 
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% { 
+    transform: scale(0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+  100% { 
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes buttonHover {
+  0% { 
+    transform: scale(1) translateY(0);
+  }
+  100% { 
+    transform: scale(1.02) translateY(-1px);
+  }
+}
+
+/* Анимации для карточек */
+.card-appear {
+  animation: cardAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Hover эффекты для карточек */
+.card:hover, .mini-card:hover, .restaurant-card:hover, .dish-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Анимации для полей ввода */
+input:focus, textarea:focus, select:focus {
+  transform: scale(1.02);
+  transition: transform 0.2s ease-out;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+/* Анимации для ссылок */
+a:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease-out;
+}
+
+/* Анимации для иконок */
+.icon:hover, [class*="icon-"]:hover {
+  transform: scale(1.1) rotate(5deg);
+  transition: transform 0.2s ease-out;
+}
+
+/* Анимации для счетчиков */
+.counter-pulse {
+  animation: counterPulse 0.3s ease-out;
+}
+
+@keyframes counterPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Анимации для успешных действий */
+.success-animation {
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+    background-color: #1976d2;
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: #28a745;
+  }
+  100% {
+    transform: scale(1);
+    background-color: #28a745;
+  }
+}
+
+/* Анимации для ошибок */
+.error-shake {
+  animation: errorShake 0.5s ease-out;
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Анимации для загрузки */
+.loading-animation {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ===== УЛУЧШЕННЫЕ TOAST УВЕДОМЛЕНИЯ ===== */
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.toast {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-left: 4px solid #1976d2;
+  overflow: hidden;
+  pointer-events: auto;
+  position: relative;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 12px;
+}
+
+.toast-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #666;
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1976d2, #42a5f5);
+  width: 100%;
+  transition: width 3s linear;
+}
+
+/* Типы toast уведомлений */
+.toast-success {
+  border-left-color: #28a745;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+
+.toast-success .toast-message {
+  color: #155724;
+}
+
+.toast-success .toast-progress {
+  background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.toast-error {
+  border-left-color: #dc3545;
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+}
+
+.toast-error .toast-message {
+  color: #721c24;
+}
+
+.toast-error .toast-progress {
+  background: linear-gradient(90deg, #dc3545, #e74c3c);
+}
+
+.toast-warning {
+  border-left-color: #ffc107;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+}
+
+.toast-warning .toast-message {
+  color: #856404;
+}
+
+.toast-warning .toast-progress {
+  background: linear-gradient(90deg, #ffc107, #ffb300);
+}
+
+.toast-info {
+  border-left-color: #17a2b8;
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+}
+
+.toast-info .toast-message {
+  color: #0c5460;
+}
+
+.toast-info .toast-progress {
+  background: linear-gradient(90deg, #17a2b8, #20c997);
+}
+
+.toast-loading {
+  border-left-color: #6c757d;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.toast-loading .toast-message {
+  color: #495057;
+}
+
+.toast-loading .toast-progress {
+  background: linear-gradient(90deg, #6c757d, #adb5bd);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  
+  .toast-content {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  
+  .toast-icon {
+    font-size: 18px;
+  }
+  
+  .toast-message {
+    font-size: 13px;
+  }
+  
+  .toast-close {
+    font-size: 16px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
 /* Анимации для уведомлений */
 @keyframes slideInNotification {
   from {

@@ -1,12 +1,13 @@
 /**
- * Система плавных переходов между страницами
- * Обеспечивает единообразные анимации для всех переходов в приложении
+ * Улучшенная система плавных переходов между страницами
+ * Обеспечивает единообразные анимации и предзагрузку для всех переходов в приложении
  */
 
 class PageTransitions {
   constructor() {
     this.isTransitioning = false;
     this.transitionDuration = 300; // мс
+    this.preloadCache = new Map();
     this.init();
   }
 
@@ -23,6 +24,9 @@ class PageTransitions {
 
     // Перехватываем программные переходы
     this.interceptLocationChanges();
+    
+    // Предзагружаем популярные страницы
+    this.preloadPopularPages();
   }
 
   addPageTransitionClass() {
@@ -51,10 +55,6 @@ class PageTransitions {
   }
 
   interceptLocationChanges() {
-    // Сохраняем оригинальный метод
-    const originalLocationHref = Object.getOwnPropertyDescriptor(Location.prototype, 'href') || 
-                                Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, 'href');
-
     // Перехватываем изменения location.href
     let currentHref = location.href;
     
@@ -71,15 +71,87 @@ class PageTransitions {
     
     this.isTransitioning = true;
     
+    // Показываем loading overlay
+    this.showLoadingOverlay();
+    
     // Добавляем класс выхода
     const container = document.querySelector('.container') || document.body;
     container.classList.add('page-transition-out');
     
-    // Ждем завершения анимации выхода
+    // Предзагружаем страницу если не загружена
+    this.preloadPage(url).then(() => {
+      // Ждем завершения анимации выхода
+      setTimeout(() => {
+        // Переходим на новую страницу
+        location.href = url;
+      }, 200);
+    }).catch(() => {
+      // Если предзагрузка не удалась, все равно переходим
+      setTimeout(() => {
+        location.href = url;
+      }, 200);
+    });
+  }
+
+  /**
+   * Показать loading overlay
+   */
+  showLoadingOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'page-loading-overlay';
+    overlay.innerHTML = `
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Загрузка...</div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Анимация появления
+    setTimeout(() => overlay.classList.add('overlay-show'), 100);
+  }
+
+  /**
+   * Предзагрузить страницу
+   */
+  async preloadPage(url) {
+    if (this.preloadCache.has(url)) {
+      return Promise.resolve();
+    }
+
+    try {
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        cache: 'force-cache'
+      });
+      
+      if (response.ok) {
+        this.preloadCache.set(url, true);
+        return Promise.resolve();
+      }
+    } catch (error) {
+      console.warn('Preload failed for:', url, error);
+    }
+    
+    return Promise.reject();
+  }
+
+  /**
+   * Предзагрузить популярные страницы
+   */
+  preloadPopularPages() {
+    const popularPages = [
+      '/static/cart.html',
+      '/static/profile.html',
+      '/static/checkout.html'
+    ];
+
+    // Предзагружаем через 2 секунды после загрузки страницы
     setTimeout(() => {
-      // Переходим на новую страницу
-      location.href = url;
-    }, 200);
+      popularPages.forEach(page => {
+        this.preloadPage(page).catch(() => {
+          // Игнорируем ошибки предзагрузки
+        });
+      });
+    }, 2000);
   }
 
   // Метод для программного перехода с анимацией

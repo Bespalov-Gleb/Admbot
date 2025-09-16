@@ -4,8 +4,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import asyncio
-from datetime import datetime, timedelta, timezone
 import json
 
 from app.routers import restaurants, menu, cart, orders
@@ -75,39 +73,10 @@ app.mount("/static", StaticFiles(directory="webapp/static"), name="static")
 # static for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-from app.db import get_session
-from app.models import Order as DBOrder
-
-
-async def _delivery_watchdog():
-    while True:
-        # Используем московское время
-        moscow_tz = timezone(timedelta(hours=3))
-        now = datetime.now(moscow_tz)
-        try:
-            with get_session() as db:
-                rows = db.query(DBOrder).filter(DBOrder.status == "accepted").all()
-                changed = False
-                for o in rows:
-                    if o.accepted_at and o.eta_minutes:
-                        # Добавляем минимальное время 5 минут, чтобы избежать мгновенного изменения статуса
-                        min_delivery_time = max(o.eta_minutes, 5)
-                        if now >= o.accepted_at + timedelta(minutes=min_delivery_time):
-                            o.status = "delivered"
-                            changed = True
-                            logger.info(f"Order {o.id} automatically marked as delivered after {min_delivery_time} minutes")
-                if changed:
-                    db.commit()
-        except Exception:
-            pass
-        await asyncio.sleep(10)
-
-
 @app.on_event("startup")
-async def _start_watchdog():
+async def _startup():
     # init DB and seed defaults (idempotent)
     try:
         init_db_and_seed()
     except Exception as exc:
         logger.exception("db init failed: %s", repr(exc))
-    asyncio.create_task(_delivery_watchdog())

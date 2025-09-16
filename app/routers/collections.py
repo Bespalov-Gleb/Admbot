@@ -13,7 +13,7 @@ router = APIRouter()
 
 class CollectionCreate(BaseModel):
     name: str
-    description: str = ""
+    kind: str = "restaurants"  # "restaurants" или "dishes"
     image: str = ""
     is_enabled: bool = True
     sort_order: int = 0
@@ -21,7 +21,7 @@ class CollectionCreate(BaseModel):
 
 class CollectionUpdate(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = None
+    kind: Optional[str] = None
     image: Optional[str] = None
     is_enabled: Optional[bool] = None
     sort_order: Optional[int] = None
@@ -81,8 +81,11 @@ class CollectionItemResponse(BaseModel):
 async def get_restaurants_for_collections(db: Session = Depends(get_db)) -> List[dict]:
     """Получить список всех ресторанов для выпадающего списка"""
     try:
-        restaurants = db.query(DBRestaurant).filter(DBRestaurant.is_enabled == True).order_by(DBRestaurant.name).all()
-        return [
+        print("Запрос ресторанов для коллекций")
+        restaurants = db.query(DBRestaurant).order_by(DBRestaurant.name).all()
+        print(f"Найдено ресторанов: {len(restaurants)}")
+        
+        result = [
             {
                 "id": r.id,
                 "name": r.name,
@@ -90,6 +93,8 @@ async def get_restaurants_for_collections(db: Session = Depends(get_db)) -> List
             }
             for r in restaurants
         ]
+        print(f"Возвращаем результат: {result}")
+        return result
     except Exception as e:
         print(f"Error in get_restaurants_for_collections: {e}")
         return []
@@ -157,7 +162,7 @@ async def create_collection(payload: CollectionCreate, db: Session = Depends(get
     collection = DBCollection(
         id=new_id,
         name=payload.name,
-        description=payload.description,
+        kind=payload.kind,
         image=payload.image,
         is_enabled=payload.is_enabled,
         sort_order=payload.sort_order

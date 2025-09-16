@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
+    <link rel="stylesheet" href="/static/styles.v23.css?v=82" />
   <script src="/static/page-transitions.js"></script>
+  <script src="/static/loading-system.js"></script>
+  <script src="/static/preload-system.js"></script>
+  <script src="/static/micro-animations.js"></script>
+  <script src="/static/toast-system.js"></script>
 </head>
 <body>
   <div class="container">
@@ -110,6 +114,7 @@
       } else if (it.restaurant) {
         cardImage = it.image; // Только изображение подборки
         cardTitle = it.title || it.restaurant.name;
+        console.log('Restaurant data:', it.restaurant.name, 'rating:', it.restaurant.rating);
         cardSubtitle = `★ ${it.restaurant.rating ? it.restaurant.rating.toFixed(1) : '--'} · ${it.restaurant.delivery_time_minutes || '--'} мин`;
       }
       
@@ -151,6 +156,9 @@
     async function loadSelections() {
       console.log('=== loadSelections started ===');
       try {
+        // Показываем skeleton во время загрузки
+        LoadingSystem.showSkeleton('selections', 'grid', 4);
+        
         // Загружаем подборки из API
         const collectionsRes = await fetch(api + '/public/collections');
         console.log('Collections response:', collectionsRes.status, collectionsRes.ok);
@@ -160,6 +168,15 @@
           const collections = await collectionsRes.json();
           console.log('Collections data:', collections);
           if (collections && collections.length > 0) {
+            // Отладочная информация о рейтингах
+            collections.forEach(collection => {
+              console.log(`Collection: ${collection.name}`);
+              collection.items.forEach(item => {
+                if (item.restaurant) {
+                  console.log(`  Restaurant: ${item.restaurant.name} - Rating: ${item.restaurant.rating}`);
+                }
+              });
+            });
             // Преобразуем подборки в формат для отображения
             data = collections.map(collection => ({
               id: collection.id,
@@ -181,11 +198,13 @@
           }
         }
         
-        // Если подборок нет - не показываем ничего
+        // Если подборок нет - показываем empty state
         if (data.length === 0) {
           console.log('No collections found - showing empty');
-          data = [];
+          LoadingSystem.showEmpty('selections', 'Подборки пока не созданы', '📋');
+          return;
         }
+        
         console.log('Final data to render:', data);
         const root = document.getElementById('selections');
         root.innerHTML = '';
@@ -346,7 +365,7 @@
                   id: restaurantId, 
                   name: baseData.name || it.title, 
                   image: baseData.image || it.image, 
-                  rating_agg: baseData.rating_agg || null, 
+                  rating: baseData.rating || null, 
                   delivery_time_minutes: baseData.delivery_time_minutes || null 
                 };
               }
@@ -367,7 +386,7 @@
                     </div>
                     <div class="restaurant-rating">
                       <span class="rating-stars">★</span>
-                      <span class="rating-value">${restaurantData.rating_agg ? restaurantData.rating_agg.toFixed(1) : '--'}</span>
+                      <span class="rating-value">${restaurantData.rating ? restaurantData.rating.toFixed(1) : '--'}</span>
                     </div>
                   </div>
                 `;
@@ -397,19 +416,30 @@
         });
       } catch (error) {
         console.error('Error loading selections:', error);
-        // Не показываем fallback данные, оставляем пустым
-        const root = document.getElementById('selections');
-        root.innerHTML = '';
+        LoadingSystem.showError('selections', 'Ошибка загрузки подборок', loadSelections);
       }
     }
     async function loadRestaurants() {
       console.log('=== loadRestaurants() called ===');
       try {
+        // Показываем skeleton во время загрузки
+        LoadingSystem.showSkeleton('restaurants', 'restaurant', 6);
+        
         // console.log('Fetching restaurants from:', api + '/restaurants');
         const res = await fetch(api + '/restaurants', { headers });
         console.log('Restaurants API response:', res.status, res.ok);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
         const data = await res.json();
         console.log('Restaurants data:', data);
+        
+        if (data.length === 0) {
+          LoadingSystem.showEmpty('restaurants', 'Рестораны пока не добавлены', '🍽️');
+          return;
+        }
         
         const root = document.getElementById('restaurants');
         root.innerHTML = '';
@@ -449,6 +479,7 @@
       } catch (error) {
         console.error('Error loading restaurants:', error);
         console.log('=== loadRestaurants() failed ===');
+        LoadingSystem.showError('restaurants', 'Ошибка загрузки ресторанов', loadRestaurants);
       }
     }
 

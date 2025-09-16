@@ -37,13 +37,19 @@ def require_super_admin(
             user_id = int(uid_param) if uid_param else None
         except ValueError:
             user_id = None
+    
+    # Отладочная информация
+    logger.info(f"require_super_admin: user_id={user_id}, x_telegram_user_id={x_telegram_user_id}, SUPER_ADMINS={list(SUPER_ADMINS)}")
+    
     # allow cookie-based web admin session as an alternative
     if user_id is None or user_id not in SUPER_ADMINS:
         token = request.cookies.get("admin_session")
         if token and _is_valid_admin_session(token):
+            logger.info("Admin access granted via cookie session")
             return 0  # web admin (no tg user id)
         logger.warning("forbidden admin access", extra={"user_id": user_id, "allowed": list(SUPER_ADMINS)})
         raise HTTPException(status_code=403, detail="forbidden")
+    logger.info(f"Admin access granted for user_id={user_id}")
     return user_id
 
 

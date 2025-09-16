@@ -1,10 +1,20 @@
 from fastapi import APIRouter, Depends
 from typing import List
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db import get_db
-from app.models import Collection as DBCollection, CollectionItem as DBCollectionItem, Restaurant as DBRestaurant, Dish as DBDish
+from app.models import Collection as DBCollection, CollectionItem as DBCollectionItem, Restaurant as DBRestaurant, Dish as DBDish, Review as DBReview
 
 router = APIRouter()
+
+
+def get_restaurant_rating(restaurant_id: int, db: Session) -> float:
+    """Получить актуальный рейтинг ресторана на основе отзывов"""
+    avg_rating = db.query(func.avg(DBReview.rating)).filter(
+        DBReview.restaurant_id == restaurant_id,
+        DBReview.is_deleted == False
+    ).scalar()
+    return round(avg_rating or 0.0, 1)
 
 
 @router.get("/collections")
@@ -35,10 +45,13 @@ async def get_public_collections(db: Session = Depends(get_db)) -> List[dict]:
             if item.item_type == "restaurant":
                 restaurant = db.query(DBRestaurant).filter(DBRestaurant.id == item.item_id).first()
                 if restaurant:
+                    # Получаем актуальный рейтинг из отзывов
+                    actual_rating = get_restaurant_rating(restaurant.id, db)
+                    print(f"Restaurant {restaurant.name} (ID: {restaurant.id}) - rating: {actual_rating}")
                     item_data["restaurant"] = {
                         "id": restaurant.id,
                         "name": restaurant.name,
-                        "rating": restaurant.rating_agg,
+                        "rating": actual_rating,
                         "delivery_min_sum": restaurant.delivery_min_sum,
                         "delivery_fee": restaurant.delivery_fee,
                         "delivery_time_minutes": restaurant.delivery_time_minutes
@@ -55,10 +68,13 @@ async def get_public_collections(db: Session = Depends(get_db)) -> List[dict]:
                         "description": dish.description
                     }
                     if restaurant:
+                        # Получаем актуальный рейтинг из отзывов
+                        actual_rating = get_restaurant_rating(restaurant.id, db)
+                        print(f"Restaurant {restaurant.name} (ID: {restaurant.id}) for dish - rating: {actual_rating}")
                         item_data["restaurant"] = {
                             "id": restaurant.id,
                             "name": restaurant.name,
-                            "rating": restaurant.rating_agg,
+                            "rating": actual_rating,
                             "delivery_min_sum": restaurant.delivery_min_sum,
                             "delivery_fee": restaurant.delivery_fee,
                             "delivery_time_minutes": restaurant.delivery_time_minutes

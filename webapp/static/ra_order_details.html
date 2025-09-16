@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Детали заказа</title>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
+    <link rel="stylesheet" href="/static/styles.v23.css?v=79" />
   <style>
     .order-details-container {
       max-width: 600px;
@@ -713,10 +713,7 @@ const api = location.origin + '/api';
         // Для других статусов (sent, accepted, modified) кнопки остаются видимыми
       }, 100);
       
-      // Запускаем таймер обратного отсчета
-      if (order.status === 'accepted') {
-        startCountdown(order.id, etaMinutes, acceptedTime);
-      }
+      // Таймер обратного отсчета удален
     }
     
     function formatDeliveryTime(minutes) {
@@ -1078,9 +1075,6 @@ const api = location.origin + '/api';
     }
     
     async function markDelivered() {
-      // Останавливаем таймер
-      stopCountdown(orderId);
-      
       try {
         const res = await fetch(api + '/ra/orders/' + orderId + '/delivered', {
           method: 'POST',
@@ -1116,70 +1110,7 @@ const api = location.origin + '/api';
       }
     }
     
-    // Функция для обратного отсчета
-    function startCountdown(orderId, etaMinutes, acceptedTime) {
-      console.log(`Starting countdown for order ${orderId} with ${etaMinutes} minutes`);
-      
-      // Конвертируем время принятия в московское время для правильного расчета
-      const moscowAcceptedTime = new Date(acceptedTime.getTime() + (3 * 60 * 60 * 1000));
-      const endTime = moscowAcceptedTime.getTime() + (etaMinutes * 60 * 1000);
-      const countdownElement = document.getElementById('delivery-countdown');
-      
-      if (!countdownElement) {
-        console.error('Countdown element not found');
-        return;
-      }
-      
-      const countdownInterval = setInterval(() => {
-        // Текущее время в московском часовом поясе
-        const now = new Date().getTime() + (3 * 60 * 60 * 1000);
-        const timeLeft = endTime - now;
-        
-        if (timeLeft <= 0) {
-          // Время истекло, автоматически ставим статус "доставлено"
-          clearInterval(countdownInterval);
-          console.log(`Time expired for order ${orderId}, marking as delivered`);
-          
-          // Обновляем отображение
-          countdownElement.innerHTML = '<span style="color: #059669; font-weight: 600;">Время доставки истекло</span>';
-          document.getElementById('order-status').innerHTML = '<span style="color: #059669;">Доставлен</span>';
-          
-          // Автоматически отмечаем как доставленный
-          markDelivered();
-          return;
-        }
-        
-        const minutes = Math.floor(timeLeft / (1000 * 60));
-        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-        
-        // Обновляем отображение таймера
-        const countdownText = `Время доставки - ${minutes}:${seconds.toString().padStart(2, '0')}`;
-        countdownElement.innerHTML = `<span style="color: #dc2626; font-weight: 600;">${countdownText}</span>`;
-        
-        console.log(`Updated countdown for order ${orderId}: ${countdownText}`);
-      }, 1000);
-      
-      // Сохраняем интервал для возможности его остановки
-      window.countdownIntervals = window.countdownIntervals || {};
-      window.countdownIntervals[orderId] = countdownInterval;
-    }
-    
-    // Функция для остановки обратного отсчета
-    function stopCountdown(orderId) {
-      if (window.countdownIntervals && window.countdownIntervals[orderId]) {
-        clearInterval(window.countdownIntervals[orderId]);
-        delete window.countdownIntervals[orderId];
-      }
-    }
-    
-    // Очищаем интервалы при уходе со страницы
-    window.addEventListener('beforeunload', () => {
-      if (window.countdownIntervals) {
-        Object.keys(window.countdownIntervals).forEach(orderId => {
-          clearInterval(window.countdownIntervals[orderId]);
-        });
-      }
-    });
+    // Функции таймера удалены
     
   </script>
 </body>

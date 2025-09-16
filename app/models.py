@@ -197,6 +197,7 @@ class Collection(Base):
     __tablename__ = "collections"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(32), default="restaurants")  # "restaurants" или "dishes"
     description: Mapped[str] = mapped_column(Text, default="")
     image: Mapped[str] = mapped_column(Text, default="")
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
