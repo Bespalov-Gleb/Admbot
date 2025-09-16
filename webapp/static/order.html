@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Текущий заказ</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=67" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <script src="/static/page-transitions.js"></script>
   <style>
     * {
@@ -894,7 +894,7 @@
         
         itemEl.innerHTML = `
           <div class="order-item-image">
-            <img src="${dish.image || '/static/placeholder-dish.jpg'}" alt="${dish.name}" />
+            ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" />` : ''}
           </div>
           <div class="order-item-content">
             <div class="order-item-header">

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=51" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <script src="/static/page-transitions.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
@@ -1157,7 +1157,7 @@
           card.style.animationDelay = `${index * 0.1}s`;
           
           card.innerHTML = `
-            <img src="${dish.image || 'https://via.placeholder.com/300x200?text=No+Image'}" alt="${dish.name}" class="dish-image" />
+            ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="dish-image" />` : ''}
             <div class="dish-content">
               <h3 class="dish-name">${dish.name}</h3>
               <p class="dish-description">${dish.description || 'Описание отсутствует'}</p>

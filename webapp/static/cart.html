@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Корзина</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=50" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <script src="/static/page-transitions.js"></script>
   <style>
     * {
@@ -694,8 +694,8 @@
             // Получаем изображения первых товаров
             const itemImages = items.slice(0, 3).map(item => {
               const dish = dishesMap.get(item.dish_id);
-              return dish?.image || 'https://via.placeholder.com/60x60?text=No+Image';
-            });
+              return dish?.image;
+            }).filter(Boolean); // Убираем пустые изображения
             
             cartCard.innerHTML = `
               <div class="cart-card-content">
@@ -868,7 +868,7 @@
         el.className = 'cart-item';
         
         el.innerHTML = `
-          <img src="${d.image || 'https://via.placeholder.com/80x80?text=No+Image'}" alt="${d.name}" class="cart-item-image" />
+          ${d.image ? `<img src="${d.image}" alt="${d.name}" class="cart-item-image" />` : ''}
           <div class="cart-item-content">
             <div class="cart-item-header">
               <div class="cart-item-name">${d.name}</div>

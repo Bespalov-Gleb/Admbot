@@ -1078,7 +1078,9 @@ img {
 html, body { background: var(--bg); color: var(--text); }
 .container { max-width: 960px; margin: 0 auto; }
 /* Safe area for bottom fixed nav */
-.container { padding-bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom, 0px) + 24px); }
+.container { padding-bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom, 0px) + 120px); }
+#restaurants { margin-bottom: 80px; }
+#selections { margin-bottom: 40px; }
 h2 { font-size: 22px; margin: 8px 0 12px; letter-spacing: .2px; }
 h3 { font-size: 18px; margin: 10px 0; }
 .restaurant, .card { border: 1px solid var(--border); background: var(--card); border-radius: 14px; padding: 14px; box-shadow: var(--shadow-soft); }

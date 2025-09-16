@@ -431,3 +431,37 @@ async def ra_upload_image(image: UploadFile = File(...), rid: int = Depends(requ
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при обработке изображения: {str(e)}")
+
+
+@router.post("/ra/upload-restaurant-image")
+async def ra_upload_restaurant_image(image: UploadFile = File(...), rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> dict:
+    """Загрузка изображения ресторана с автоматической обработкой"""
+    
+    # Проверяем тип файла
+    if not image.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Файл должен быть изображением")
+    
+    try:
+        # Читаем содержимое файла
+        content = await image.read()
+        
+        # Обрабатываем изображение
+        result = ImageProcessor.process_image(content, image.filename)
+        
+        # Обновляем изображение ресторана в БД
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
+        if restaurant:
+            restaurant.image = result["urls"]["restaurant_banner"]  # Используем баннер для ресторана
+            db.commit()
+        
+        # Возвращаем результат с URL'ами для разных размеров
+        return {
+            "status": "ok",
+            "image_url": result["urls"]["restaurant_banner"],  # Основной URL для ресторана
+            "urls": result["urls"],  # Все URL'ы для разных размеров
+            "original_size": result["original_size"],
+            "processed_sizes": result["processed_sizes"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при обработке изображения: {str(e)}")

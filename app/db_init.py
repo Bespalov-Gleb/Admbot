@@ -76,3 +76,8 @@ def _seed_carts(db: Session) -> None:
     # создать пустые корзины для существующих пользователей, если позже будут
     pass
 
+def init_db_empty() -> None:
+    """Создать БД БЕЗ тестовых данных"""
+    Base.metadata.create_all(bind=engine)
+    print("База данных создана БЕЗ тестовых данных!")
+
