@@ -146,13 +146,30 @@ async def add_item(item: CartItem, force: bool = False, user_id: int = Depends(r
                 print(f"DEBUG: Validation failed - too many options for group {g.id}")
                 raise HTTPException(status_code=400, detail={"status": "options_exceeded", "group_id": g.id, "max": g.max_select})
     
+    # Нормализуем выбранные опции для корректного сравнения и хранения
+    normalized_options = json.dumps(sorted(item.chosen_options or []))
+
+    # Пытаемся найти уже существующую позицию с тем же блюдом и теми же опциями
+    existing_item = db.query(DBCartItem).filter(
+        DBCartItem.cart_id == c.id,
+        DBCartItem.restaurant_id == item.restaurant_id,
+        DBCartItem.dish_id == item.dish_id,
+        DBCartItem.chosen_options == normalized_options,
+    ).first()
+
+    if existing_item:
+        print(f"DEBUG: Found existing cart item {existing_item.id}, merging qty {existing_item.qty} + {item.qty}")
+        existing_item.qty = (existing_item.qty or 0) + (item.qty or 0)
+        db.commit()
+        return {"status": "ok", "id": existing_item.id or 0}
+
     print("DEBUG: All validations passed, creating cart item...")
     db_item = DBCartItem(
         cart_id=c.id,
         restaurant_id=item.restaurant_id,
         dish_id=item.dish_id,
         qty=item.qty,
-        chosen_options=json.dumps(item.chosen_options or []),
+        chosen_options=normalized_options,
     )
     print(f"DEBUG: Created DB item: {db_item}")
     

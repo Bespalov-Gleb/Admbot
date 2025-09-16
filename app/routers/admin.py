@@ -299,29 +299,41 @@ async def broadcast_with_media(
         if not bot:
             return {"status": "error", "message": "Bot not initialized"}
         
+        # Читаем медиа файл ОДИН раз до цикла
+        media_content = None
+        media_type = None
+        if media and media.content_type:
+            media_content = await media.read()
+            if len(media_content) == 0:
+                return {"status": "error", "message": "Медиа файл пустой или поврежден"}
+            if len(media_content) > 20 * 1024 * 1024:  # 20MB
+                return {"status": "error", "message": "Файл слишком большой. Максимальный размер: 20MB"}
+            
+            # Определяем тип медиа
+            if media.content_type.startswith('image/'):
+                media_type = 'photo'
+            elif media.content_type.startswith('video/'):
+                media_type = 'video'
+            else:
+                media_type = 'unsupported'
+        
         # Отправляем сообщения
         for user_id in target_user_ids:
             try:
-                if media and media.content_type:
-                    # Проверяем размер файла (максимум 20MB)
-                    content = await media.read()
-                    if len(content) > 20 * 1024 * 1024:  # 20MB
-                        raise HTTPException(status_code=413, detail="Файл слишком большой. Максимальный размер: 20MB")
-                    
-                    # Определяем тип медиа
-                    if media.content_type.startswith('image/'):
+                if media_content and media_type:
+                    if media_type == 'photo':
                         # Отправляем как фото
                         from aiogram.types import BufferedInputFile
-                        photo_file = BufferedInputFile(content, filename=media.filename)
+                        photo_file = BufferedInputFile(media_content, filename=media.filename)
                         await bot.send_photo(
                             chat_id=user_id,
                             photo=photo_file,
                             caption=text
                         )
-                    elif media.content_type.startswith('video/'):
+                    elif media_type == 'video':
                         # Отправляем как видео
                         from aiogram.types import BufferedInputFile
-                        video_file = BufferedInputFile(content, filename=media.filename)
+                        video_file = BufferedInputFile(media_content, filename=media.filename)
                         await bot.send_video(
                             chat_id=user_id,
                             video=video_file,
@@ -347,7 +359,9 @@ async def broadcast_with_media(
                 
             except Exception as e:
                 failed_count += 1
-                print(f"Failed to send to user {user_id}: {e}")
+                # Более подробное логирование ошибок
+                error_msg = f"Failed to send to user {user_id}: {type(e).__name__}: {str(e)}"
+                print(error_msg)
                 continue
         
         # Отправляем отчет админу
