@@ -83,10 +83,11 @@ class PreloadSystem {
         return Promise.resolve();
       }
     } catch (error) {
-      console.warn('Preload failed for:', url, error);
+      console.debug('Preload failed for:', url, error.message);
     }
     
-    return Promise.reject();
+    // Не возвращаем reject - просто игнорируем ошибки
+    return Promise.resolve();
   }
 
   /**
@@ -94,6 +95,12 @@ class PreloadSystem {
    */
   async preloadCartData() {
     try {
+      // Проверяем, что api определена
+      if (typeof api === 'undefined') {
+        console.debug('API not defined, skipping cart preload');
+        return;
+      }
+      
       const response = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), {
         headers: { 'X-Telegram-User-Id': String(uid) }
       });
@@ -113,6 +120,12 @@ class PreloadSystem {
    */
   async preloadUserData() {
     try {
+      // Проверяем, что api определена
+      if (typeof api === 'undefined') {
+        console.debug('API not defined, skipping user preload');
+        return;
+      }
+      
       const response = await fetch(api + '/users/me', {
         headers: { 'X-Telegram-User-Id': String(uid) }
       });
@@ -132,6 +145,12 @@ class PreloadSystem {
    */
   async preloadRestaurantsData() {
     try {
+      // Проверяем, что api определена
+      if (typeof api === 'undefined') {
+        console.debug('API not defined, skipping restaurants preload');
+        return;
+      }
+      
       const response = await fetch(api + '/restaurants');
       
       if (response.ok) {

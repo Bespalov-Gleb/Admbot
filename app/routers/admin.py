@@ -828,13 +828,9 @@ async def delete_dish(dish_id: int, db: Session = Depends(get_db)):
     dish = db.query(DBDish).filter(DBDish.id == dish_id).first()
     if not dish:
         raise HTTPException(status_code=404, detail="Dish not found")
+    
     # Каскадное удаление: сначала удаляем все связанные записи
     
-<<<<<<< HEAD
-    # Каскадное удаление: сначала удаляем все связанные записи
-    
-=======
->>>>>>> 6877c4a4a4cd4e6f1bb64d77f5d75380b7da979f
     # 1. Удаляем опции (options) через группы опций
     groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish_id).all()
     group_ids = [g.id for g in groups]

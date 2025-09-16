@@ -118,40 +118,48 @@ class PageTransitions {
     }
 
     try {
+      // Создаем AbortController для таймаута
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch(url, { 
         method: 'HEAD',
-        cache: 'force-cache'
+        cache: 'force-cache',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         this.preloadCache.set(url, true);
         return Promise.resolve();
       }
     } catch (error) {
-      console.warn('Preload failed for:', url, error);
+      clearTimeout(timeoutId);
+      // Игнорируем ошибки предзагрузки - они не критичны
+      console.debug('Preload failed for:', url, error.message);
     }
     
-    return Promise.reject();
+    // Не возвращаем reject - просто игнорируем ошибки
+    return Promise.resolve();
   }
 
   /**
    * Предзагрузить популярные страницы
    */
   preloadPopularPages() {
-    const popularPages = [
-      '/static/cart.html',
-      '/static/profile.html',
-      '/static/checkout.html'
-    ];
+    // Отключаем предзагрузку - она вызывает ошибки
+    // const popularPages = [
+    //   '/static/cart.html',
+    //   '/static/profile.html'
+    // ];
 
     // Предзагружаем через 2 секунды после загрузки страницы
-    setTimeout(() => {
-      popularPages.forEach(page => {
-        this.preloadPage(page).catch(() => {
-          // Игнорируем ошибки предзагрузки
-        });
-      });
-    }, 2000);
+    // setTimeout(() => {
+    //   popularPages.forEach(page => {
+    //     this.preloadPage(page);
+    //   });
+    // }, 2000);
   }
 
   // Метод для программного перехода с анимацией

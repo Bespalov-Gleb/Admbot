@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
+  <script src="/static/simple-scroll-restore.js"></script>
+  <script src="/static/page-cache.js"></script>
+  <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
   <script src="/static/page-transitions.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
@@ -1198,18 +1200,8 @@
       
       loadCartAndSync();
       
-      // Восстанавливаем позицию прокрутки после загрузки контента только при переходе из блюда
-      const urlParams = new URLSearchParams(location.search);
-      const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
-      const fromPage = urlParams.get('from');
-      
-      if (savedScrollPosition > 0 && fromPage === 'dish') {
-        // Небольшая задержка для завершения рендеринга
-        setTimeout(() => {
-          window.scrollTo(0, savedScrollPosition);
-          console.log('Restored scroll position after content load:', savedScrollPosition);
-        }, 100);
-      }
+      // Позиция скролла теперь управляется scroll-persistence.js
+      // Убираем автоскролл - система сама восстановит позицию
     }
     
     async function addToCart(dishId, deltaQty) {
@@ -1608,25 +1600,7 @@
       console.log('Saved scroll position:', scrollPosition);
     }
     
-    function restoreScrollPosition() {
-      if (scrollPosition > 0) {
-        // Проверяем, что высота страницы достаточна для скролла
-        const pageHeight = Math.max(
-          document.body.scrollHeight,
-          document.body.offsetHeight,
-          document.documentElement.clientHeight,
-          document.documentElement.scrollHeight,
-          document.documentElement.offsetHeight
-        );
-        
-        if (pageHeight > scrollPosition) {
-          window.scrollTo(0, scrollPosition);
-          console.log('Restored scroll position:', scrollPosition);
-        } else {
-          console.log('Page height too small for scroll position:', pageHeight, 'vs', scrollPosition);
-        }
-      }
-    }
+    // Функция restoreScrollPosition удалена - теперь управляется scroll-persistence.js
     
     // Функция для возврата назад
     function goBack() {
@@ -1657,26 +1631,29 @@
     // Проверяем, нужно ли скроллить к категории
     const urlParams = new URLSearchParams(location.search);
     
-    // Восстанавливаем позицию прокрутки только при возврате со страницы блюда
-    const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
-    const fromPage = urlParams.get('from');
+    // Позиция скролла теперь управляется scroll-persistence.js
+    // Убираем автоскролл - система сама восстановит позицию
     
-    console.log('From page:', fromPage, 'Saved scroll position:', savedScrollPosition);
+    // Primary initialization - откладываем до восстановления позиции
+    // loadMenu(); // Убираем немедленный вызов
     
-    if (savedScrollPosition > 0 && fromPage === 'dish') {
-      // Устанавливаем позицию в переменную для использования в restoreScrollPosition
-      scrollPosition = savedScrollPosition;
-      console.log('Scroll position changed to:', savedScrollPosition);
-      
-      // Сразу устанавливаем позицию прокрутки
-      window.scrollTo(0, savedScrollPosition);
-      console.log('Immediate scroll to position:', savedScrollPosition);
-    } else if (fromPage === 'index') {
-      console.log('Transition from index page - no scroll restoration needed');
+    // Загружаем меню после восстановления позиции
+    if (window.pageCache && window.pageCache.isRestoringPosition) {
+        // Если идет восстановление позиции, ждем его завершения
+        const checkRestoration = () => {
+            if (!window.pageCache.isRestoringPosition) {
+                console.log('Scroll restoration completed, loading menu...');
+                loadMenu();
+            } else {
+                setTimeout(checkRestoration, 100);
+            }
+        };
+        setTimeout(checkRestoration, 100);
+    } else {
+        // Если нет восстановления позиции, загружаем сразу
+        console.log('No scroll restoration, loading menu immediately...');
+        loadMenu();
     }
-    
-    // Primary initialization
-    loadMenu();
     
     const scrollToCategoryId = urlParams.get('scroll_to_category');
     if (scrollToCategoryId) {

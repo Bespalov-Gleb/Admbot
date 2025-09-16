@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/static/styles.v23.css?v=82" />
+  <script src="/static/simple-scroll-restore.js"></script>
+  <script src="/static/page-cache.js"></script>
+    <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
   <script src="/static/page-transitions.js"></script>
   <script src="/static/loading-system.js"></script>
   <script src="/static/preload-system.js"></script>
@@ -466,6 +468,9 @@
             console.log('=== Restaurant card clicked ===');
             console.log('Restaurant ID:', r.id);
             console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+            
+            // Простая навигация без индикаторов загрузки
+            
             goToRestaurant(r.id);
           };
           
@@ -516,50 +521,15 @@
     
     // Инициализация с восстановлением позиции прокрутки
     async function initialize() {
+      console.log('=== initialize() called ===');
       await loadSelections();
       await loadRestaurants();
+      console.log('=== initialize() completed ===');
       
-      // Восстанавливаем позицию прокрутки после загрузки контента
-      const urlParams = new URLSearchParams(location.search);
-      const scrollPosition = Number(urlParams.get('scroll_position')) || 0;
-      console.log('=== initialize() called ===');
-      console.log('Scroll position from URL:', scrollPosition);
-      
-      if (scrollPosition > 0) {
-        console.log('Restoring scroll position:', scrollPosition);
-        // Ждем полной загрузки контента перед восстановлением позиции
-        const waitForContent = () => {
-          return new Promise((resolve) => {
-            let attempts = 0;
-            const maxAttempts = 20; // Максимум 2 секунды ожидания
-            
-            const checkContent = () => {
-              attempts++;
-              const documentHeight = document.documentElement.scrollHeight;
-              const windowHeight = window.innerHeight;
-              
-              console.log(`Attempt ${attempts}: Document height: ${documentHeight}, Window height: ${windowHeight}`);
-              
-              // Если высота документа больше высоты окна, значит контент загрузился
-              if (documentHeight > windowHeight || attempts >= maxAttempts) {
-                console.log('Content loaded, height:', documentHeight);
-                resolve();
-              } else {
-                console.log('Content not loaded yet, waiting...');
-                setTimeout(checkContent, 100);
-              }
-            };
-            checkContent();
-          });
-        };
-        
-        // Ждем загрузки контента, затем восстанавливаем позицию
-        waitForContent().then(() => {
-          setTimeout(() => {
-            window.scrollTo(0, scrollPosition);
-            console.log('Restored scroll position:', scrollPosition);
-          }, 200);
-        });
+      // После загрузки контента восстанавливаем позицию через page-cache.js
+      if (window.pageCache && !window.pageCache.isRestoringPosition) {
+        console.log('Content loaded, triggering scroll restoration...');
+        window.pageCache.restoreScrollPosition();
       }
     }
     
@@ -583,9 +553,24 @@
     });
     
 
-    document.getElementById('navHome').onclick = (e) => { e.preventDefault(); const p = new URLSearchParams(location.search); if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); location.href = '/static/index.html?' + p.toString(); };
-    document.getElementById('navCart').onclick = (e) => { e.preventDefault(); const p = new URLSearchParams(location.search); if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); location.href = '/static/cart.html?' + p.toString(); };
-    document.getElementById('navProfile').onclick = (e) => { e.preventDefault(); const p = new URLSearchParams(location.search); if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); location.href = '/static/profile.html?' + p.toString(); };
+    document.getElementById('navHome').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/index.html?' + p.toString(); 
+    };
+    document.getElementById('navCart').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/cart.html?' + p.toString(); 
+    };
+    document.getElementById('navProfile').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/profile.html?' + p.toString(); 
+    };
 
     
   </script>
