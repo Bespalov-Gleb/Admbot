@@ -868,7 +868,7 @@
         const unitPrice = (d.price || 0) + delta;
         const totalPrice = unitPrice * group.qty;
         
-        const optsLabel = chosen.length ? chosen.map(o => o.name).join(', ') : '';
+        const optsLabel = chosen.length ? chosen.map(o => o.name + (o.price_delta ? ` (+${o.price_delta} ₽)` : '')).join(', ') : '';
         const weight = d.weight ? `${d.weight} г` : '';
         
         const el = document.createElement('div');

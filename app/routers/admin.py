@@ -4,6 +4,7 @@ from typing import List
 from app.deps.auth import require_super_admin
 from app.routers.restaurants import Restaurant
 from app.services.telegram import send_admin_message, bot
+from app.services.image_processor import ImageProcessor
 from app.store import ensure_user, bind_restaurant_admin, unbind_restaurant_admin
 from app.models import Review as DBReview
 from sqlalchemy.orm import Session
@@ -39,6 +40,9 @@ class RestaurantUpdate(BaseModel):
     phone: str | None = None
     is_enabled: bool | None = None
     description: str | None = None
+    image: str | None = None
+    work_open_min: int | None = None
+    work_close_min: int | None = None
 
 
 class AdminCodeUpdate(BaseModel):
@@ -118,6 +122,19 @@ async def update_restaurant(restaurant_id: int, payload: RestaurantUpdate, db: S
         description=r.description, image=r.image, work_open_min=r.work_open_min,
         work_close_min=r.work_close_min, is_open_now=False
     ).model_dump()}
+
+
+@router.post("/restaurants/{restaurant_id}/upload-image")
+async def admin_upload_restaurant_image(restaurant_id: int, image: UploadFile = File(...), db: Session = Depends(get_db)) -> dict:
+    r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="restaurant_not_found")
+    data = await image.read()
+    processed = ImageProcessor.process_image(data, image.filename, base_dir="uploads")
+    # сохраняем баннер как restaurant_banner вариант
+    r.image = processed["urls"].get("restaurant_banner") or processed["urls"].get("original")
+    db.commit()
+    return {"status": "ok", "image": r.image, "urls": processed["urls"]}
 
 
 @router.patch("/restaurants/{restaurant_id}/status")
@@ -278,6 +295,8 @@ async def broadcast_with_media(
 ) -> dict:
     """Отправляет рассылку с медиа файлом через веб-интерфейс"""
     try:
+        # Импортируем BufferedInputFile в начале функции
+        from aiogram.types import BufferedInputFile
         # Получаем список получателей
         target_user_ids = get_target_users(recipients, db)
         
@@ -303,7 +322,10 @@ async def broadcast_with_media(
         media_content = None
         media_type = None
         if media and media.content_type:
+            print(f"Processing media file: {media.filename}, content_type: {media.content_type}")
             media_content = await media.read()
+            print(f"Media file size: {len(media_content)} bytes")
+            
             if len(media_content) == 0:
                 return {"status": "error", "message": "Медиа файл пустой или поврежден"}
             if len(media_content) > 20 * 1024 * 1024:  # 20MB
@@ -316,6 +338,7 @@ async def broadcast_with_media(
                 media_type = 'video'
             else:
                 media_type = 'unsupported'
+                print(f"Unsupported media type: {media.content_type}")
         
         # Отправляем сообщения
         for user_id in target_user_ids:
@@ -323,7 +346,6 @@ async def broadcast_with_media(
                 if media_content and media_type:
                     if media_type == 'photo':
                         # Отправляем как фото
-                        from aiogram.types import BufferedInputFile
                         photo_file = BufferedInputFile(media_content, filename=media.filename)
                         await bot.send_photo(
                             chat_id=user_id,
@@ -332,7 +354,6 @@ async def broadcast_with_media(
                         )
                     elif media_type == 'video':
                         # Отправляем как видео
-                        from aiogram.types import BufferedInputFile
                         video_file = BufferedInputFile(media_content, filename=media.filename)
                         await bot.send_video(
                             chat_id=user_id,
@@ -380,6 +401,9 @@ async def broadcast_with_media(
         }
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Broadcast with media error: {error_details}")
         await send_admin_message(f"❌ Ошибка рассылки: {str(e)}")
         return {"status": "error", "message": str(e)}
 
@@ -476,9 +500,11 @@ def _in_same_month(a: datetime, b: datetime) -> bool:
 def _aggregate(orders, now: datetime) -> dict:
     def summarize(filter_fn):
         filtered = [o for o in orders if filter_fn(o)]
+        # Учитываем только принятые заказы (accepted, delivered)
+        accepted_orders = [o for o in filtered if o.status in ["accepted", "delivered"]]
         return {
             "orders": len(filtered),
-            "sum": sum(o.total_price for o in filtered),
+            "sum": sum(o.total_price for o in accepted_orders),  # Только принятые заказы
             "cancelled": sum(1 for o in filtered if o.status == "cancelled"),
             "modified": sum(1 for o in filtered if o.status == "modified"),
         }
@@ -748,6 +774,8 @@ async def create_dish(payload: dict, db: Session = Depends(get_db)):
             )
             db.add(option)
     
+    # Обновляем флаг has_options для блюда
+    dish.has_options = len(option_groups) > 0
     db.commit()
     
     return {"message": "Dish created successfully", "dish": {
@@ -809,6 +837,9 @@ async def update_dish(dish_id: int, payload: dict, db: Session = Depends(get_db)
                     price_delta=option_data.get("price_delta", 0)
                 )
                 db.add(option)
+        
+        # Обновляем флаг has_options для блюда
+        dish.has_options = len(option_groups) > 0
     
     db.commit()
     

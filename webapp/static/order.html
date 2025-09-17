@@ -785,7 +785,10 @@
           ];
           break;
         default:
-          title = 'Заказ отправлен. Ждите подтверждение ресторана';
+          // Получаем название ресторана для активного ресторана
+          const activeRestaurant = restaurantsMap.get(activeRestaurantId);
+          const restaurantName = activeRestaurant ? `ресторана "${activeRestaurant.name}"` : 'ресторана';
+          title = `Заказ отправлен в ${restaurantName}. Ждите подтверждения.`;
           actions = [
             { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
           ];

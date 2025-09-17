@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="/static/simple-scroll-restore.js"></script>
-  <script src="/static/page-cache.js"></script>
+    <script src="/static/page-cache.js"></script>
     <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
   <script src="/static/page-transitions.js"></script>
   <script src="/static/loading-system.js"></script>
@@ -44,7 +43,8 @@
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
     const uid = (q.get('uid') && Number(q.get('uid'))) || tg?.initDataUnsafe?.user?.id || 0;
-    const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
+    const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     const uidQ = uid ? ('?uid=' + encodeURIComponent(String(uid))) : '';
     
     // Кэш для изображений
@@ -200,10 +200,10 @@
           }
         }
         
-        // Если подборок нет - показываем empty state
+        // Если подборок нет - просто скрываем секцию
         if (data.length === 0) {
-          console.log('No collections found - showing empty');
-          LoadingSystem.showEmpty('selections', 'Подборки пока не созданы', '📋');
+          console.log('No collections found - hiding selections section');
+          document.getElementById('selections').style.display = 'none';
           return;
         }
         
@@ -428,7 +428,7 @@
         LoadingSystem.showSkeleton('restaurants', 'restaurant', 6);
         
         // console.log('Fetching restaurants from:', api + '/restaurants');
-        const res = await fetch(api + '/restaurants', { headers });
+        const res = await fetch(api + '/restaurants', { headers: getHeaders });
         console.log('Restaurants API response:', res.status, res.ok);
         
         if (!res.ok) {
@@ -526,15 +526,51 @@
       await loadRestaurants();
       console.log('=== initialize() completed ===');
       
-      // После загрузки контента восстанавливаем позицию через page-cache.js
-      if (window.pageCache && !window.pageCache.isRestoringPosition) {
-        console.log('Content loaded, triggering scroll restoration...');
-        window.pageCache.restoreScrollPosition();
-      }
+      // Позиция скролла восстанавливается автоматически через page-cache.js
+      // Не нужно вызывать restoreScrollPosition() здесь
     }
     
-    // Запускаем инициализацию
-    initialize();
+   // Проверка доступа (блокировка)
+   async function checkAccess() {
+     try {
+       const res = await fetch(api + '/users/activate', { method: 'POST', headers, body: JSON.stringify({}) });
+       if (res.status === 403) {
+         document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Ошибка доступа</div>';
+         return false;
+       }
+       if (res.ok) {
+         const data = await res.json();
+         if (data.user && data.user.is_blocked) {
+           document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Доступ запрещен</div>';
+           return false;
+         }
+       }
+     } catch (e) {}
+     return true;
+   }
+
+   // Скрываем страницу до полной загрузки
+   hidePageUntilReady();
+   
+   // Загружаем контент СРАЗУ, а позицию восстанавливаем после
+   (async () => {
+     if (await checkAccess()) {
+       await initialize();
+       // После загрузки контента восстанавливаем позицию
+       setTimeout(() => {
+         if (window.pageCache) {
+           window.pageCache.restoreScrollPosition();
+         }
+         // Показываем страницу после восстановления позиции
+         setTimeout(() => {
+           showPageAfterReady();
+         }, 50);
+       }, 100);
+     } else {
+       // Если нет доступа, показываем страницу сразу
+       showPageAfterReady();
+     }
+   })();
     
     // Добавляем отладочную информацию при загрузке страницы
     console.log('=== Page loaded ===');

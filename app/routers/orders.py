@@ -238,9 +238,16 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
     try:
         if WEBAPP_URL:
             url = f"{WEBAPP_URL}/static/order.html?id={db_order.id}"
+            
+            # Получаем название ресторана
+            restaurant_name = "ресторана"
+            r = db.query(ORestaurant).filter(ORestaurant.id == db_order.restaurant_id).first()
+            if r and r.name:
+                restaurant_name = f"ресторана \"{r.name}\""
+            
             # pretty formatted message
             lines = [
-                "Заказ отправлен. Ждите подтверждение ресторана",
+                f"Заказ отправлен в {restaurant_name}. Ждите подтверждения.",
                 "",
                 "СОСТАВ ЗАКАЗА",
                 "------------------------------",

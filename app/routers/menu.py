@@ -142,6 +142,32 @@ async def get_dish_options(dish_id: int, db: Session = Depends(get_db)) -> Dict[
     }
 
 
+@router.get("/options/bulk")
+async def get_dishes_options(dish_ids: str, db: Session = Depends(get_db)) -> Dict[str, List[dict]]:
+    """Получить опции для множественных блюд"""
+    try:
+        dish_id_list = [int(x) for x in dish_ids.split(",") if x.strip()]
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid dish_ids format")
+    
+    if not dish_id_list:
+        return {"options": []}
+    
+    # Получаем все группы опций для указанных блюд
+    groups = db.query(OGroup).filter(OGroup.dish_id.in_(dish_id_list)).all()
+    group_ids = [g.id for g in groups]
+    
+    # Получаем все опции для найденных групп
+    options = db.query(OOption).filter(OOption.group_id.in_(group_ids) if group_ids else False).all()
+    
+    return {
+        "options": [
+            {"id": o.id, "group_id": o.group_id, "name": o.name, "price_delta": o.price_delta}
+            for o in options
+        ],
+    }
+
+
 @router.get("/options/lookup")
 async def options_lookup(ids: str, db: Session = Depends(get_db)) -> List[DishOption]:
     try:

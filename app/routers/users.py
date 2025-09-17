@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from app.deps.auth import require_user_id
 from app.store import ensure_user
 from app.models import User as DBUser
@@ -16,7 +16,10 @@ router = APIRouter()
 
 
 @router.post("/users/activate")
-async def activate_user(request: ActivateUserRequest, user_id: int = Depends(require_user_id)) -> dict:
+async def activate_user(request: ActivateUserRequest = None, user_id: int = Depends(require_user_id)) -> dict:
+    # Если request None, создаем пустой объект
+    if request is None:
+        request = ActivateUserRequest()
     u = ensure_user(user_id, request.username)
     return {"status": "ok", "user": {"id": u.id, "is_blocked": u.is_blocked}}
 

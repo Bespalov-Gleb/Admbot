@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="/static/simple-scroll-restore.js"></script>
-  <script src="/static/page-cache.js"></script>
+    <script src="/static/page-cache.js"></script>
   <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
   <script src="/static/page-transitions.js"></script>
   <style>
@@ -1000,7 +999,8 @@
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
     const uid = (q.get('uid') && Number(q.get('uid'))) || tg?.initDataUnsafe?.user?.id || 0;
-    const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
+    const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     
     let restaurantId = Number(q.get('id')) || 0;
     let categories = [];
@@ -1008,15 +1008,16 @@
     let cart = { items: [] };
     let dishesMap = new Map();
     let restaurantsMap = new Map();
+    let optionsMap = new Map();
     let activeCategory = null;
     let scrollPosition = 0; // Позиция прокрутки для навигации внутри страницы ресторана
     
     async function loadMenu() {
       try {
         const [catRes, dishRes, restRes] = await Promise.all([
-          fetch(api + '/categories?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers }),
-          fetch(api + '/dishes?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers }),
-          fetch(api + '/restaurants/' + restaurantId + (uid ? ('?uid=' + uid) : ''), { headers })
+          fetch(api + '/categories?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders }),
+          fetch(api + '/dishes?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders }),
+          fetch(api + '/restaurants/' + restaurantId + (uid ? ('?uid=' + uid) : ''), { headers: getHeaders })
         ]);
         
         categories = await catRes.json();
@@ -1029,6 +1030,16 @@
         dishes.forEach(dish => {
           dishesMap.set(dish.id, dish);
         });
+        
+        // Загружаем опции для всех блюд
+        if (dishes.length > 0) {
+          const dishIds = dishes.map(d => d.id);
+          const optionsRes = await fetch(api + '/options/bulk?dish_ids=' + dishIds.join(',') + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders });
+          if (optionsRes.ok) {
+            const optionsData = await optionsRes.json();
+            optionsMap = new Map(optionsData.options.map(o => [o.id, o]));
+          }
+        }
         
         await renderRestaurantHeader(restaurant);
         renderCategories();
@@ -1276,7 +1287,7 @@
     }
     
     async function loadCartAndSync() {
-      const res = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), { headers });
+        const res = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), { headers: getHeaders });
       cart = await res.json();
       clearQtyCache(); // Очищаем кэш перед обновлением
       renderQtyControls();
@@ -1404,7 +1415,9 @@
       return cart.items.reduce((sum, it) => {
         const d = dishesMap.get(it.dish_id);
         if (!d || d.restaurant_id !== restaurantId) return sum;
-        return sum + (d.price || 0) * it.qty;
+        const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
+        const delta = chosen.reduce((s, o) => s + (o.price_delta || 0), 0);
+        return sum + (d.price + delta) * it.qty;
       }, 0);
     }
     
@@ -1553,7 +1566,7 @@
       list.innerHTML = '';
       
       // Load names
-      const resR = await fetch(api + '/restaurants/_bulk?ids=' + encodeURIComponent(restIds.join(',')) + (uid ? ('&uid=' + uid) : ''), { headers });
+        const resR = await fetch(api + '/restaurants/_bulk?ids=' + encodeURIComponent(restIds.join(',')) + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders });
       const rests = resR.ok ? await resR.json() : [];
       rests.forEach(r => {
         const row = document.createElement('div');
@@ -1634,26 +1647,47 @@
     // Позиция скролла теперь управляется scroll-persistence.js
     // Убираем автоскролл - система сама восстановит позицию
     
-    // Primary initialization - откладываем до восстановления позиции
-    // loadMenu(); // Убираем немедленный вызов
-    
-    // Загружаем меню после восстановления позиции
-    if (window.pageCache && window.pageCache.isRestoringPosition) {
-        // Если идет восстановление позиции, ждем его завершения
-        const checkRestoration = () => {
-            if (!window.pageCache.isRestoringPosition) {
-                console.log('Scroll restoration completed, loading menu...');
-                loadMenu();
-            } else {
-                setTimeout(checkRestoration, 100);
-            }
-        };
-        setTimeout(checkRestoration, 100);
-    } else {
-        // Если нет восстановления позиции, загружаем сразу
-        console.log('No scroll restoration, loading menu immediately...');
-        loadMenu();
+    // Проверка доступа (блокировка)
+    async function checkAccess() {
+      try {
+        const res = await fetch(api + '/users/activate', { method: 'POST', headers, body: JSON.stringify({}) });
+        if (res.status === 403) {
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Ошибка доступа</div>';
+          return false;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user && data.user.is_blocked) {
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Доступ запрещен</div>';
+            return false;
+          }
+        }
+      } catch (e) {}
+      return true;
     }
+
+    // Скрываем страницу до полной загрузки
+    hidePageUntilReady();
+    
+    // Загружаем меню СРАЗУ, а позицию восстанавливаем после
+    (async () => {
+      if (await checkAccess()) {
+        await loadMenu();
+        // После загрузки меню восстанавливаем позицию
+        setTimeout(() => {
+          if (window.pageCache) {
+            window.pageCache.restoreScrollPosition();
+          }
+          // Показываем страницу после восстановления позиции
+          setTimeout(() => {
+            showPageAfterReady();
+          }, 50);
+        }, 100);
+      } else {
+        // Если нет доступа, показываем страницу сразу
+        showPageAfterReady();
+      }
+    })();
     
     const scrollToCategoryId = urlParams.get('scroll_to_category');
     if (scrollToCategoryId) {

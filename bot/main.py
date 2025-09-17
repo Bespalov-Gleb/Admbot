@@ -28,6 +28,13 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def start(message: types.Message) -> None:
+    # deny access for blocked users
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            r = await client.get(INTERNAL_API_URL + f"/api/admin/users?t=0")
+            # lightweight check endpoint could be better; we fallback to activate and read flag below
+    except Exception:
+        pass
     # register user as active and save username
     username = message.from_user.username
     
@@ -40,6 +47,14 @@ async def start(message: types.Message) -> None:
                 json={"username": username} if username else {}
             )
             logger.info("activate_user id=%s username=%s status=%s", message.from_user.id, username, getattr(r, "status_code", "n/a"))
+            # If API returns user blocked flag
+            try:
+                data = r.json()
+                if isinstance(data, dict) and data.get("user", {}).get("is_blocked"):
+                    await message.answer("Ошибка доступа")
+                    return
+            except Exception:
+                pass
     except Exception as exc:
         logger.exception("activate_user failed: %s", repr(exc))
         # Продолжаем выполнение даже если активация не удалась
@@ -64,6 +79,27 @@ async def _is_restaurant_admin(user_id: int) -> bool:
             return r.status_code == 200
     except Exception:
         return False
+
+
+async def _is_user_blocked(user_id: int) -> bool:
+    """Проверяет, заблокирован ли пользователь"""
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            url = INTERNAL_API_URL + "/api/users/activate"
+            r = await client.post(url, headers={"X-Telegram-User-Id": str(user_id), "Content-Type": "application/json"}, json={})
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("user", {}).get("is_blocked", False)
+            return False
+    except Exception:
+        return False
+
+
+async def _check_admin_access(user_id: int) -> bool:
+    """Проверяет доступ к админке (не заблокирован и в сессии)"""
+    if await _is_user_blocked(user_id):
+        return False
+    return user_id in ADMIN_SESSIONS
 
 
 def _inline_kb(rows: list[list[tuple[str, str]]]) -> InlineKeyboardMarkup:
@@ -127,6 +163,12 @@ async def get_user_id(message: types.Message) -> None:
 @dp.message(Command("admin"))
 async def admin_entry(message: types.Message) -> None:
     user_id = message.from_user.id
+    
+    # Проверяем, заблокирован ли пользователь
+    if await _is_user_blocked(user_id):
+        await message.answer("Доступ запрещен.")
+        return
+    
     # Если пользователь — админ ресторана, показываем кнопки профиля ресторана
     if await _is_restaurant_admin(user_id):
         await message.answer("Доступ к профилю ресторана открыт.", reply_markup=RA_INLINE_KB)
@@ -189,8 +231,15 @@ STATS_KB = InlineKeyboardMarkup(
 
 @dp.message(lambda message: message.text and os.getenv("ADMIN_CODE", "").strip() and message.text.strip() == os.getenv("ADMIN_CODE", "").strip())
 async def handle_admin_code(message: types.Message) -> None:
+    user_id = message.from_user.id
+    
+    # Проверяем, заблокирован ли пользователь
+    if await _is_user_blocked(user_id):
+        await message.answer("Доступ запрещен.")
+        return
+    
     # Вход в главную админку по кодовому слову
-    ADMIN_SESSIONS.add(message.from_user.id)
+    ADMIN_SESSIONS.add(user_id)
     await message.answer("Код принят. Доступ в админку открыт.", reply_markup=ADMIN_INLINE_KB)
 
 
@@ -265,6 +314,11 @@ async def _resolve_user_id_by_username(username: str) -> int | None:
 async def admin_add_restaurant_callback(callback: types.CallbackQuery) -> None:
     uid = callback.from_user.id
     print(f"DEBUG: admin_add_restaurant_callback called for user {uid}")
+    
+    # Проверяем доступ к админке
+    if not await _check_admin_access(uid):
+        await callback.answer("Доступ запрещен.")
+        return
     
     if uid not in SUPER_ADMIN_IDS:
         await callback.answer("Нет доступа к операции добавления ресторана.")
@@ -494,6 +548,11 @@ async def broadcast_target_callback(callback: types.CallbackQuery) -> None:
 @dp.callback_query(F.data == "admin_web")
 async def admin_web_callback(callback: types.CallbackQuery) -> None:
     uid = callback.from_user.id
+    
+    # Проверяем доступ к админке
+    if not await _check_admin_access(uid):
+        await callback.answer("Доступ запрещен.")
+        return
     token = None
     try:
         async with httpx.AsyncClient(timeout=3) as client:
@@ -1446,10 +1505,17 @@ async def admin_back_callback(callback: types.CallbackQuery) -> None:
 
 @dp.message(Command("ra"))
 async def restaurant_admin_entry(message: types.Message) -> None:
+    user_id = message.from_user.id
+    
+    # Проверяем, заблокирован ли пользователь
+    if await _is_user_blocked(user_id):
+        await message.answer("Доступ запрещен.")
+        return
+    
     if not PUBLIC_WEBAPP_URL.lower().startswith("https://"):
         await message.answer("Для админки нужен HTTPS URL.")
         return
-    url = PUBLIC_WEBAPP_URL + f"/static/ra.html?uid={message.from_user.id}&ngrok-skip-browser-warning=1&v=1"
+    url = PUBLIC_WEBAPP_URL + f"/static/ra.html?uid={user_id}&ngrok-skip-browser-warning=1&v=1"
     kb = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="Админка ресторана", web_app=WebAppInfo(url=url))]]
     )

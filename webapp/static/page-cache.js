@@ -198,74 +198,31 @@ class PageCache {
                 
                 // Определяем тип страницы для разной задержки
                 const isRestaurantPage = pageName.startsWith('restaurant_');
-                const finalDelay = isRestaurantPage ? 800 : 400; // Для ресторанов больше времени
+                const finalDelay = isRestaurantPage ? 800 : 500; // Увеличили задержки для надежности
                 
                 // Ждем загрузки контента
                 this.waitForContent().then(() => {
                     console.log(`Content loaded, scrolling to ${scrollY}px`);
                     
-                    // Восстанавливаем позицию ОДИН раз
+                    // Простое восстановление позиции без сложной логики
                     window.scrollTo(0, scrollY);
                     console.log(`Restored scroll position for ${pageName}: ${scrollY}`);
                     
-                    // Дополнительно восстанавливаем позицию после загрузки контента
-                    setTimeout(() => {
-                        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-                        if (Math.abs(currentScroll - scrollY) > 50) {
-                            console.log(`Position changed after content load from ${scrollY} to ${currentScroll}, restoring again`);
-                            window.scrollTo(0, scrollY);
-                        }
-                    }, isRestaurantPage ? 400 : 200); // Для ресторанов больше времени
+                    // Контент загружается из index.html с задержкой
                     
-                    // Еще одна проверка (для страниц блюд и ресторанов)
-                    setTimeout(() => {
-                        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-                        if (Math.abs(currentScroll - scrollY) > 50) {
-                            console.log(`Final position check: ${scrollY} vs ${currentScroll}, final restore`);
-                            window.scrollTo(0, scrollY);
-                        }
-                        
-                        // Дополнительная проверка для ресторанов
-                        if (isRestaurantPage) {
-                            setTimeout(() => {
-                                const finalScroll = window.pageYOffset || document.documentElement.scrollTop;
-                                if (Math.abs(finalScroll - scrollY) > 50) {
-                                    console.log(`Extra restaurant check: ${scrollY} vs ${finalScroll}, final restore`);
-                                    window.scrollTo(0, scrollY);
-                                }
-                            }, 200);
-                            
-                            // Еще одна проверка через 600мс (после загрузки меню)
-                            setTimeout(() => {
-                                const finalScroll = window.pageYOffset || document.documentElement.scrollTop;
-                                if (Math.abs(finalScroll - scrollY) > 50) {
-                                    console.log(`Post-menu restaurant check: ${scrollY} vs ${finalScroll}, final restore`);
-                                    window.scrollTo(0, scrollY);
-                                }
-                            }, 600);
-                        }
-                        
-                        // ПОКАЗЫВАЕМ СТРАНИЦУ после финальной проверки
-                        showPageAfterReady();
-                        console.log(`Page shown after final scroll restoration for ${pageName} (delay: ${finalDelay}ms)`);
-                    }, finalDelay);
-                    
-                    // Снимаем флаг через разное время для разных страниц
-                    const protectionTime = isRestaurantPage ? 4000 : 2000; // Для ресторанов больше времени
+                    // Снимаем флаг через короткое время
                     setTimeout(() => {
                         this.isRestoringPosition = false;
-                        console.log(`Restoration protection disabled for ${pageName} (after ${protectionTime}ms)`);
-                    }, protectionTime);
+                        console.log(`Restoration protection disabled for ${pageName}`);
+                    }, 1000);
                 });
             } else {
                 console.log(`Saved scroll position is 0 or invalid for ${pageName}`);
-                // Показываем страницу, если позиция 0 или невалидна
-                showPageAfterReady();
+                // Контент загружается из index.html с задержкой
             }
         } else {
             console.log(`No saved scroll position found for ${pageName}`);
-            // Показываем страницу, если нет сохраненной позиции
-            showPageAfterReady();
+            // Контент загружается из index.html с задержкой
         }
     }
     
@@ -298,8 +255,8 @@ class PageCache {
                                      document.querySelector('.restaurant-info');
                 
                 if (hasContent || hasDishContent) {
-                    // Минимальная задержка для завершения рендеринга
-                    setTimeout(resolve, 50);
+                    // Увеличили задержку для завершения рендеринга
+                    setTimeout(resolve, 150);
                 } else if (attempts >= maxAttempts) {
                     // Таймаут - восстанавливаем позицию в любом случае
                     console.warn('Content loading timeout, proceeding anyway');
@@ -411,7 +368,7 @@ console.log('Saved scroll positions:', Object.keys(sessionStorage).filter(key =>
 
 // Отладочные перехватчики убраны - проблема найдена и исправлена
 
-// Скрываем страницу до полного восстановления позиции
+// Создаем overlay для скрытия страницы до полной загрузки
 function hidePageUntilReady() {
     // Создаем overlay для скрытия страницы
     const overlay = document.createElement('div');
@@ -442,54 +399,17 @@ function hidePageUntilReady() {
         </style>
     `;
     document.body.appendChild(overlay);
+    console.log('Overlay created - page hidden until ready');
 }
 
 function showPageAfterReady() {
     const overlay = document.getElementById('scroll-restore-overlay');
     if (overlay) {
         overlay.remove();
+        console.log('Overlay removed - page is now visible');
     }
 }
 
-// Восстанавливаем позицию при загрузке страницы
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loaded, hiding page until scroll restored...');
-        hidePageUntilReady();
-        // Ждем загрузки контента перед восстановлением
-        const currentPage = window.pageCache.getPageName();
-        const isRestaurantPage = currentPage.startsWith('restaurant_');
-        const initialDelay = isRestaurantPage ? 200 : 100; // Для ресторанов больше времени
-        
-        setTimeout(() => {
-            window.pageCache.restoreScrollPosition();
-        }, initialDelay);
-        
-        // Таймаут на случай, если что-то пошло не так
-        const fallbackTimeout = isRestaurantPage ? 3000 : 1500; // Для ресторанов больше времени
-        
-        setTimeout(() => {
-            showPageAfterReady();
-            console.log(`Fallback: Page shown after timeout (${fallbackTimeout}ms)`);
-        }, fallbackTimeout);
-    });
-} else {
-    console.log('DOM already loaded, hiding page until scroll restored...');
-    hidePageUntilReady();
-    // Ждем загрузки контента перед восстановлением
-    const currentPage = window.pageCache.getPageName();
-    const isRestaurantPage = currentPage.startsWith('restaurant_');
-    const initialDelay = isRestaurantPage ? 200 : 100; // Для ресторанов больше времени
-    
-    setTimeout(() => {
-        window.pageCache.restoreScrollPosition();
-    }, initialDelay);
-    
-    // Таймаут на случай, если что-то пошло не так
-    const fallbackTimeout = isRestaurantPage ? 3000 : 1500; // Для ресторанов больше времени
-    
-    setTimeout(() => {
-        showPageAfterReady();
-        console.log(`Fallback: Page shown after timeout (${fallbackTimeout}ms)`);
-    }, fallbackTimeout);
-}
+// Восстановление позиции теперь управляется из index.html
+// Автоматическое восстановление отключено
+console.log('Page cache system initialized - scroll restoration controlled by index.html');

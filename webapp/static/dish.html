@@ -202,6 +202,11 @@
           const label = document.createElement('label');
           label.htmlFor = id;
           
+          // Предотвращаем всплытие событий для label
+          label.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          
           const labelText = document.createElement('span');
           labelText.textContent = o.name;
           
@@ -216,6 +221,12 @@
           
           const row = document.createElement('div');
           row.className = 'option-item';
+          
+          // Предотвращаем всплытие событий для всей строки опции
+          row.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          
           row.appendChild(input);
           row.appendChild(label);
           list.appendChild(row);
@@ -234,20 +245,19 @@
         if (g.max_select > 0 && count > g.max_select) ok = false;
       }
       
-      // НЕ блокируем кнопку - позволяем клик для показа уведомления
-      // document.getElementById('add').disabled = !ok;
-      
       const sumEl = document.getElementById('sumBtn');
       if (sumEl) sumEl.textContent = calcTotal() + ' р';
       
-      // Визуально показываем, что опции не выбраны
+      // Визуально показываем, что опции не выбраны, но кнопка остается кликабельной
       const addBtn = document.getElementById('add');
       if (ok) {
         addBtn.style.opacity = '1';
         addBtn.style.cursor = 'pointer';
+        addBtn.disabled = false;
       } else {
         addBtn.style.opacity = '0.7';
-        addBtn.style.cursor = 'not-allowed';
+        addBtn.style.cursor = 'pointer'; // Оставляем pointer, чтобы показать что кнопка кликабельна
+        addBtn.disabled = false; // Не блокируем кнопку, чтобы показывать уведомление
       }
     }
 
@@ -538,6 +548,12 @@
       const maxVerticalDistance = 50; // Максимальное вертикальное отклонение
       
       document.addEventListener('touchstart', (e) => {
+        // Игнорируем свайп если клик по интерактивным элементам
+        const target = e.target;
+        if (target.closest('.option-item') || target.closest('button') || target.closest('input') || target.closest('label')) {
+          return;
+        }
+        
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         isSwipeActive = true;

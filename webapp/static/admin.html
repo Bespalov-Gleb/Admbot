@@ -64,6 +64,7 @@
           <div class="form-row">
             <button id="blk">🚫 Заблокировать</button>
             <button id="unblk">✅ Разблокировать</button>
+            <button id="revokeRA">🛑 Снять права админа ресторана</button>
           </div>
           <div class="form-group">
             <label>Назначить админом ресторана</label>
@@ -232,6 +233,20 @@
                 <label>Описание:</label>
                 <input data-field="description" value="${r.description||''}" style="width:80%"/>
               </div>
+              <div class="meta">
+                <label>Изображение (URL):</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                  <img src="${r.image||''}" alt="preview" style="width:120px;height:60px;object-fit:cover;border-radius:8px;${r.image?'':'display:none;'}" data-preview="img"/>
+                  <input type="file" accept="image/*" data-upload="image"/>
+                  <button type="button" data-act="uploadImg">Загрузить</button>
+                </div>
+              </div>
+              <div class="meta">
+                <label>Режим (HH:MM - HH:MM):</label>
+                <input data-field="work_open_hhmm" value="${toHHMM(r.work_open_min)}" style="width:120px"/>
+                <span> - </span>
+                <input data-field="work_close_hhmm" value="${toHHMM(r.work_close_min)}" style="width:120px"/>
+              </div>
             </div>
             <div class="restaurant-actions">
               <button data-act="save">💾 Сохранить</button>
@@ -248,6 +263,8 @@
               const n = parseInt(val, 10);
               if (!Number.isNaN(n)) val = n; else return;
             }
+            if (key === 'work_open_hhmm') { body['work_open_min'] = hhmmToMinutes(val); return; }
+            if (key === 'work_close_hhmm') { body['work_close_min'] = hhmmToMinutes(val); return; }
             body[key] = val;
           });
           const res = await fetch(api + '/admin/restaurants/' + r.id, { method:'PATCH', headers, body: JSON.stringify(body) });
@@ -256,6 +273,27 @@
           // обновляем локально, чтобы не казалось, что "слетает"
           if (data.restaurant) Object.assign(r, data.restaurant);
           load();
+        };
+        // превью файла и загрузка
+        const fileInput = el.querySelector('[data-upload="image"]');
+        const preview   = el.querySelector('[data-preview="img"]');
+        fileInput.addEventListener('change', () => {
+          const f = fileInput.files && fileInput.files[0];
+          if (!f) return;
+          const url = URL.createObjectURL(f);
+          preview.src = url; preview.style.display='block';
+        });
+        el.querySelector('[data-act="uploadImg"]').onclick = async () => {
+          const f = fileInput.files && fileInput.files[0];
+          if (!f) { alert('Выберите файл'); return; }
+          const form = new FormData();
+          form.append('image', f);
+          const resp = await fetch(api + '/admin/restaurants/' + r.id + '/upload-image', { method:'POST', body: form, headers: { 'X-Telegram-User-Id': String(uid) } });
+          if (!resp.ok) { alert('Ошибка загрузки'); return; }
+          const data = await resp.json();
+          r.image = data.image;
+          preview.src = r.image;
+          alert('Изображение обновлено');
         };
         el.querySelector('[data-act="toggle"]').onclick = async () => {
           await fetch(api + '/admin/restaurants/' + r.id + '/status?enabled=' + (!r.is_enabled), { method:'PATCH', headers });
@@ -268,6 +306,26 @@
         };
         root.appendChild(el);
       });
+    }
+
+    // Вспомогательные функции для времени
+    function toHHMM(total) {
+      if (typeof total !== 'number' || Number.isNaN(total)) return '09:00';
+      total = Math.max(0, Math.min(1440, total | 0));
+      const h = Math.floor(total / 60).toString().padStart(2,'0');
+      const m = (total % 60).toString().padStart(2,'0');
+      return `${h}:${m}`;
+    }
+    function hhmmToMinutes(hhmm) {
+      const m = /^\s*(\d{1,2})\s*:\s*(\d{1,2})\s*$/.exec(hhmm||'');
+      if (!m) return undefined;
+      const h = Math.max(0, Math.min(23, parseInt(m[1],10)));
+      const min = Math.max(0, Math.min(59, parseInt(m[2],10)));
+      return h*60 + min;
+    }
+
+    function formatWorkTime(openMin, closeMin) {
+      return `${toHHMM(openMin)} - ${toHHMM(closeMin)}`;
     }
 
     document.getElementById('addR').onclick = async () => {
@@ -414,6 +472,20 @@
         await fetch(api + '/admin/users/block?user_id=' + id + '&block=false', { method:'POST', headers });
         loadUsers();
         alert('Пользователь разблокирован');
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    // Снять права админа ресторана
+    document.getElementById('revokeRA').onclick = async () => {
+      try {
+        const input = (document.getElementById('uidInput').value||'').trim();
+        if (!input) return alert('Введите ID или @username');
+        const id = await resolveUserId(input);
+        const res = await fetch(api + '/admin/users/unbind-admin?user_id=' + id, { method: 'POST', headers });
+        if (!res.ok) throw new Error('Не удалось снять права админа');
+        loadUsers();
+        alert('Права администратора ресторана сняты');
       } catch (error) {
         alert(error.message);
       }

@@ -359,6 +359,7 @@ async def ra_set_status(enabled: bool, rid: int = Depends(require_restaurant_id)
 class RestaurantPatch(BaseModel):
     address: Optional[str] = None
     phone: Optional[str] = None
+    email: Optional[str] = None
     work_open_min: Optional[int] = None
     work_close_min: Optional[int] = None
     delivery_min_sum: Optional[int] = None
