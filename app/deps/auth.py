@@ -1,6 +1,9 @@
 import os
 from typing import Set
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request, Depends
+from sqlalchemy.orm import Session
+from app.db import get_db
+from app.models import User as DBUser
 import hmac
 import base64
 from dotenv import load_dotenv
@@ -56,6 +59,7 @@ def require_super_admin(
 def require_user_id(
     request: Request,
     x_telegram_user_id: int | None = Header(default=None, alias="X-Telegram-User-Id"),
+    db: Session = Depends(get_db),
 ) -> int:
     user_id: int | None = x_telegram_user_id
     if user_id is None:
@@ -67,6 +71,17 @@ def require_user_id(
     if user_id is None:
         logger.warning("missing user id for request %s", request.url.path)
         raise HTTPException(status_code=401, detail="user_id_required")
+
+    # deny access for blocked users
+    try:
+        u = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if u and u.is_blocked:
+            logger.warning("blocked user access denied", extra={"user_id": user_id, "path": request.url.path})
+            raise HTTPException(status_code=403, detail="user_blocked")
+    except Exception:
+        # if DB unavailable, fail closed for safety
+        pass
+
     return user_id
 
 
