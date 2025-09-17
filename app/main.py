@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import json
+import asyncio
 
 from app.routers import restaurants, menu, cart, orders
 from app.routers import config as config_router
@@ -19,10 +20,31 @@ from app.routers import selections as selections_router
 from app.routers import collections as collections_router
 from app.routers import public as public_router
 from app.db_init import init_db_and_seed
+from app.email_service import email_service
 
 setup_logging()
 logger = get_logger("main")
 app = FastAPI(title="Yandex Eda TG MiniApp API", version="0.1.0")
+
+# Функция для асинхронной отправки email
+async def send_email_background(restaurant_email: str, restaurant_name: str, order_data: dict):
+    """Отправляет email в фоновом режиме"""
+    try:
+        # Запускаем в отдельном потоке, чтобы не блокировать event loop
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None, 
+            email_service.send_order_notification,
+            restaurant_email,
+            restaurant_name,
+            order_data
+        )
+        logger.info(f"Email успешно отправлен в фоне для заказа #{order_data['id']}")
+    except Exception as e:
+        logger.error(f"Ошибка при отправке email в фоне: {e}")
+
+# Делаем функцию доступной для роутеров
+app.send_email_background = send_email_background
 
 # Middleware для увеличения лимита размера файлов
 class LargeFileMiddleware(BaseHTTPMiddleware):

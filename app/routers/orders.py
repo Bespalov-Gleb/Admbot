@@ -202,7 +202,7 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
     except Exception as exc:
         logger.exception("Failed to send notification to restaurant admins: %s", repr(exc))
 
-    # Email уведомление ресторану о новом заказе
+    # Email уведомление ресторану о новом заказе (асинхронно)
     try:
         r = db.query(ORestaurant).filter(ORestaurant.id == db_order.restaurant_id).first()
         if r and r.email:
@@ -226,13 +226,17 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 ]
             }
             
-            email_service.send_order_notification(
+            # Отправляем email в фоновом режиме
+            import asyncio
+            from app.main import send_email_background
+            asyncio.create_task(send_email_background(
                 restaurant_email=r.email,
                 restaurant_name=r.name,
                 order_data=order_data
-            )
+            ))
+            logger.info(f"Email отправка запланирована в фоне для заказа #{db_order.id}")
     except Exception as exc:
-        logger.exception("Failed to send email notification: %s", repr(exc))
+        logger.exception("Failed to schedule email notification: %s", repr(exc))
 
     # notify user with deep‑link to current order (mini app web_app)
     try:
