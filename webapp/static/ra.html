@@ -797,7 +797,10 @@
       <a id="navMenu" href="#">Управление меню</a>
       <span style="opacity:.4;margin:0 8px">|</span>
       <a id="navProfile" href="#">Профиль админа</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navPromotions" href="#">🎯 Акции</a>
     </div>
+
 
     <div class="controls-section">
       <button id="refresh" class="admin-btn">🔄 Обновить</button>
@@ -1641,6 +1644,13 @@
         location.href = '/static/ra_profile.html?' + p.toString();
       };
       
+      document.getElementById('navPromotions').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_promotions.html?' + p.toString();
+      };
+      
       // Обработчик для кнопки "Обновить"
       const refreshBtn = document.getElementById('refresh');
       if (refreshBtn) {
@@ -1824,8 +1834,11 @@
         console.log('=== NO ORDER_ID IN URL ===');
         console.log('Modal will not open automatically');
       }
+
+
     });
   </script>
+
 </body>
 </html>
 

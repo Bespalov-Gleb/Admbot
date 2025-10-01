@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/static/page-cache.js"></script>
-  <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
+  <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <script src="/static/page-transitions.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
@@ -858,9 +857,38 @@
       height: 80px;
       transition: height 0.3s ease;
     }
+
+    /* ====== МОДАЛЬНОЕ ОКНО БЛЮДА (как страница блюда) ====== */
+    #dishModal .modal-content { height: 100vh !important; border-radius: 0 !important; top: 0 !important; bottom: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+    #dishModal .modal-body { flex: 1 1 auto !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+    #dishModal .dish-hero { width: 100%; height: 300px; overflow: hidden; }
+    #dishModal .dish-hero img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    #dishModal .dish-title { font-size: 20px; font-weight: 700; color: #1f2937; margin: 12px 16px 8px; }
+    #dishModal .dish-desc { color: #6b7280; font-size: 14px; margin: 0 16px 12px; line-height: 1.4; }
+    #dishModal .option-group { padding: 12px 16px; border-top: 1px solid #f1f5f9; }
+    #dishModal .option-group .title { font-weight: 700; margin-bottom: 8px; }
+    #dishModal .option-group .title.required::after { content: ' *'; color: #ef4444; }
+    #dishModal .option-item { display:flex; align-items:center; gap:10px; padding:8px 0; }
+    #dishModal .option-item label { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; }
+    #dishModal .option-price { color:#64748b; font-size:12px; }
+    #dishModal .buy-bar { position: sticky; bottom: 0; left:0; right:0; background:#fff; border-top:1px solid #e5e7eb; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
+    #dishModal .qty { display:flex; align-items:center; gap:10px; }
+    #dishModal .qty button { width:32px; height:32px; border:1px solid #e5e7eb; background:#fff; border-radius:6px; font-size:18px; }
+    #dishModal .primary { background:#dc2626; color:#fff; border:none; padding:12px 16px; border-radius:8px; font-weight:700; }
   </style>
 </head>
 <body>
+  <script>
+    // Блокируем прокрутку body при открытой модалке блюда
+    (function lockScrollForDishModal(){
+      const observer = new MutationObserver(() => {
+        const modal = document.getElementById('dishModal');
+        const opened = modal && modal.classList.contains('show');
+        document.body.style.overflow = opened ? 'hidden' : '';
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    })();
+  </script>
   <div class="container">
     <!-- Кнопка назад -->
     <div class="back-button-container">
@@ -970,6 +998,31 @@
 </div>
   </div>
   
+  <!-- Модальное окно блюда -->
+  <div class="restaurant-info-modal" id="dishModal">
+    <div class="modal-content" style="top:0;bottom:0;">
+      <div class="modal-header">
+        <button class="back-button" onclick="hideDishModal()">←</button>
+        <h2 class="modal-title" id="dishModalTitle">Блюдо</h2>
+        <div class="header-spacer"></div>
+      </div>
+      <div class="modal-body" style="padding:0; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+        <div class="dish-hero"><img id="dishHeroImg" src="" alt=""/></div>
+        <div class="dish-title" id="dishTitle"></div>
+        <div class="dish-desc" id="dishDesc"></div>
+        <div id="dishOptions"></div>
+        <div class="buy-bar">
+          <div class="qty">
+            <button id="dishMinus">−</button>
+            <span id="dishQty" style="min-width:24px;text-align:center">1</span>
+            <button id="dishPlus">+</button>
+          </div>
+          <button id="dishAdd" class="primary">В корзину <span id="dishSumBtn"></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Навигация -->
   <div class="nav-container">
     <a id="navHome" href="#" class="nav-item">
@@ -999,8 +1052,7 @@
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
     const uid = (q.get('uid') && Number(q.get('uid'))) || tg?.initDataUnsafe?.user?.id || 0;
-    const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
+    const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     
     let restaurantId = Number(q.get('id')) || 0;
     let categories = [];
@@ -1008,16 +1060,15 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     let cart = { items: [] };
     let dishesMap = new Map();
     let restaurantsMap = new Map();
-    let optionsMap = new Map();
     let activeCategory = null;
     let scrollPosition = 0; // Позиция прокрутки для навигации внутри страницы ресторана
     
     async function loadMenu() {
       try {
         const [catRes, dishRes, restRes] = await Promise.all([
-          fetch(api + '/categories?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders }),
-          fetch(api + '/dishes?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders }),
-          fetch(api + '/restaurants/' + restaurantId + (uid ? ('?uid=' + uid) : ''), { headers: getHeaders })
+          fetch(api + '/categories?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers }),
+          fetch(api + '/dishes?restaurant_id=' + restaurantId + (uid ? ('&uid=' + uid) : ''), { headers }),
+          fetch(api + '/restaurants/' + restaurantId + (uid ? ('?uid=' + uid) : ''), { headers })
         ]);
         
         categories = await catRes.json();
@@ -1030,16 +1081,6 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         dishes.forEach(dish => {
           dishesMap.set(dish.id, dish);
         });
-        
-        // Загружаем опции для всех блюд
-        if (dishes.length > 0) {
-          const dishIds = dishes.map(d => d.id);
-          const optionsRes = await fetch(api + '/options/bulk?dish_ids=' + dishIds.join(',') + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders });
-          if (optionsRes.ok) {
-            const optionsData = await optionsRes.json();
-            optionsMap = new Map(optionsData.options.map(o => [o.id, o]));
-          }
-        }
         
         await renderRestaurantHeader(restaurant);
         renderCategories();
@@ -1184,20 +1225,14 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
           `;
           
           // Делаем всю карточку кликабельной для перехода к блюду
-          card.onclick = (e) => {
+          card.onclick = async (e) => {
             // Если кликнули на кнопку добавления или управления количеством, не переходим к блюду
             if (e.target.closest('.add-btn') || e.target.closest('.qty-btn')) {
               return;
             }
             
-            // Сохраняем позицию прокрутки перед переходом к блюду
-            saveScrollPosition();
-            
-            const p = new URLSearchParams(location.search);
-            if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
-            p.set('category_id', dish.category_id);
-            p.set('scroll_position', scrollPosition.toString());
-            location.href = '/static/dish.html?id=' + dish.id + '&' + p.toString();
+            // Открываем блюдо в модальном окне
+            await openDishModal(dish.id, dish.category_id);
           };
           
           const controls = card.querySelector('.controls');
@@ -1211,8 +1246,18 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       
       loadCartAndSync();
       
-      // Позиция скролла теперь управляется scroll-persistence.js
-      // Убираем автоскролл - система сама восстановит позицию
+      // Восстанавливаем позицию прокрутки после загрузки контента только при переходе из блюда
+      const urlParams = new URLSearchParams(location.search);
+      const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
+      const fromPage = urlParams.get('from');
+      
+      if (savedScrollPosition > 0 && fromPage === 'dish') {
+        // Небольшая задержка для завершения рендеринга
+        setTimeout(() => {
+          window.scrollTo(0, savedScrollPosition);
+          console.log('Restored scroll position after content load:', savedScrollPosition);
+        }, 100);
+      }
     }
     
     async function addToCart(dishId, deltaQty) {
@@ -1287,7 +1332,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     }
     
     async function loadCartAndSync() {
-        const res = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), { headers: getHeaders });
+      const res = await fetch(api + '/cart' + (uid ? ('?uid=' + uid) : ''), { headers });
       cart = await res.json();
       clearQtyCache(); // Очищаем кэш перед обновлением
       renderQtyControls();
@@ -1331,18 +1376,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
           // Кнопка "+" для добавления блюда
           c.innerHTML = '<button class="add-btn">+</button>';
           const addBtn = c.querySelector('.add-btn');
-          addBtn.onclick = () => {
-            // Если у блюда есть опции, переходим к странице блюда
+          addBtn.onclick = async () => {
+            // Если у блюда есть опции, открываем модалку блюда
             if (dish?.has_options) {
-              // Сохраняем позицию прокрутки перед переходом к блюду
-              saveScrollPosition();
-              
-              const p = new URLSearchParams(location.search);
-              if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
-              const categoryId = c.getAttribute('data-category');
-        p.set('category_id', categoryId);
-        p.set('scroll_position', scrollPosition.toString());
-        location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
+              await openDishModal(dishId, c.getAttribute('data-category'));
               return;
             }
             // Если опций нет, добавляем в корзину с анимацией
@@ -1369,20 +1406,11 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
           c.querySelector('[data-act="dec"]').onclick = () => updateQtyClient(dishId, -1);
           
           // Обработчик для кнопки "+"
-          c.querySelector('[data-act="inc"]').onclick = () => {
+          c.querySelector('[data-act="inc"]').onclick = async () => {
             // console.log('DEBUG: renderQtyControls + button clicked - dishId:', dishId, 'dish:', dish, 'has_options:', dish?.has_options);
             // Если у блюда есть опции, переходим к странице блюда
             if (dish?.has_options) {
-              // console.log('DEBUG: Redirecting to dish page for options');
-              // Сохраняем позицию прокрутки перед переходом к блюду
-              saveScrollPosition();
-              
-              const p = new URLSearchParams(location.search);
-              if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning','1');
-              const categoryId = c.getAttribute('data-category');
-        p.set('category_id', categoryId);
-        p.set('scroll_position', scrollPosition.toString());
-        location.href = '/static/dish.html?id=' + dishId + '&' + p.toString();
+              await openDishModal(dishId, c.getAttribute('data-category'));
               return;
             }
             // console.log('DEBUG: Adding to cart directly');
@@ -1415,9 +1443,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       return cart.items.reduce((sum, it) => {
         const d = dishesMap.get(it.dish_id);
         if (!d || d.restaurant_id !== restaurantId) return sum;
-        const chosen = (it.chosen_options || []).map(id => optionsMap.get(id)).filter(Boolean);
-        const delta = chosen.reduce((s, o) => s + (o.price_delta || 0), 0);
-        return sum + (d.price + delta) * it.qty;
+        return sum + (d.price || 0) * it.qty;
       }, 0);
     }
     
@@ -1540,6 +1566,97 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       const modal = document.getElementById('restaurantInfoModal');
       modal.classList.remove('show');
     }
+
+    // ====== ЛОГИКА МОДАЛКИ БЛЮДА ======
+    let dishModalState = { dish:null, groups:[], options:[], qty:1 };
+    function calcDishModalTotal() {
+      let total = (dishModalState.dish?.price || 0) * dishModalState.qty;
+      const chosen = document.querySelectorAll('#dishOptions input[type="checkbox"]:checked, #dishOptions input[type="radio"]:checked');
+      chosen.forEach(cb => {
+        const oid = Number(cb.value);
+        const opt = dishModalState.options.find(o => o.id === oid);
+        if (opt) total += (opt.price_delta || 0) * dishModalState.qty;
+      });
+      return total;
+    }
+
+    async function openDishModal(dishId, categoryId) {
+      try {
+        const [dRes, oRes] = await Promise.all([
+          fetch(api + '/dishes/' + dishId, { headers }),
+          fetch(api + '/dishes/' + dishId + '/options', { headers })
+        ]);
+        const dish = await dRes.json();
+        const data = await oRes.json();
+        dishModalState = { dish, groups: data.groups || [], options: data.options || [], qty:1 };
+
+        // Заполняем UI
+        document.getElementById('dishHeroImg').src = dish.image || '';
+        document.getElementById('dishHeroImg').alt = dish.name || '';
+        document.getElementById('dishModalTitle').textContent = 'Блюдо';
+        document.getElementById('dishTitle').textContent = dish.name || '';
+        document.getElementById('dishDesc').textContent = dish.description || '';
+        document.getElementById('dishQty').textContent = '1';
+        document.getElementById('dishSumBtn').textContent = calcDishModalTotal() + ' р';
+
+        const root = document.getElementById('dishOptions');
+        root.innerHTML = '';
+        dishModalState.groups.forEach(g => {
+          const block = document.createElement('div');
+          block.className = 'option-group';
+          const title = document.createElement('div');
+          title.className = 'title';
+          if (g.required) title.classList.add('required');
+          title.textContent = g.name;
+          block.appendChild(title);
+          const list = document.createElement('div');
+          dishModalState.options.filter(o => o.group_id === g.id).forEach(o => {
+            const id = `md_g${g.id}_o${o.id}`;
+            const input = document.createElement('input');
+            input.type = (g.max_select === 1 && g.min_select <= 1) ? 'radio' : 'checkbox';
+            input.name = 'g' + g.id;
+            input.id = id;
+            input.value = String(o.id);
+            input.onchange = () => { document.getElementById('dishSumBtn').textContent = calcDishModalTotal() + ' р'; };
+            const label = document.createElement('label');
+            label.htmlFor = id;
+            const labelText = document.createElement('span');
+            labelText.textContent = o.name;
+            const priceSpan = document.createElement('span');
+            if (o.price_delta) { priceSpan.className = 'option-price'; priceSpan.textContent = o.price_delta + ' ₽'; }
+            label.appendChild(labelText);
+            label.appendChild(priceSpan);
+            const row = document.createElement('div');
+            row.className = 'option-item';
+            row.appendChild(input);
+            row.appendChild(label);
+            list.appendChild(row);
+          });
+          block.appendChild(list);
+          root.appendChild(block);
+        });
+
+        // Кол-во
+        document.getElementById('dishMinus').onclick = () => { dishModalState.qty = Math.max(1, dishModalState.qty-1); document.getElementById('dishQty').textContent = String(dishModalState.qty); document.getElementById('dishSumBtn').textContent = calcDishModalTotal() + ' р'; };
+        document.getElementById('dishPlus').onclick = () => { dishModalState.qty = dishModalState.qty+1; document.getElementById('dishQty').textContent = String(dishModalState.qty); document.getElementById('dishSumBtn').textContent = calcDishModalTotal() + ' р'; };
+
+        document.getElementById('dishAdd').onclick = async () => {
+          const qty = dishModalState.qty;
+          const chosen = [];
+          document.querySelectorAll('#dishOptions input[type="checkbox"]:checked, #dishOptions input[type="radio"]:checked').forEach(cb => chosen.push(parseInt(cb.value)));
+          const cartData = { restaurant_id: dish.restaurant_id, dish_id: dish.id, qty, chosen_options: chosen };
+          const res = await fetch(api + '/cart/items' + (uid ? ('?uid=' + uid) : ''), { method:'POST', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify(cartData) });
+          if (res.ok) { hideDishModal(); await loadCartAndSync(); }
+        };
+
+        // Показать модалку
+        document.getElementById('dishModal').classList.add('show');
+        document.getElementById('dishModal').addEventListener('click', (e) => { if (e.target.id === 'dishModal') hideDishModal(); });
+      } catch (e) { console.error('openDishModal failed', e); }
+    }
+
+    function hideDishModal() { document.getElementById('dishModal').classList.remove('show'); }
+
     
     function formatTime(minutes) {
       const hours = Math.floor(minutes / 60);
@@ -1566,7 +1683,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       list.innerHTML = '';
       
       // Load names
-        const resR = await fetch(api + '/restaurants/_bulk?ids=' + encodeURIComponent(restIds.join(',')) + (uid ? ('&uid=' + uid) : ''), { headers: getHeaders });
+      const resR = await fetch(api + '/restaurants/_bulk?ids=' + encodeURIComponent(restIds.join(',')) + (uid ? ('&uid=' + uid) : ''), { headers });
       const rests = resR.ok ? await resR.json() : [];
       rests.forEach(r => {
         const row = document.createElement('div');
@@ -1613,7 +1730,25 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       console.log('Saved scroll position:', scrollPosition);
     }
     
-    // Функция restoreScrollPosition удалена - теперь управляется scroll-persistence.js
+    function restoreScrollPosition() {
+      if (scrollPosition > 0) {
+        // Проверяем, что высота страницы достаточна для скролла
+        const pageHeight = Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.clientHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        );
+        
+        if (pageHeight > scrollPosition) {
+          window.scrollTo(0, scrollPosition);
+          console.log('Restored scroll position:', scrollPosition);
+        } else {
+          console.log('Page height too small for scroll position:', pageHeight, 'vs', scrollPosition);
+        }
+      }
+    }
     
     // Функция для возврата назад
     function goBack() {
@@ -1644,50 +1779,26 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     // Проверяем, нужно ли скроллить к категории
     const urlParams = new URLSearchParams(location.search);
     
-    // Позиция скролла теперь управляется scroll-persistence.js
-    // Убираем автоскролл - система сама восстановит позицию
+    // Восстанавливаем позицию прокрутки только при возврате со страницы блюда
+    const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
+    const fromPage = urlParams.get('from');
     
-    // Проверка доступа (блокировка)
-    async function checkAccess() {
-      try {
-        const res = await fetch(api + '/users/activate', { method: 'POST', headers, body: JSON.stringify({}) });
-        if (res.status === 403) {
-          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Ошибка доступа</div>';
-          return false;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user && data.user.is_blocked) {
-            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#333">Доступ запрещен</div>';
-            return false;
-          }
-        }
-      } catch (e) {}
-      return true;
+    console.log('From page:', fromPage, 'Saved scroll position:', savedScrollPosition);
+    
+    if (savedScrollPosition > 0 && fromPage === 'dish') {
+      // Устанавливаем позицию в переменную для использования в restoreScrollPosition
+      scrollPosition = savedScrollPosition;
+      console.log('Scroll position changed to:', savedScrollPosition);
+      
+      // Сразу устанавливаем позицию прокрутки
+      window.scrollTo(0, savedScrollPosition);
+      console.log('Immediate scroll to position:', savedScrollPosition);
+    } else if (fromPage === 'index') {
+      console.log('Transition from index page - no scroll restoration needed');
     }
-
-    // Скрываем страницу до полной загрузки
-    hidePageUntilReady();
     
-    // Загружаем меню СРАЗУ, а позицию восстанавливаем после
-    (async () => {
-      if (await checkAccess()) {
-        await loadMenu();
-        // После загрузки меню восстанавливаем позицию
-        setTimeout(() => {
-          if (window.pageCache) {
-            window.pageCache.restoreScrollPosition();
-          }
-          // Показываем страницу после восстановления позиции
-          setTimeout(() => {
-            showPageAfterReady();
-          }, 50);
-        }, 100);
-      } else {
-        // Если нет доступа, показываем страницу сразу
-        showPageAfterReady();
-      }
-    })();
+    // Primary initialization
+    loadMenu();
     
     const scrollToCategoryId = urlParams.get('scroll_to_category');
     if (scrollToCategoryId) {

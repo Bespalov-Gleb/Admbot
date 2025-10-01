@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from app.deps.auth import require_super_admin
 from app.routers.restaurants import Restaurant
 from app.services.telegram import send_admin_message, bot
@@ -13,7 +13,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from app.db import get_db
-from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption, CartItem
+from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption, CartItem, Promotion as DBPromotion
 import os
 import uuid
 import shutil
@@ -883,4 +883,221 @@ async def delete_dish(dish_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Dish and all related data deleted successfully"}
+
+
+# ========== PROMOTIONS API ==========
+
+class PromotionCreate(BaseModel):
+    name: str
+    description: str
+    restaurant_id: int  # Обязательно для конкретного ресторана
+
+
+class PromotionResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    image: str
+    restaurant_id: Optional[int] = None
+    restaurant_name: Optional[str] = None
+    created_by_admin: bool
+    created_at: datetime
+    is_active: bool
+
+
+@router.get("/promotions/{promotion_id}", response_model=PromotionResponse)
+async def get_promotion(
+    promotion_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    promotion = db.query(DBPromotion).filter(DBPromotion.id == promotion_id).first()
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    
+    restaurant_name = None
+    if promotion.restaurant_id:
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == promotion.restaurant_id).first()
+        restaurant_name = restaurant.name if restaurant else None
+        
+    return PromotionResponse(
+        id=promotion.id,
+        name=promotion.name,
+        description=promotion.description,
+        image=promotion.image,
+        restaurant_id=promotion.restaurant_id,
+        restaurant_name=restaurant_name,
+        created_by_admin=promotion.created_by_admin,
+        created_at=promotion.created_at,
+        is_active=promotion.is_active
+    )
+
+
+@router.post("/promotions", response_model=PromotionResponse)
+async def create_promotion(
+    promotion: PromotionCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    """Создать акцию (главный админ)"""
+    
+    # Проверяем, что ресторан существует
+    restaurant = db.query(ORestaurant).filter(ORestaurant.id == promotion.restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
+    # Создаем акцию
+    db_promotion = DBPromotion(
+        name=promotion.name,
+        description=promotion.description,
+        restaurant_id=promotion.restaurant_id,
+        created_by_admin=True,
+        is_active=True
+    )
+    
+    db.add(db_promotion)
+    db.commit()
+    db.refresh(db_promotion)
+    
+    # Получаем название ресторана
+    restaurant_name = None
+    if db_promotion.restaurant_id:
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == db_promotion.restaurant_id).first()
+        restaurant_name = restaurant.name if restaurant else None
+    
+    return PromotionResponse(
+        id=db_promotion.id,
+        name=db_promotion.name,
+        description=db_promotion.description,
+        image=db_promotion.image,
+        restaurant_id=db_promotion.restaurant_id,
+        restaurant_name=restaurant_name,
+        created_by_admin=db_promotion.created_by_admin,
+        created_at=db_promotion.created_at,
+        is_active=db_promotion.is_active
+    )
+
+
+class PromotionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+@router.patch("/promotions/{promotion_id}", response_model=PromotionResponse)
+async def update_promotion(
+    promotion_id: int,
+    promotion_data: PromotionUpdate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    promotion = db.query(DBPromotion).filter(DBPromotion.id == promotion_id).first()
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+
+    if promotion_data.name is not None:
+        promotion.name = promotion_data.name
+    if promotion_data.description is not None:
+        promotion.description = promotion_data.description
+    
+    db.commit()
+    db.refresh(promotion)
+
+    restaurant_name = None
+    if promotion.restaurant_id:
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == promotion.restaurant_id).first()
+        restaurant_name = restaurant.name if restaurant else None
+
+    return PromotionResponse(
+        id=promotion.id,
+        name=promotion.name,
+        description=promotion.description,
+        image=promotion.image,
+        restaurant_id=promotion.restaurant_id,
+        restaurant_name=restaurant_name,
+        created_by_admin=promotion.created_by_admin,
+        created_at=promotion.created_at,
+        is_active=promotion.is_active
+    )
+
+
+@router.post("/promotions/{promotion_id}/upload-image")
+async def upload_promotion_image(
+    promotion_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    """Загрузить изображение для акции"""
+    
+    promotion = db.query(DBPromotion).filter(DBPromotion.id == promotion_id).first()
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    
+    # Обрабатываем изображение
+    try:
+        processor = ImageProcessor()
+        file_content = await file.read()
+        result = processor.process_image(file_content, file.filename, "uploads")
+        image_url = result["urls"]["original"]
+    except Exception as e:
+        logger.error(f"Ошибка обработки изображения акции: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки изображения: {str(e)}")
+    
+    # Обновляем акцию
+    promotion.image = image_url
+    db.commit()
+    
+    return {"image_url": image_url}
+
+
+@router.get("/promotions", response_model=List[PromotionResponse])
+async def list_promotions(
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    """Получить список всех акций"""
+    
+    promotions = db.query(DBPromotion).filter(
+        DBPromotion.is_active == True,
+        DBPromotion.restaurant_id.isnot(None)  # Только акции с рестораном
+    ).order_by(DBPromotion.created_at.desc()).all()
+    
+    result = []
+    for promotion in promotions:
+        restaurant_name = None
+        if promotion.restaurant_id:
+            restaurant = db.query(ORestaurant).filter(ORestaurant.id == promotion.restaurant_id).first()
+            restaurant_name = restaurant.name if restaurant else None
+        
+        result.append(PromotionResponse(
+            id=promotion.id,
+            name=promotion.name,
+            description=promotion.description,
+            image=promotion.image,
+            restaurant_id=promotion.restaurant_id,
+            restaurant_name=restaurant_name,
+            created_by_admin=promotion.created_by_admin,
+            created_at=promotion.created_at,
+            is_active=promotion.is_active
+        ))
+    
+    return result
+
+
+@router.delete("/promotions/{promotion_id}")
+async def delete_promotion(
+    promotion_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_super_admin)
+):
+    """Удалить акцию"""
+    
+    promotion = db.query(DBPromotion).filter(DBPromotion.id == promotion_id).first()
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    
+    db.delete(promotion)
+    db.commit()
+    
+    return {"message": "Promotion deleted successfully"}
 

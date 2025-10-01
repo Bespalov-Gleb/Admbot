@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.db import get_db
-from app.models import Collection as DBCollection, CollectionItem as DBCollectionItem, Restaurant as DBRestaurant, Dish as DBDish, Review as DBReview
+from app.models import Collection as DBCollection, CollectionItem as DBCollectionItem, Restaurant as DBRestaurant, Dish as DBDish, Review as DBReview, Promotion as DBPromotion
 
 router = APIRouter()
 
@@ -88,6 +88,40 @@ async def get_public_collections(db: Session = Depends(get_db)) -> List[dict]:
             "description": collection.description,
             "image": collection.image,
             "items": collection_items
+        })
+    
+    return result
+
+
+# ========== PROMOTIONS API (PUBLIC) ==========
+
+@router.get("/promotions")
+async def get_public_promotions(db: Session = Depends(get_db)):
+    """Получить список всех активных акций (публичный доступ)"""
+    
+    promotions = db.query(DBPromotion).filter(
+        DBPromotion.is_active == True,
+        DBPromotion.restaurant_id.isnot(None)  # Только акции с рестораном
+    ).order_by(DBPromotion.created_at.desc()).all()
+    
+    result = []
+    for promotion in promotions:
+        restaurant_name = None
+        restaurant_image = None
+        if promotion.restaurant_id:
+            restaurant = db.query(DBRestaurant).filter(DBRestaurant.id == promotion.restaurant_id).first()
+            restaurant_name = restaurant.name if restaurant else None
+            restaurant_image = restaurant.image if restaurant else None
+        
+        result.append({
+            "id": promotion.id,
+            "name": promotion.name,
+            "description": promotion.description,
+            "image": promotion.image,
+            "restaurant_id": promotion.restaurant_id,
+            "restaurant_name": restaurant_name,
+            "restaurant_image": restaurant_image,
+            "created_at": promotion.created_at.isoformat()
         })
     
     return result 

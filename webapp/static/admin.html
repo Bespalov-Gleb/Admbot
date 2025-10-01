@@ -25,6 +25,10 @@
           </div>
           
           <div class="form-group">
+            <button id="createPromotionBtn" class="promotion-btn">🎯 Добавить акцию</button>
+          </div>
+          
+          <div class="form-group">
             <label>Создать ресторан с админом</label>
             <input id="newRestName" placeholder="Название ресторана"/>
             <input id="newRestUsername" placeholder="@username или ID пользователя"/>
@@ -115,6 +119,20 @@
           </div>
           <div id="collectionsList"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Promotions Section -->
+    <div class="admin-section">
+      <h3 id="promotionsToggle" style="cursor: pointer; user-select: none;">
+        <span id="promotionsIcon">▶</span> Управление акциями
+      </h3>
+      <div id="promotionsContent" style="display: none;">
+        <div class="form-group">
+          <button id="createPromotionBtnNew" class="create-promotion-btn">🎯 Создать акцию</button>
+          <button id="loadPromotions" class="refresh-btn">🔄 Обновить список</button>
+        </div>
+        <div id="promotionsList"></div>
       </div>
     </div>
 
@@ -1933,6 +1951,431 @@
       </div>
     </div>
   </div>
+
+  <!-- Модальное окно для создания акции -->
+  <div id="createPromotionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎯 Создать акцию</h3>
+        <button type="button" class="close-btn" onclick="closeCreatePromotionModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Выберите ресторан:</label>
+          <select id="promotionRestaurantSelect" class="form-control" required>
+            <option value="">-- Выберите ресторан --</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Название акции:</label>
+          <input type="text" id="promotionName" class="form-control" placeholder="Введите название акции" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Описание акции:</label>
+          <textarea id="promotionDescription" class="form-control" rows="4" placeholder="Введите описание акции" required></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Фото акции:</label>
+          <input type="file" id="promotionImage" class="form-control" onchange="previewImage(event, 'createPromotionImagePreview')">
+          <img id="createPromotionImagePreview" style="display: none;" class="image-preview" />
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="cancel-btn" onclick="closeCreatePromotionModal()">Отмена</button>
+        <button type="button" class="btn-primary" id="createPromotion" onclick="createPromotion()">
+          🎯 Создать акцию
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для редактирования акции -->
+  <div id="editPromotionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Редактировать акцию</h3>
+        <button type="button" class="close-btn" onclick="closeEditPromotionModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPromotionId">
+        <div class="form-group">
+          <label>Название акции:</label>
+          <input type="text" id="editPromotionName" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Описание акции:</label>
+          <textarea id="editPromotionDescription" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Фото акции:</label>
+          <input type="file" id="editPromotionImage" class="form-control" onchange="previewImage(event, 'editPromotionImagePreview')">
+          <img id="editPromotionImagePreview" style="display: none;" class="image-preview" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="cancel-btn" onclick="closeEditPromotionModal()">Отмена</button>
+        <button type="button" class="btn-primary" id="savePromotion" onclick="updatePromotion()">
+          💾 Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    // ========== PROMOTIONS FUNCTIONS ==========
+    
+    // Открыть модальное окно создания акции
+    function showCreatePromotionModal() {
+      document.getElementById('createPromotionModal').style.display = 'flex';
+      loadRestaurantsForPromotion();
+    }
+    
+    // Закрыть модальное окно создания акции
+    function closeCreatePromotionModal() {
+      document.getElementById('createPromotionModal').style.display = 'none';
+      // Очистить форму
+      document.getElementById('promotionName').value = '';
+      document.getElementById('promotionDescription').value = '';
+      document.getElementById('promotionImage').value = '';
+      document.getElementById('createPromotionImagePreview').style.display = 'none';
+    }
+    
+    // Загрузить список ресторанов для выбора
+    async function loadRestaurantsForPromotion() {
+      try {
+        const response = await fetch(api + '/admin/restaurants', { headers });
+        const restaurants = await response.json();
+        
+        const select = document.getElementById('promotionRestaurantSelect');
+        select.innerHTML = '<option value="">-- Выберите ресторан --</option>';
+        
+        restaurants.forEach(restaurant => {
+          const option = document.createElement('option');
+          option.value = restaurant.id;
+          option.textContent = restaurant.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Ошибка загрузки ресторанов:', error);
+      }
+    }
+    
+    // Создать акцию
+    async function createPromotion() {
+      const name = document.getElementById('promotionName').value.trim();
+      const description = document.getElementById('promotionDescription').value.trim();
+      const restaurantId = document.getElementById('promotionRestaurantSelect').value;
+      const imageFile = document.getElementById('promotionImage').files[0];
+      
+      if (!name || !description || !restaurantId) {
+        alert('Заполните все обязательные поля и выберите ресторан');
+        return;
+      }
+      
+      try {
+        // Создаем акцию
+        const promotionData = {
+          name: name,
+          description: description,
+          restaurant_id: parseInt(restaurantId)
+        };
+        
+        console.log('Отправляем данные акции:', promotionData);
+        
+        const response = await fetch(api + '/admin/promotions', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(promotionData)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Ошибка создания акции:', response.status, errorText);
+          throw new Error(`Ошибка создания акции: ${response.status} - ${errorText}`);
+        }
+        
+        const promotion = await response.json();
+        
+        // Загружаем изображение, если выбрано
+        if (imageFile) {
+          const formData = new FormData();
+          formData.append('file', imageFile);
+          
+          // Создаем заголовки без Content-Type для FormData
+          const uploadHeaders = { ...headers };
+          delete uploadHeaders['Content-Type'];
+          
+          const imageResponse = await fetch(api + `/admin/promotions/${promotion.id}/upload-image`, {
+            method: 'POST',
+            headers: uploadHeaders,
+            body: formData
+          });
+          
+          if (!imageResponse.ok) {
+            const errorText = await imageResponse.text();
+            console.error('Ошибка загрузки изображения акции:', imageResponse.status, errorText);
+            throw new Error(`Ошибка загрузки изображения: ${imageResponse.status} - ${errorText}`);
+          }
+        }
+        
+        alert('Акция успешно создана!');
+        closeCreatePromotionModal();
+        
+        // Обновляем список акций, если блок открыт
+        const promotionsContent = document.getElementById('promotionsContent');
+        if (promotionsContent && promotionsContent.style.display !== 'none') {
+          loadPromotionsList();
+        }
+        
+      } catch (error) {
+        console.error('Ошибка создания акции:', error);
+        alert('Ошибка создания акции: ' + error.message);
+      }
+    }
+    
+    // Обработчик кнопки создания акции (старая кнопка в быстрых действиях)
+    document.getElementById('createPromotionBtn').addEventListener('click', showCreatePromotionModal);
+    
+    // Обработчик кнопки создания акции (новая кнопка в блоке управления)
+    document.getElementById('createPromotionBtnNew').addEventListener('click', showCreatePromotionModal);
+    
+    // Обработчик блока управления акциями
+    document.getElementById('promotionsToggle').onclick = () => {
+      const content = document.getElementById('promotionsContent');
+      const icon = document.getElementById('promotionsIcon');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▼';
+        loadPromotionsList(); // Загружаем список акций при открытии
+      } else {
+        content.style.display = 'none';
+        icon.textContent = '▶';
+      }
+    };
+    
+    // Обработчик кнопки обновления списка акций
+    document.getElementById('loadPromotions').addEventListener('click', loadPromotionsList);
+    
+    
+    // Загрузить список акций
+    async function loadPromotionsList() {
+      try {
+        const response = await fetch(api + '/admin/promotions', { headers });
+        if (!response.ok) {
+          throw new Error('Ошибка загрузки акций');
+        }
+        
+        const promotions = await response.json();
+        renderPromotionsList(promotions);
+        
+      } catch (error) {
+        console.error('Ошибка загрузки акций:', error);
+        document.getElementById('promotionsList').innerHTML = '<div class="error">Ошибка загрузки акций</div>';
+      }
+    }
+    
+    // Отобразить список акций
+    function renderPromotionsList(promotions) {
+      const container = document.getElementById('promotionsList');
+      
+      if (!promotions || promotions.length === 0) {
+        container.innerHTML = '<div class="empty-state">Акций пока нет</div>';
+        return;
+      }
+      
+      const promotionsHTML = promotions.map(promotion => `
+        <div class="promotion-item" data-id="${promotion.id}">
+          <div class="promotion-info">
+            <div class="promotion-image">
+              ${promotion.image ? 
+                `<img src="${promotion.image}" alt="${promotion.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">` :
+                `<div style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #94a3b8;">🎯</div>`
+              }
+            </div>
+            <div class="promotion-details">
+              <h4>${promotion.name}</h4>
+              <p>${promotion.description}</p>
+              <small>Ресторан: ${promotion.restaurant_name}</small>
+            </div>
+          </div>
+          <div class="promotion-actions">
+            <button onclick="editPromotion(${promotion.id})" class="edit-btn">✏️</button>
+            <button onclick="deletePromotion(${promotion.id})" class="delete-btn">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+      
+      container.innerHTML = promotionsHTML;
+    }
+    
+    // Редактировать акцию
+    async function editPromotion(promotionId) {
+      try {
+        const response = await fetch(`${api}/admin/promotions/${promotionId}`, { headers });
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить данные акции');
+        }
+        const promotion = await response.json();
+        showEditPromotionModal(promotion);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function showEditPromotionModal(promotion) {
+      document.getElementById('editPromotionId').value = promotion.id;
+      document.getElementById('editPromotionName').value = promotion.name;
+      document.getElementById('editPromotionDescription').value = promotion.description;
+      
+      const previewImg = document.getElementById('editPromotionImagePreview');
+      
+      // Сбрасываем значение input file
+      document.getElementById('editPromotionImage').value = '';
+
+      if (promotion.image) {
+        previewImg.src = promotion.image;
+        previewImg.style.display = 'block';
+      } else {
+        previewImg.style.display = 'none';
+        previewImg.src = '';
+      }
+      
+      document.getElementById('editPromotionModal').style.display = 'flex';
+    }
+
+    function closeEditPromotionModal() {
+      document.getElementById('editPromotionModal').style.display = 'none';
+    }
+
+    async function updatePromotion() {
+      const promotionId = document.getElementById('editPromotionId').value;
+      const name = document.getElementById('editPromotionName').value.trim();
+      const description = document.getElementById('editPromotionDescription').value.trim();
+      const imageFile = document.getElementById('editPromotionImage').files[0];
+
+      if (!name || !description) {
+        alert('Заполните все поля');
+        return;
+      }
+
+      try {
+        // Обновляем текстовые данные
+        const updateData = { name, description };
+        const response = await fetch(`${api}/admin/promotions/${promotionId}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) throw new Error('Ошибка обновления акции');
+
+        // Если есть новый файл, загружаем его
+        if (imageFile) {
+          const formData = new FormData();
+          formData.append('file', imageFile);
+          const uploadHeaders = { ...headers };
+          delete uploadHeaders['Content-Type'];
+
+          const imageResponse = await fetch(`${api}/admin/promotions/${promotionId}/upload-image`, {
+            method: 'POST',
+            headers: uploadHeaders,
+            body: formData,
+          });
+
+          if (!imageResponse.ok) throw new Error('Ошибка загрузки нового изображения');
+        }
+        
+        alert('Акция успешно обновлена!');
+        closeEditPromotionModal();
+        loadPromotionsList();
+
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+    
+    // Удалить акцию
+    async function deletePromotion(promotionId) {
+      if (!confirm('Вы уверены, что хотите удалить эту акцию?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(api + `/admin/promotions/${promotionId}`, {
+          method: 'DELETE',
+          headers: headers
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка удаления акции');
+        }
+        
+        alert('Акция успешно удалена!');
+        loadPromotionsList(); // Обновляем список
+        
+      } catch (error) {
+        console.error('Ошибка удаления акции:', error);
+        alert('Ошибка удаления акции: ' + error.message);
+      }
+    }
+    
+    // ===== ОТЧИСТКА ФОРМЫ СОЗДАНИЯ АКЦИИ =====
+    function clearCreatePromotionForm() {
+      document.getElementById('promotionName').value = '';
+      document.getElementById('promotionDescription').value = '';
+      document.getElementById('promotionImage').value = '';
+      const preview = document.getElementById('createPromotionImagePreview');
+      preview.style.display = 'none';
+      preview.src = '';
+    }
+    
+    // ===== ПРЕВЬЮ ИЗОБРАЖЕНИЯ =====
+    function previewImage(event, previewElementId) {
+      const file = event.target.files[0];
+      const output = document.getElementById(previewElementId);
+
+      if (!output) {
+        console.error(`Preview element with ID '${previewElementId}' not found.`);
+        return;
+      }
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          output.src = reader.result;
+          output.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        output.src = '';
+        output.style.display = 'none';
+      }
+    }
+    
+    // ===== ЗАГРУЗКА СПИСКА АКЦИЙ =====
+    async function loadPromotions() {
+      try {
+        const response = await fetch(api + '/admin/promotions', { headers });
+        if (!response.ok) {
+          throw new Error('Ошибка загрузки акций');
+        }
+        
+        const promotions = await response.json();
+        renderPromotionsList(promotions);
+        
+      } catch (error) {
+        console.error('Ошибка загрузки акций:', error);
+        document.getElementById('promotionsList').innerHTML = '<div class="error">Ошибка загрузки акций</div>';
+      }
+    }
+  </script>
 </body>
 </html>
 

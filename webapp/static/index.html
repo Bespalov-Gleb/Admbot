@@ -23,10 +23,10 @@
         <span class="nav-icon nav-icon-home"></span>
         <span>Главное</span>
       </a>
-      <span class="nav-item disabled">
+      <a id="navPromotions" href="/static/promotions.html" class="nav-item">
         <span class="nav-icon nav-icon-promo"></span>
         <span>Акции</span>
-      </span>
+      </a>
       <a id="navCart" href="#" class="nav-item">
         <span class="nav-icon nav-icon-cart"></span>
         <span>Корзина</span>
@@ -46,6 +46,22 @@
     const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     const uidQ = uid ? ('?uid=' + encodeURIComponent(String(uid))) : '';
+    
+    // ===== АНКОР ДЛЯ ВОЗВРАТА НА ГЛАВНУЮ =====
+    function setHomeAnchor(restaurantId) {
+      try { sessionStorage.setItem('home_anchor', String(restaurantId)); } catch(_) {}
+    }
+    function restoreHomeAnchor() {
+      try {
+        const anchor = sessionStorage.getItem('home_anchor');
+        if (!anchor) return;
+        const el = document.querySelector('[data-restaurant-id="' + anchor + '"]');
+        if (el) {
+          el.scrollIntoView({ block: 'start', behavior: 'auto' });
+          sessionStorage.removeItem('home_anchor');
+        }
+      } catch(_) {}
+    }
     
     // Кэш для изображений
     const imageCache = new Map();
@@ -263,34 +279,36 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
             row.appendChild(prev);
             row.appendChild(next);
             
-            items.forEach((it, idx) => {
-               const card = createCard(it);
-               card.onclick = () => {
-                 const p = new URLSearchParams(location.search);
-                 if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-                 
-                 // Обработка новых типов элементов подборок
-                 if (it.type === 'dish' && it.item_id) {
-                   location.href = '/static/dish.html?id=' + it.item_id + '&' + p.toString();
-                 } else if (it.type === 'restaurant' && it.item_id) {
-                   console.log('=== Block item clicked (restaurant) ===');
-                   console.log('Restaurant ID:', it.item_id);
-                   console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
-                   goToRestaurant(it.item_id);
-                 } else if (block.kind === 'dishes' && it.dish_id) {
-                   location.href = '/static/dish.html?id=' + it.dish_id + '&' + p.toString();
-                 } else if (it.restaurant_id) {
-                   console.log('=== Block item clicked (restaurant by restaurant_id) ===');
-                   console.log('Restaurant ID:', it.restaurant_id);
-                   console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
-                   goToRestaurant(it.restaurant_id);
-                 }
-                 
-                 // Добавляем отладочную информацию о привязке обработчика
-                 console.log('Block item onclick handler bound for:', it.title || it.name || 'unknown');
-               };
-               track.appendChild(card);
-             });
+              items.forEach((it, idx) => {
+                const card = createCard(it);
+                card.onclick = () => {
+                  const p = new URLSearchParams(location.search);
+                  if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+
+                  // Если это блюдо из подборки — открываем его как модалку в ресторане
+                  const dishId = it.item_id || it.dish_id || (it.dish && it.dish.id);
+                  const restId = (it.restaurant && it.restaurant.id) || it.restaurant_id || (it.dish && it.dish.restaurant_id);
+                  if (dishId && restId) {
+                    location.href = `/static/restaurant.html?id=${restId}&dish_id=${dishId}&${p.toString()}`;
+                    return;
+                  }
+
+                  if (it.type === 'restaurant' && it.item_id) {
+                    console.log('=== Block item clicked (restaurant) ===');
+                    console.log('Restaurant ID:', it.item_id);
+                    console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+                    goToRestaurant(it.item_id);
+                  } else if (it.restaurant_id) {
+                    console.log('=== Block item clicked (restaurant by restaurant_id) ===');
+                    console.log('Restaurant ID:', it.restaurant_id);
+                    console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+                    goToRestaurant(it.restaurant_id);
+                  }
+
+                  console.log('Block item onclick handler bound for:', it.title || it.name || 'unknown');
+                };
+                track.appendChild(card);
+              });
             // swipe support
             let startX = 0; let dx = 0; let dragging = false;
             row.addEventListener('touchstart', (e) => { 
@@ -335,11 +353,12 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
                 card.onclick = () => {
                   const p = new URLSearchParams(location.search);
                   if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-                  
-                  if (it.type === 'dish' && it.item_id) {
-                    location.href = '/static/dish.html?id=' + it.item_id + '&' + p.toString();
-                  } else if (block.kind === 'dishes' && it.dish_id) {
-                    location.href = '/static/dish.html?id=' + it.dish_id + '&' + p.toString();
+
+                  // Переходим в ресторан и сразу открываем блюдо в модалке
+                  const dishId = it.item_id || it.dish_id || (it.dish && it.dish.id);
+                  const restId = (it.restaurant && it.restaurant.id) || it.restaurant_id || (it.dish && it.dish.restaurant_id);
+                  if (dishId && restId) {
+                    location.href = `/static/restaurant.html?id=${restId}&dish_id=${dishId}&${p.toString()}`;
                   }
                 };
                 row.appendChild(card);
@@ -450,6 +469,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         data.forEach(r => {
           const el = document.createElement('div');
           el.className = 'rest-card';
+          el.setAttribute('data-restaurant-id', r.id);
           el.innerHTML = `
             <div class="thumb">${r.image ? `<img alt="${r.name}"/>` : ''}</div>
             <div class="desc">
@@ -468,6 +488,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
             console.log('=== Restaurant card clicked ===');
             console.log('Restaurant ID:', r.id);
             console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+            setHomeAnchor(r.id);
             
             // Простая навигация без индикаторов загрузки
             
@@ -502,11 +523,12 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       console.log('Current scroll position:', currentScrollPosition);
       console.log('Document scroll height:', document.documentElement.scrollHeight);
       console.log('Window height:', window.innerHeight);
+      // Сохраняем якорь для возврата на Главную
+      setHomeAnchor(restaurantId);
       
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-      p.set('scroll_position', currentScrollPosition.toString());
-      p.set('from', 'index'); // Указываем, что переход с главной страницы
+      // Параметры скролла больше не используем
       
       // Очищаем старые параметры id и добавляем новый
       p.delete('id');
@@ -519,15 +541,14 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       location.href = finalUrl;
     }
     
-    // Инициализация с восстановлением позиции прокрутки
+    // Инициализация
     async function initialize() {
       console.log('=== initialize() called ===');
       await loadSelections();
       await loadRestaurants();
       console.log('=== initialize() completed ===');
-      
-      // Позиция скролла восстанавливается автоматически через page-cache.js
-      // Не нужно вызывать restoreScrollPosition() здесь
+      // Восстанавливаем якорь после рендера
+      restoreHomeAnchor();
     }
     
    // Проверка доступа (блокировка)
@@ -549,28 +570,12 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
      return true;
    }
 
-   // Скрываем страницу до полной загрузки
-   hidePageUntilReady();
-   
-   // Загружаем контент СРАЗУ, а позицию восстанавливаем после
-   (async () => {
-     if (await checkAccess()) {
-       await initialize();
-       // После загрузки контента восстанавливаем позицию
-       setTimeout(() => {
-         if (window.pageCache) {
-           window.pageCache.restoreScrollPosition();
-         }
-         // Показываем страницу после восстановления позиции
-         setTimeout(() => {
-           showPageAfterReady();
-         }, 50);
-       }, 100);
-     } else {
-       // Если нет доступа, показываем страницу сразу
-       showPageAfterReady();
-     }
-   })();
+  // Загружаем контент сразу; восстановление скролла управляется спейсером/наблюдателями
+  (async () => {
+    if (await checkAccess()) {
+      initialize();
+    }
+  })();
     
     // Добавляем отладочную информацию при загрузке страницы
     console.log('=== Page loaded ===');

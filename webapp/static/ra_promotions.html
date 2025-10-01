@@ -1,0 +1,804 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Акции ресторана</title>
+  <link rel="stylesheet" href="/static/styles.v23.css?v=79" />
+  <style>
+    /* ===== СОВРЕМЕННЫЙ ДИЗАЙН СТРАНИЦЫ АКЦИЙ ===== */
+    
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .meta {
+      text-align: center;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .meta a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .meta a:hover {
+      background: #f1f5f9;
+      color: #1d4ed8;
+    }
+    
+    .meta span {
+      color: #94a3b8;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    /* Секция управления */
+    .controls-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .admin-btn {
+      padding: 12px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .admin-btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    .admin-btn.danger {
+      background: #dc2626;
+    }
+    
+    .admin-btn.danger:hover {
+      background: #b91c1c;
+    }
+    
+    /* Список акций */
+    .promotions-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .promotion-item {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+    
+    .promotion-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    .promotion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .promotion-name {
+      font-weight: 700;
+      font-size: 16px;
+      color: #1e293b;
+    }
+    
+    .promotion-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .promotion-actions button {
+      padding: 8px 16px;
+      background: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .promotion-actions button:hover {
+      background: #f8fafc;
+      transform: translateY(-1px);
+    }
+    
+    .promotion-actions button.edit {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+    
+    .promotion-actions button.edit:hover {
+      background: #059669;
+    }
+    
+    .promotion-actions button.delete {
+      background: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+    
+    .promotion-actions button.delete:hover {
+      background: #b91c1c;
+    }
+    
+    .promotion-description {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    
+    .promotion-image {
+      margin-top: 8px;
+    }
+    
+    .promotion-image img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    
+    /* Модальные окна */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 0;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease;
+    }
+    
+    .modal-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-header h3 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 32px;
+      cursor: pointer;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+    
+    .close-btn:hover {
+      color: #1e293b;
+      transform: scale(1.1);
+    }
+    
+    .modal-body {
+      padding: 32px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .modal-footer {
+      padding: 24px 32px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 16px;
+      justify-content: flex-end;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s ease;
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+    
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: #4b5563;
+      transform: translateY(-1px);
+    }
+    
+    .image-preview {
+      display: block;
+      max-width: 100%;
+      max-height: 400px;
+      margin: 16px auto 0;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+      font-style: italic;
+    }
+    
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #ef4444;
+      background: #fef2f2;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+      
+      .controls-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .promotion-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      
+      .promotion-actions {
+        justify-content: stretch;
+      }
+      
+      .promotion-actions button {
+        flex: 1;
+      }
+    }
+  </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h2>Акции ресторана</h2>
+    <div class="meta" style="margin-bottom:16px">
+      <a id="navRestaurants" href="#">Рестораны</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navOrders" href="#">Заказы</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navMenu" href="#">Управление меню</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navProfile" href="#">Профиль админа</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <span id="navPromotions" style="font-weight:600">🎯 Акции</span>
+    </div>
+
+    <div class="controls-section">
+      <button id="createPromotionBtn" class="admin-btn">🎯 Создать акцию</button>
+      <button id="refreshPromotions" class="admin-btn">🔄 Обновить</button>
+    </div>
+
+    <div class="promotions-container">
+      <div id="promotionsList"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для создания акции -->
+  <div id="createPromotionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎯 Создать акцию</h3>
+        <button type="button" class="close-btn" onclick="closeCreatePromotionModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Название акции:</label>
+          <input type="text" id="promotionName" class="form-control" placeholder="Введите название акции" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Описание акции:</label>
+          <textarea id="promotionDescription" class="form-control" rows="4" placeholder="Введите описание акции" required></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Фото акции:</label>
+          <input type="file" id="promotionImage" class="form-control" onchange="previewImage(event, 'createPromotionImagePreview')">
+          <img id="createPromotionImagePreview" style="display: none;" class="image-preview" />
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeCreatePromotionModal()">Отмена</button>
+        <button type="button" class="btn-primary" onclick="createPromotion()">
+          🎯 Создать акцию
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для редактирования акции -->
+  <div id="editPromotionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Редактировать акцию</h3>
+        <button type="button" class="close-btn" onclick="closeEditPromotionModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPromotionId">
+        <div class="form-group">
+          <label>Название акции:</label>
+          <input type="text" id="editPromotionName" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Описание акции:</label>
+          <textarea id="editPromotionDescription" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Фото акции:</label>
+          <input type="file" id="editPromotionImage" class="form-control" onchange="previewImage(event, 'editPromotionImagePreview')">
+          <img id="editPromotionImagePreview" style="display: none;" class="image-preview" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeEditPromotionModal()">Отмена</button>
+        <button type="button" class="btn-primary" onclick="updatePromotion()">
+          💾 Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== ОСНОВНЫЕ ПЕРЕМЕННЫЕ =====
+    const api = location.origin + '/api';
+    const q = new URLSearchParams(location.search);
+    const uid = Number(q.get('uid')) || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0);
+    const headers = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
+    
+    // ===== ФУНКЦИИ НАВИГАЦИИ =====
+    document.addEventListener('DOMContentLoaded', function() {
+      // Обработчики навигации
+      document.getElementById('navRestaurants').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/index.html?' + p.toString();
+      };
+      
+      document.getElementById('navOrders').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra.html?' + p.toString();
+      };
+      
+      document.getElementById('navMenu').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_menu.html?' + p.toString();
+      };
+      
+      document.getElementById('navProfile').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_profile.html?' + p.toString();
+      };
+      
+      // Обработчики кнопок
+      document.getElementById('createPromotionBtn').onclick = showCreatePromotionModal;
+      document.getElementById('refreshPromotions').onclick = loadPromotions;
+      
+      // Загружаем акции при загрузке страницы
+      loadPromotions();
+    });
+    
+    // ===== ФУНКЦИИ ДЛЯ АКЦИЙ =====
+    
+    // Открыть модальное окно создания акции
+    function showCreatePromotionModal() {
+      document.getElementById('createPromotionModal').style.display = 'flex';
+    }
+    
+    // Закрыть модальное окно создания акции
+    function closeCreatePromotionModal() {
+      document.getElementById('createPromotionModal').style.display = 'none';
+      // Очистить форму
+      document.getElementById('promotionName').value = '';
+      document.getElementById('promotionDescription').value = '';
+      document.getElementById('promotionImage').value = '';
+      document.getElementById('createPromotionImagePreview').style.display = 'none';
+    }
+    
+    // Превью изображения
+    function previewImage(event, previewElementId) {
+      const file = event.target.files[0];
+      const output = document.getElementById(previewElementId);
+
+      if (!output) {
+        console.error(`Preview element with ID '${previewElementId}' not found.`);
+        return;
+      }
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          output.src = reader.result;
+          output.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        output.src = '';
+        output.style.display = 'none';
+      }
+    }
+    
+    // Создать акцию
+    async function createPromotion() {
+      const name = document.getElementById('promotionName').value.trim();
+      const description = document.getElementById('promotionDescription').value.trim();
+      const imageFile = document.getElementById('promotionImage').files[0];
+      
+      if (!name || !description) {
+        alert('Заполните все обязательные поля');
+        return;
+      }
+      
+      try {
+        // Создаем акцию
+        const promotionData = {
+          name: name,
+          description: description
+        };
+        
+        const response = await fetch(api + '/promotions', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(promotionData)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Ошибка создания акции: ${response.status} - ${errorText}`);
+        }
+        
+        const promotion = await response.json();
+        
+        // Загружаем изображение, если выбрано
+        if (imageFile) {
+          const formData = new FormData();
+          formData.append('file', imageFile);
+          
+          // Создаем заголовки без Content-Type для FormData
+          const uploadHeaders = { ...headers };
+          delete uploadHeaders['Content-Type'];
+          
+          const imageResponse = await fetch(api + `/promotions/${promotion.id}/upload-image`, {
+            method: 'POST',
+            headers: uploadHeaders,
+            body: formData
+          });
+          
+          if (!imageResponse.ok) {
+            const errorText = await imageResponse.text();
+            console.error('Ошибка загрузки изображения акции:', imageResponse.status, errorText);
+            throw new Error(`Ошибка загрузки изображения: ${imageResponse.status} - ${errorText}`);
+          }
+        }
+        
+        alert('Акция успешно создана!');
+        closeCreatePromotionModal();
+        loadPromotions();
+        
+      } catch (error) {
+        console.error('Ошибка создания акции:', error);
+        alert('Ошибка создания акции: ' + error.message);
+      }
+    }
+    
+    // Загрузить список акций
+    async function loadPromotions() {
+      try {
+        const response = await fetch(`${api}/promotions`, { headers });
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки акций: ${response.status}`);
+        }
+        
+        const promotions = await response.json();
+        renderPromotions(promotions);
+        
+      } catch (error) {
+        console.error('Ошибка загрузки акций:', error);
+        document.getElementById('promotionsList').innerHTML = `<div class="error">Ошибка загрузки акций: ${error.message}</div>`;
+      }
+    }
+    
+    // Отобразить список акций
+    function renderPromotions(promotions) {
+      const container = document.getElementById('promotionsList');
+      
+      if (!promotions || promotions.length === 0) {
+        container.innerHTML = '<div class="empty-state">Акций пока нет</div>';
+        return;
+      }
+      
+      const promotionsHTML = promotions.map(promotion => `
+        <div class="promotion-item" data-id="${promotion.id}">
+          <div class="promotion-header">
+            <div class="promotion-name">${promotion.name}</div>
+            <div class="promotion-actions">
+              <button onclick="editPromotion(${promotion.id})" class="edit">✏️ Редактировать</button>
+              <button onclick="deletePromotion(${promotion.id})" class="delete">🗑️ Удалить</button>
+            </div>
+          </div>
+          <div class="promotion-description">${promotion.description}</div>
+          ${promotion.image ? `
+            <div class="promotion-image">
+              <img src="${promotion.image}" alt="${promotion.name}">
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+      
+      container.innerHTML = promotionsHTML;
+    }
+    
+    // Редактировать акцию
+    async function editPromotion(promotionId) {
+      try {
+        const response = await fetch(`${api}/promotions/${promotionId}`, { headers });
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить данные акции');
+        }
+        const promotion = await response.json();
+        showEditPromotionModal(promotion);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function showEditPromotionModal(promotion) {
+      document.getElementById('editPromotionId').value = promotion.id;
+      document.getElementById('editPromotionName').value = promotion.name;
+      document.getElementById('editPromotionDescription').value = promotion.description;
+      
+      const previewImg = document.getElementById('editPromotionImagePreview');
+      
+      // Сбрасываем значение input file
+      document.getElementById('editPromotionImage').value = '';
+
+      if (promotion.image) {
+        previewImg.src = promotion.image;
+        previewImg.style.display = 'block';
+      } else {
+        previewImg.style.display = 'none';
+        previewImg.src = '';
+      }
+      
+      document.getElementById('editPromotionModal').style.display = 'flex';
+    }
+
+    function closeEditPromotionModal() {
+      document.getElementById('editPromotionModal').style.display = 'none';
+    }
+
+    async function updatePromotion() {
+      const promotionId = document.getElementById('editPromotionId').value;
+      const name = document.getElementById('editPromotionName').value.trim();
+      const description = document.getElementById('editPromotionDescription').value.trim();
+      const imageFile = document.getElementById('editPromotionImage').files[0];
+
+      if (!name || !description) {
+        alert('Заполните все поля');
+        return;
+      }
+
+      try {
+        // Обновляем текстовые данные
+        const updateData = { name, description };
+        const response = await fetch(`${api}/promotions/${promotionId}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) throw new Error('Ошибка обновления акции');
+
+        // Если есть новый файл, загружаем его
+        if (imageFile) {
+          const formData = new FormData();
+          formData.append('file', imageFile);
+          const uploadHeaders = { ...headers };
+          delete uploadHeaders['Content-Type'];
+
+          const imageResponse = await fetch(`${api}/promotions/${promotionId}/upload-image`, {
+            method: 'POST',
+            headers: uploadHeaders,
+            body: formData,
+          });
+
+          if (!imageResponse.ok) throw new Error('Ошибка загрузки нового изображения');
+        }
+        
+        alert('Акция успешно обновлена!');
+        closeEditPromotionModal();
+        loadPromotions();
+
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+    
+    // Удалить акцию
+    async function deletePromotion(promotionId) {
+      if (!confirm('Вы уверены, что хотите удалить эту акцию?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${api}/promotions/${promotionId}`, {
+          method: 'DELETE',
+          headers: headers
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка удаления акции');
+        }
+        
+        alert('Акция успешно удалена!');
+        loadPromotions();
+        
+      } catch (error) {
+        console.error('Ошибка удаления акции:', error);
+        alert('Ошибка удаления акции: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

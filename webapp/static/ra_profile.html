@@ -412,6 +412,8 @@
       <a id="navMenu" href="#">Управление меню</a>
       <span style="opacity:.4;margin:0 8px">|</span>
       <span style="font-weight:600">Профиль админа</span>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navPromotions" href="#">🎯 Акции</a>
     </div>
 
          <!-- Основная информация о ресторане -->
@@ -548,6 +550,13 @@ const api = location.origin + '/api';
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       location.href = '/static/ra_menu.html?' + p.toString();
     };
+    
+    document.getElementById('navPromotions').onclick = (e) => {
+      e.preventDefault();
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      location.href = '/static/ra_promotions.html?' + p.toString();
+    };
 
     let currentRestaurant = null;
 
@@ -683,7 +692,18 @@ const api = location.origin + '/api';
        });
        
        if (res.ok) {
+         // Сохраняем введенное значение email перед перезагрузкой
+         const savedEmail = fieldType === 'email' ? document.getElementById('emailInput').value : null;
+         
          load();
+         
+         // Восстанавливаем сохраненное значение email
+         if (savedEmail !== null) {
+           setTimeout(() => {
+             document.getElementById('emailInput').value = savedEmail;
+           }, 100);
+         }
+         
          showSuccessMessage('Данные обновлены');
        } else {
          showErrorMessage('Ошибка при обновлении');

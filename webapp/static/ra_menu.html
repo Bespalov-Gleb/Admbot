@@ -604,6 +604,8 @@
       <span id="navMenu" style="font-weight:600">Управление меню</span>
       <span style="opacity:.4;margin:0 8px">|</span>
       <a id="navProfile" href="#">Профиль админа</a>
+      <span style="opacity:.4;margin:0 8px">|</span>
+      <a id="navPromotions" href="#">🎯 Акции</a>
     </div>
 
     <!-- Секция управления меню -->
@@ -637,12 +639,19 @@ const api = location.origin + '/api';
       location.href = '/static/ra.html?' + p.toString();
     };
 
-    document.getElementById('navProfile').onclick = (e) => {
-      e.preventDefault();
-      const p = new URLSearchParams(location.search);
-      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-      location.href = '/static/ra_profile.html?' + p.toString();
-    };
+      document.getElementById('navProfile').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_profile.html?' + p.toString();
+      };
+      
+      document.getElementById('navPromotions').onclick = (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/ra_promotions.html?' + p.toString();
+      };
 
     // Загрузка меню
     async function loadMenu() {

@@ -218,3 +218,16 @@ class CollectionItem(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
+
+class Promotion(Base):
+    __tablename__ = "promotions"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text)
+    image: Mapped[str] = mapped_column(Text, default="")
+    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"), nullable=True)
+    created_by_admin: Mapped[bool] = mapped_column(Boolean, default=False)  # True если создал главный админ
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+

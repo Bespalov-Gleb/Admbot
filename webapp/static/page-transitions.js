@@ -17,10 +17,7 @@ class PageTransitions {
       this.addPageTransitionClass();
     });
 
-    // Перехватываем все клики по ссылкам
-    document.addEventListener('click', (e) => {
-      this.handleLinkClick(e);
-    });
+    // Отключаем перехват кликов и навигацию с overlay — чтобы модалки открывались мгновенно
 
     // Перехватываем программные переходы
     this.interceptLocationChanges();
@@ -67,47 +64,14 @@ class PageTransitions {
   }
 
   navigateToPage(url) {
-    if (this.isTransitioning) return;
-    
-    this.isTransitioning = true;
-    
-    // Показываем loading overlay
-    this.showLoadingOverlay();
-    
-    // Добавляем класс выхода
-    const container = document.querySelector('.container') || document.body;
-    container.classList.add('page-transition-out');
-    
-    // Предзагружаем страницу если не загружена
-    this.preloadPage(url).then(() => {
-      // Ждем завершения анимации выхода
-      setTimeout(() => {
-        // Переходим на новую страницу
-        location.href = url;
-      }, 200);
-    }).catch(() => {
-      // Если предзагрузка не удалась, все равно переходим
-      setTimeout(() => {
-        location.href = url;
-      }, 200);
-    });
+    // Простая мгновенная навигация без overlay/анимаций
+    location.href = url;
   }
 
   /**
    * Показать loading overlay
    */
-  showLoadingOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'page-loading-overlay';
-    overlay.innerHTML = `
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Загрузка...</div>
-    `;
-    document.body.appendChild(overlay);
-    
-    // Анимация появления
-    setTimeout(() => overlay.classList.add('overlay-show'), 100);
-  }
+  showLoadingOverlay() { /* disabled */ }
 
   /**
    * Предзагрузить страницу

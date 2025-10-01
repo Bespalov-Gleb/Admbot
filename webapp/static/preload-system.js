@@ -39,8 +39,8 @@ class PreloadSystem {
     const popularPages = [
       '/static/cart.html',
       '/static/profile.html',
-      '/static/checkout.html',
-      '/static/dish.html'
+      '/static/checkout.html'
+      // dish.html удален; предзагрузка выключена
     ];
 
     popularPages.forEach(page => {
