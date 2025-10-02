@@ -1315,17 +1315,11 @@
       // console.log('Response data:', data);
       
       if (data.status === 'too_many_restaurants') {
-        showTooManyModal(data.current_restaurant_ids || [], async () => {
-          await fetch(location.origin + '/api/cart/items?force=true' + (uid ? ('&uid=' + uid) : ''), { 
-            method: 'POST', 
-            headers: {
-              ...headers,
-              'Content-Type': 'application/json'
-            }, 
-            body: JSON.stringify(cartData) 
-          });
-          await loadCartAndSync();
-        });
+        // Показываем подсказку и модалку: пользователь сам удалит лишние рестораны
+        if (window.toastSystem) {
+          window.toastSystem.info('Добавьте из этого ресторана после удаления одной из корзин');
+        }
+        showTooManyModal(data.current_restaurant_ids || []);
       } else {
         await loadCartAndSync();
       }
@@ -1443,7 +1437,15 @@
       return cart.items.reduce((sum, it) => {
         const d = dishesMap.get(it.dish_id);
         if (!d || d.restaurant_id !== restaurantId) return sum;
-        return sum + (d.price || 0) * it.qty;
+        const base = d.price || 0;
+        const opts = Array.isArray(it.chosen_options) ? it.chosen_options : [];
+        const optsTotal = opts.reduce((t, oid) => {
+          const opt = (window.dishOptionsCache && window.dishOptionsCache[it.dish_id])
+            ? window.dishOptionsCache[it.dish_id].find(o => o.id === oid)
+            : null;
+          return t + (opt && opt.price_delta ? opt.price_delta : 0);
+        }, 0);
+        return sum + (base + optsTotal) * it.qty;
       }, 0);
     }
     
@@ -1580,6 +1582,9 @@
       return total;
     }
 
+    // Кэш опций блюд для подсчёта итогов
+    window.dishOptionsCache = window.dishOptionsCache || {};
+
     async function openDishModal(dishId, categoryId) {
       try {
         const [dRes, oRes] = await Promise.all([
@@ -1589,6 +1594,8 @@
         const dish = await dRes.json();
         const data = await oRes.json();
         dishModalState = { dish, groups: data.groups || [], options: data.options || [], qty:1 };
+        // Сохраняем опции в кэш для корректного подсчёта
+        window.dishOptionsCache[dish.id] = dishModalState.options || [];
 
         // Заполняем UI
         document.getElementById('dishHeroImg').src = dish.image || '';
@@ -1645,8 +1652,34 @@
           const chosen = [];
           document.querySelectorAll('#dishOptions input[type="checkbox"]:checked, #dishOptions input[type="radio"]:checked').forEach(cb => chosen.push(parseInt(cb.value)));
           const cartData = { restaurant_id: dish.restaurant_id, dish_id: dish.id, qty, chosen_options: chosen };
-          const res = await fetch(api + '/cart/items' + (uid ? ('?uid=' + uid) : ''), { method:'POST', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify(cartData) });
-          if (res.ok) { hideDishModal(); await loadCartAndSync(); }
+          try {
+            const res = await fetch(api + '/cart/items' + (uid ? ('?uid=' + uid) : ''), {
+              method:'POST',
+              headers: { ...headers, 'Content-Type':'application/json' },
+              body: JSON.stringify(cartData)
+            });
+            let data = null;
+            try { data = await res.json(); } catch(_) {}
+
+            if (data && data.status === 'too_many_restaurants') {
+              if (window.toastSystem) {
+                window.toastSystem.info('Добавьте из этого ресторана после удаления одной из корзин');
+              }
+              showTooManyModal(data.current_restaurant_ids || []);
+              return;
+            }
+
+            if (!res.ok) {
+              if (window.toastSystem) window.toastSystem.error('Не удалось добавить блюдо');
+              return;
+            }
+
+            hideDishModal();
+            await loadCartAndSync();
+          } catch (e) {
+            console.error('Error adding dish from modal:', e);
+            if (window.toastSystem) window.toastSystem.error('Ошибка сети при добавлении');
+          }
         };
 
         // Показать модалку
@@ -1674,10 +1707,12 @@
         ov.innerHTML = '<div class="modal"><h3>Слишком много корзин</h3><div class="muted">Удалите корзину, чтобы собрать новую</div><div id="ovList"></div><div style="margin-top:10px;text-align:right"><button id="ovDone" class="primary">Готово</button></div></div>';
         document.body.appendChild(ov);
       }
+      // Поднимаем поверх всех модалок
+      ov.style.zIndex = '10010';
       return ov;
     }
     
-    async function showTooManyModal(restIds, onDone) {
+    async function showTooManyModal(restIds) {
       const ov = ensureOverlay();
       const list = ov.querySelector('#ovList');
       list.innerHTML = '';
@@ -1698,7 +1733,6 @@
       ov.style.display = 'flex';
       ov.querySelector('#ovDone').onclick = async () => {
         ov.style.display = 'none';
-        if (onDone) await onDone();
       };
     }
     
@@ -1753,27 +1787,41 @@
     // Функция для возврата назад
     function goBack() {
       console.log('=== goBack called ===');
-      
-      // Получаем оригинальную позицию прокрутки из URL (которая была на главной странице)
-      const originalScrollPosition = Number(q.get('scroll_position')) || 0;
-      console.log('Original scroll position from URL:', originalScrollPosition);
-      
-      // Ресторан → главная страница с оригинальной позицией прокрутки
       const params = new URLSearchParams(location.search);
-      if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
-      params.set('scroll_position', originalScrollPosition.toString());
+      const from = params.get('from');
+      const ref = document.referrer || '';
       
-      // Очищаем параметры, которые не нужны на главной странице
-      params.delete('id');
-      params.delete('category_id');
-      params.delete('scroll_to_category');
+      // 1) Явный возврат на Акции
+      if (from === 'promotions') {
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        location.href = '/static/promotions.html?' + p.toString();
+        return;
+      }
       
-      const finalUrl = '/static/index.html?' + params.toString();
-      console.log('Final URL:', finalUrl);
-      console.log('URL params:', params.toString());
-      console.log('Redirecting to index.html with original scroll_position:', originalScrollPosition);
+      // 2) Если пришли из корзины, следующая "Назад" должна вести на Главную
+      if (ref.includes('/static/cart.html')) {
+        const p2 = new URLSearchParams(location.search);
+        if (!p2.get('ngrok-skip-browser-warning')) p2.set('ngrok-skip-browser-warning', '1');
+        p2.delete('id');
+        p2.delete('category_id');
+        p2.delete('scroll_to_category');
+        location.href = '/static/index.html?' + p2.toString();
+        return;
+      }
       
-      location.href = finalUrl;
+      // 3) Иначе пробуем стандартный back
+      if (window.history && window.history.length > 1) {
+        try { window.history.back(); return; } catch(_) {}
+      }
+      
+      // 4) По умолчанию — на главную
+      const p3 = new URLSearchParams(location.search);
+      if (!p3.get('ngrok-skip-browser-warning')) p3.set('ngrok-skip-browser-warning', '1');
+      p3.delete('id');
+      p3.delete('category_id');
+      p3.delete('scroll_to_category');
+      location.href = '/static/index.html?' + p3.toString();
     }
     
     // Проверяем, нужно ли скроллить к категории

@@ -488,6 +488,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
             console.log('=== Restaurant card clicked ===');
             console.log('Restaurant ID:', r.id);
             console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+            // Сохраняем якорь только при клике по карточке ресторана
             setHomeAnchor(r.id);
             
             // Простая навигация без индикаторов загрузки
@@ -523,8 +524,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       console.log('Current scroll position:', currentScrollPosition);
       console.log('Document scroll height:', document.documentElement.scrollHeight);
       console.log('Window height:', window.innerHeight);
-      // Сохраняем якорь для возврата на Главную
-      setHomeAnchor(restaurantId);
+      // Не сохраняем якорь здесь — чтобы клики из подборок/категорий не ставили якорь
       
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
