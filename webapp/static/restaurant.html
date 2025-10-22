@@ -1029,10 +1029,10 @@
       <span class="nav-icon nav-icon-home"></span>
       <span>Главное</span>
     </a>
-    <span class="nav-item disabled">
+    <a id="navPromotions" href="#" class="nav-item">
       <span class="nav-icon nav-icon-promo"></span>
       <span>Акции</span>
-    </span>
+    </a>
     <a id="navCart" href="#" class="nav-item">
       <span class="nav-icon nav-icon-cart"></span>
       <span>Корзина</span>
@@ -1319,7 +1319,27 @@
         if (window.toastSystem) {
           window.toastSystem.info('Добавьте из этого ресторана после удаления одной из корзин');
         }
-        showTooManyModal(data.current_restaurant_ids || []);
+        showTooManyModal(data.current_restaurant_ids || [], async () => {
+          // После удаления ресторанов повторяем попытку добавления
+          const retryRes = await fetch(location.origin + '/api/cart/items?force=true' + (uid ? ('&uid=' + uid) : ''), {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(cartData)
+          });
+          
+          if (retryRes.ok) {
+            const retryData = await retryRes.json();
+            if (retryData.status === 'ok') {
+              await loadCartAndSync();
+              if (window.toastSystem) {
+                window.toastSystem.success('Блюдо добавлено в корзину');
+              }
+            }
+          }
+        });
       } else {
         await loadCartAndSync();
       }
@@ -1712,7 +1732,7 @@
       return ov;
     }
     
-    async function showTooManyModal(restIds) {
+    async function showTooManyModal(restIds, onDone) {
       const ov = ensureOverlay();
       const list = ov.querySelector('#ovList');
       list.innerHTML = '';
@@ -1727,12 +1747,15 @@
         row.querySelector('.trash').onclick = async () => {
           await fetch(api + '/cart/clear?restaurant_id=' + r.id + (uid ? ('&uid=' + uid) : ''), { method: 'POST', headers });
           row.remove();
+          // Обновляем корзину после удаления
+          await loadCartAndSync();
         };
         list.appendChild(row);
       });
       ov.style.display = 'flex';
       ov.querySelector('#ovDone').onclick = async () => {
         ov.style.display = 'none';
+        if (onDone) await onDone();
       };
     }
     
@@ -1756,6 +1779,13 @@
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
       location.href = '/static/profile.html?' + p.toString(); 
+    };
+    
+    document.getElementById('navPromotions').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/promotions.html?' + p.toString(); 
     };
     
     // Функции для работы с позицией прокрутки

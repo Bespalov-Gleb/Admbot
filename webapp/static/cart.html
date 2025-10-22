@@ -151,6 +151,14 @@
       padding: 16px 0;
       border-bottom: 1px solid #f3f4f6;
       align-items: flex-start;
+      transition: background-color 0.2s ease;
+    }
+    
+    .cart-item:hover {
+      background-color: #f8fafc;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 0 -16px;
     }
     
     .cart-item:last-child {
@@ -873,6 +881,7 @@
         
         const el = document.createElement('div');
         el.className = 'cart-item';
+        el.style.cursor = 'pointer';
         
         el.innerHTML = `
           ${d.image ? `<img src="${d.image}" alt="${d.name}" class="cart-item-image" />` : ''}
@@ -891,13 +900,28 @@
           </div>
         `;
         
+        // Добавляем обработчик клика для открытия деталей блюда
+        el.onclick = (e) => {
+          // Предотвращаем всплытие события при клике на кнопки управления количеством
+          if (e.target.closest('.cart-item-controls')) {
+            return;
+          }
+          
+          // Переходим на страницу блюда
+          const p = new URLSearchParams(location.search);
+          if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+          location.href = '/static/dish.html?id=' + d.id + '&' + p.toString();
+        };
+        
         // Обработчики для изменения количества
-        el.querySelector('[data-act="inc"]').onclick = () => {
+        el.querySelector('[data-act="inc"]').onclick = (e) => {
+          e.stopPropagation(); // Предотвращаем всплытие события
           // Увеличиваем количество первого элемента в группе
           updateQty(group.itemIds[0], group.qty + 1);
         };
         
-        el.querySelector('[data-act="dec"]').onclick = () => {
+        el.querySelector('[data-act="dec"]').onclick = (e) => {
+          e.stopPropagation(); // Предотвращаем всплытие события
           if (group.qty <= 1) {
             // Если количество 1 или меньше, удаляем все элементы группы
             group.itemIds.forEach(itemId => deleteItem(itemId));
@@ -1005,6 +1029,19 @@
     }
 
     function goBack() {
+      // Проверяем, откуда пришел пользователь
+      const params = new URLSearchParams(location.search);
+      const from = params.get('from');
+      
+      // Если пришли с главной страницы, всегда возвращаемся на главную
+      if (from === 'index') {
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        p.delete('from'); // Удаляем параметр from
+        location.href = '/static/index.html?' + p.toString();
+        return;
+      }
+      
       // Если корзина пустая, всегда переходим к списку ресторанов
       if (!cart.items || cart.items.length === 0) {
         redirectToRestaurants();

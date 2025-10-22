@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.db import get_db
 from app.models import Collection as DBCollection, CollectionItem as DBCollectionItem, Restaurant as DBRestaurant, Dish as DBDish, Review as DBReview, Promotion as DBPromotion
+import os
 
 router = APIRouter()
 
@@ -124,4 +126,54 @@ async def get_public_promotions(db: Session = Depends(get_db)):
             "created_at": promotion.created_at.isoformat()
         })
     
-    return result 
+    return result
+
+
+# ========== DOCUMENTS API ==========
+
+@router.get("/documents/user-agreement")
+async def download_user_agreement():
+    """Скачать пользовательское соглашение"""
+    file_path = "webapp/static/Пользовательское-соглашение-ВкусАпп.pdf"
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path,
+            filename="Пользовательское соглашение ВкусАпп.pdf",
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": "attachment; filename=\"Пользовательское соглашение ВкусАпп.pdf\""}
+        )
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+
+@router.get("/documents/privacy-policy")
+async def download_privacy_policy():
+    """Скачать политику конфиденциальности"""
+    file_path = "webapp/static/Политика-конфиденциальности-ВкусАпп.pdf"
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path,
+            filename="Политика конфиденциальности ВкусАпп.pdf",
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": "attachment; filename=\"Политика конфиденциальности ВкусАпп.pdf\""}
+        )
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+
+@router.get("/documents/restaurant-offer")
+async def download_restaurant_offer():
+    """Скачать оферту для ресторанов"""
+    file_path = "webapp/static/Оферта-ВкусАпп.pdf"
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path,
+            filename="Оферта ВкусАпп.pdf",
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": "attachment; filename=\"Оферта ВкусАпп.pdf\""}
+        )
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Файл не найден") 

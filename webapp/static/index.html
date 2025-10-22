@@ -604,6 +604,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       e.preventDefault(); 
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      p.set('from', 'index'); // Указываем, что переход с главной страницы
       location.href = '/static/cart.html?' + p.toString(); 
     };
     document.getElementById('navProfile').onclick = (e) => { 

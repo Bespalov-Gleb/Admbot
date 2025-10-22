@@ -589,6 +589,89 @@
     .icon-btn.save:hover {
       background: #059669;
     }
+    
+    /* Стили для сворачиваемых категорий */
+    .menu-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      background: white;
+      overflow: hidden;
+    }
+    
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      font-size: 18px;
+      color: #1e293b;
+    }
+    
+    .section-title:hover {
+      background: #f1f5f9;
+    }
+    
+    .category-toggle {
+      font-size: 20px;
+      color: #64748b;
+      transition: transform 0.2s ease;
+    }
+    
+    .category-toggle.expanded {
+      transform: rotate(90deg);
+    }
+    
+    .category-content {
+      display: none;
+      padding: 16px;
+    }
+    
+    .category-content.expanded {
+      display: block;
+    }
+    
+    .dish-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .dish-row:hover {
+      background: #f1f5f9;
+    }
+    
+    .dish-info {
+      flex: 1;
+    }
+    
+    .dish-name {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+    
+    .dish-price {
+      font-weight: 600;
+      color: #dc2626;
+      font-size: 16px;
+    }
+    
+    .dish-description {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -706,42 +789,53 @@ const api = location.origin + '/api';
       data.categories.forEach(c => {
         const box = document.createElement('div');
         box.className = 'menu-item';
-        box.innerHTML = `<div class="section-title">${c.name}</div>`;
         
-        const catRow = document.createElement('div');
-        catRow.className = 'form-group';
-        catRow.innerHTML = `
-          <label>Название</label>
-          <input value="${c.name}" data-cname/>
-          <label>Сортировка</label>
-          <input value="${c.sort}" data-csort class="small" type="number"/>
-          <div class="form-buttons">
-            <button class="icon-btn save" title="Сохранить" data-csave>💾</button>
-            <button class="icon-btn delete" title="Удалить" data-cdel>🗑️</button>
+        const ds = data.dishes.filter(d => d.category_id === c.id);
+        box.innerHTML = `
+          <div class="section-title" onclick="toggleCategory(${c.id})">
+            <span class="category-toggle" id="toggle-${c.id}">▶</span>
+            ${c.name} (${ds.length} блюд)
+          </div>
+          <div class="category-content" id="content-${c.id}">
+            <div class="form-group">
+              <label>Название</label>
+              <input value="${c.name}" data-cname/>
+            </div>
+            <div class="form-group">
+              <label>Сортировка</label>
+              <input value="${c.sort}" data-csort class="small" type="number"/>
+            </div>
+            <div class="form-buttons">
+              <button class="icon-btn save" title="Сохранить" data-csave>💾</button>
+              <button class="icon-btn delete" title="Удалить" data-cdel>🗑️</button>
+            </div>
           </div>`;
         
-        catRow.querySelector('[data-csave]').onclick = async () => {
-          const name = catRow.querySelector('[data-cname]').value.trim();
-          const sort = parseInt(catRow.querySelector('[data-csort]').value||'0',10);
+        box.querySelector('[data-csave]').onclick = async () => {
+          const name = box.querySelector('[data-cname]').value.trim();
+          const sort = parseInt(box.querySelector('[data-csort]').value||'0',10);
           await fetch(api + '/ra/categories/' + c.id, { method:'PATCH', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify({ name, sort }) });
           loadMenu();
         };
         
-        catRow.querySelector('[data-cdel]').onclick = async () => {
+        box.querySelector('[data-cdel]').onclick = async () => {
           if (!confirm('Удалить категорию и все её блюда?')) return;
           await fetch(api + '/ra/categories/' + c.id, { method:'DELETE', headers });
           loadMenu();
         };
-        box.appendChild(catRow);
         
         const ds = data.dishes.filter(d => d.category_id === c.id);
+        const dishesContainer = document.createElement('div');
+        dishesContainer.className = 'dishes-container';
+        
         ds.forEach(d => {
           const row = document.createElement('div');
-          row.className = 'menu-item';
-          row.style.marginLeft = '20px';
+          row.className = 'dish-row';
           row.innerHTML = `
-            <div class="menu-header">
-              <span class="menu-title">${d.name} — ${d.price} ₽</span>
+            <div class="dish-info">
+              <div class="dish-name">${d.name}</div>
+              <div class="dish-price">${d.price} ₽</div>
+              <div class="dish-description">${d.description || 'Без описания'}</div>
             </div>
             <div class="menu-actions">
               <button class="icon-btn edit" title="Изменить" data-edit="${d.id}">✏️</button>
@@ -774,14 +868,17 @@ const api = location.origin + '/api';
             renderOptionsEditor(d, dataO, optsContainer);
             optsContainer.dataset.loaded='1';
           };
-          box.appendChild(row);
-          box.appendChild(optsContainer);
+          dishesContainer.appendChild(row);
+          dishesContainer.appendChild(optsContainer);
         });
+        
+        // Добавляем контейнер с блюдами в сворачиваемый контент
+        const contentDiv = box.querySelector('#content-' + c.id);
+        contentDiv.appendChild(dishesContainer);
         
         // Форма добавления блюда
         const form = document.createElement('div');
-        form.className = 'menu-item';
-        form.style.marginLeft = '20px';
+        form.className = 'form-group';
         form.innerHTML = `
           <div class="section-title">Добавить блюдо</div>
           <div class="form-group">
@@ -803,7 +900,9 @@ const api = location.origin + '/api';
           await fetch(api + '/ra/dishes', { method:'POST', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify({ category_id: c.id, name, price }) });
           loadMenu();
         };
-        box.appendChild(form);
+        
+        // Добавляем форму в сворачиваемый контент
+        contentDiv.appendChild(form);
         root.appendChild(box);
       });
     }
@@ -946,14 +1045,6 @@ const api = location.origin + '/api';
           <input data-n placeholder="Название"/>
         </div>
         <div class="form-group">
-          <label>Минимум</label>
-          <input data-min value="0" class="small" type="number"/>
-        </div>
-        <div class="form-group">
-          <label>Максимум</label>
-          <input data-max value="1" class="small" type="number"/>
-        </div>
-        <div class="form-group">
           <div class="checkbox-group">
             <input type="checkbox" data-req/>
             <label>Обязательно</label>
@@ -965,11 +1056,9 @@ const api = location.origin + '/api';
       
       addG.querySelector('[data-add]').onclick = async () => {
         const name = addG.querySelector('[data-n]').value.trim();
-        const minv = parseInt(addG.querySelector('[data-min]').value||'0',10);
-        const maxv = parseInt(addG.querySelector('[data-max]').value||'1',10);
         const req = !!addG.querySelector('[data-req]').checked;
         if (!name) return;
-        await fetch(api + '/ra/option-groups', { method:'POST', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify({ dish_id: dish.id, name, min_select: minv, max_select: maxv, required: req }) });
+        await fetch(api + '/ra/option-groups', { method:'POST', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify({ dish_id: dish.id, name, min_select: 0, max_select: 1, required: req }) });
         optsRefresh();
       };
       container.appendChild(addG);
@@ -984,10 +1073,6 @@ const api = location.origin + '/api';
         row.innerHTML = `
           <label>Название</label>
           <input value="${g.name}" data-gn/>
-          <label>Минимум</label>
-          <input value="${g.min_select}" data-min class="small" type="number"/>
-          <label>Максимум</label>
-          <input value="${g.max_select}" data-max class="small" type="number"/>
           <div class="checkbox-group">
             <input type="checkbox" data-req ${g.required?'checked':''}/>
             <label>Обязательно</label>
@@ -1000,8 +1085,8 @@ const api = location.origin + '/api';
         row.querySelector('[data-save]').onclick = async () => {
           const body = {
             name: row.querySelector('[data-gn]').value.trim(),
-            min_select: parseInt(row.querySelector('[data-min]').value||'0',10),
-            max_select: parseInt(row.querySelector('[data-max]').value||'1',10),
+            min_select: 0,
+            max_select: 1,
             required: !!row.querySelector('[data-req]').checked,
           };
           await fetch(api + '/ra/option-groups/' + g.id, { method:'PATCH', headers: { ...headers, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
@@ -1085,6 +1170,22 @@ const api = location.origin + '/api';
       }
     }
 
+    // Функция для сворачивания/разворачивания категорий
+    function toggleCategory(categoryId) {
+      const content = document.getElementById(`content-${categoryId}`);
+      const toggle = document.getElementById(`toggle-${categoryId}`);
+      
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        toggle.textContent = '▶';
+        toggle.classList.remove('expanded');
+      } else {
+        content.classList.add('expanded');
+        toggle.textContent = '▼';
+        toggle.classList.add('expanded');
+      }
+    }
+    
     // Инициализация
     document.getElementById('loadMenu').onclick = loadMenu;
     loadMenu();

@@ -19,6 +19,7 @@ class Restaurant(BaseModel):
     delivery_time_minutes: int
     address: str
     phone: str
+    email: str = ""
     description: str = ""
     image: str = ""
     work_open_min: int = 0  # minutes from 00:00

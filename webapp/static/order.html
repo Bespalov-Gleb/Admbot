@@ -619,50 +619,8 @@
     </div>
     
     
-    <!-- Bottom Action Bar -->
-    <div class="action-bar" id="actionBar">
-      <div class="action-content">
-        <div class="cutlery-section">
-          <span class="cutlery-icon">🍴</span>
-          <div class="cutlery-controls">
-            <span class="cutlery-count" id="cutleryCount">0</span>
-          </div>
-        </div>
-        <div class="action-right">
-          <button class="comment-btn" onclick="openCommentModal()">
-            <span class="comment-icon">💬</span>
-            <span>Комментарий ресторану</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
-  <!-- Модальное окно для комментария ресторану -->
-  <div class="modal-overlay" id="commentModal" style="display: none;">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Комментарий ресторану</h3>
-        <button class="modal-close" onclick="closeCommentModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="order-info">Заказ №<span id="commentOrderId"></span></p>
-        <textarea 
-          id="commentText" 
-          placeholder="Напишите ваш комментарий ресторану..."
-          maxlength="500"
-          rows="4"
-        ></textarea>
-        <div class="char-count">
-          <span id="charCount">0</span>/500
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeCommentModal()">Отмена</button>
-        <button class="btn-primary" onclick="sendComment()">Отправить</button>
-      </div>
-    </div>
-  </div>
   
   <script>
     const api = location.origin + '/api';
@@ -723,12 +681,7 @@
         }
         
         renderOrder();
-        await loadCutleryCount();
         await loadReviews();
-        
-        if (showReview) {
-          showReviewSection();
-        }
         
       } catch (error) {
         console.error('Error loading order:', error);
@@ -753,45 +706,32 @@
       switch (currentOrder.status) {
         case 'sent':
           title = 'Заказ отправлен. Ждите подтверждение ресторана';
-          actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
-          ];
+          actions = [];
           break;
         case 'accepted':
           title = `Ресторан принял заказ. Время доставки ~ ${currentOrder.eta_minutes || 60} мин`;
           actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' },
-            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' },
             { text: 'Доставлено', class: 'status-btn success', onclick: 'markAsDelivered()' }
           ];
           break;
         case 'delivered':
           title = 'Заказ доставлен';
-          actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' },
-            { text: 'Связаться с рестораном', class: 'status-btn primary', onclick: 'contactRestaurant()' }
-          ];
+          actions = [];
           break;
         case 'cancelled':
           title = 'Заказ отменен';
-          actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
-          ];
+          actions = [];
           break;
         case 'modified':
           title = 'Заказ изменен';
-          actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
-          ];
+          actions = [];
           break;
         default:
           // Получаем название ресторана для активного ресторана
           const activeRestaurant = restaurantsMap.get(activeRestaurantId);
           const restaurantName = activeRestaurant ? `ресторана "${activeRestaurant.name}"` : 'ресторана';
           title = `Заказ отправлен в ${restaurantName}. Ждите подтверждения.`;
-          actions = [
-            { text: 'Связаться с нами', class: 'status-btn', onclick: 'contactSupport()' }
-          ];
+          actions = [];
       }
       
       statusTitle.textContent = title;
@@ -951,6 +891,29 @@
       document.getElementById('reviewSection').style.display = 'block';
     }
     
+    function showReviewForm() {
+      const reviewSection = document.getElementById('reviewSection');
+      if (reviewSection) {
+        // Восстанавливаем оригинальную форму оценки
+        reviewSection.innerHTML = `
+          <div class="review-title">Оцените заказ</div>
+          <div class="stars" id="stars">
+            <button class="star-btn" data-rating="1">★</button>
+            <button class="star-btn" data-rating="2">★</button>
+            <button class="star-btn" data-rating="3">★</button>
+            <button class="star-btn" data-rating="4">★</button>
+            <button class="star-btn" data-rating="5">★</button>
+          </div>
+          <textarea class="review-text" id="reviewText" placeholder="Комментарий (необязательно)"></textarea>
+          <button class="review-send" id="reviewSend" onclick="sendReview()" disabled>Отправить отзыв</button>
+        `;
+        reviewSection.style.display = 'block';
+        
+        // Настраиваем обработчики для звездочек
+        setupReview();
+      }
+    }
+    
     async function sendReview() {
       if (selectedRating === 0) return;
       
@@ -980,23 +943,6 @@
     }
     
     
-    async function loadCutleryCount() {
-      try {
-        if (currentOrder && currentOrder.cutlery_count !== undefined) {
-          cutleryCount = currentOrder.cutlery_count;
-          document.getElementById('cutleryCount').textContent = cutleryCount;
-        } else {
-          cutleryCount = 0;
-          document.getElementById('cutleryCount').textContent = cutleryCount;
-        }
-      } catch (error) {
-        console.error('Error loading cutlery count:', error);
-        // Оставляем значение по умолчанию 0
-        cutleryCount = 0;
-        document.getElementById('cutleryCount').textContent = cutleryCount;
-      }
-    }
-    
     async function loadReviews() {
       try {
         const res = await fetch(api + '/reviews/by-order?order_id=' + orderId + (uid ? ('&uid=' + uid) : ''), { headers });
@@ -1004,6 +950,11 @@
           const data = await res.json();
           if (data.exists && data.review) {
             displayReview(data.review);
+          } else {
+            // Если отзыва нет, показываем форму оценки для доставленных заказов
+            if (currentOrder && currentOrder.status === 'delivered') {
+              showReviewForm();
+            }
           }
         }
       } catch (error) {
@@ -1034,10 +985,6 @@
       }
     }
     
-    function openCommentModal() {
-      // TODO: Implement comment modal
-      alert('Функция комментария будет реализована позже');
-    }
     
     async function contactSupport() {
       try {
@@ -1093,7 +1040,7 @@
         currentOrder.status = 'delivered';
         renderStatusBanner();
         
-        alert('Заказ отмечен как доставленный!');
+        alert('Заказ отмечен как доставленный! Клиенту отправлено уведомление с предложением оценить службу доставки.');
       } catch (error) {
         console.error('Error marking order as delivered:', error);
         alert('Ошибка при отметке заказа как доставленного');
@@ -1109,81 +1056,6 @@
       document.getElementById('statusActions').innerHTML = '';
     }
 
-    // Функции для работы с комментариями
-    function openCommentModal() {
-      if (!currentOrder) {
-        alert('Информация о заказе не загружена');
-        return;
-      }
-      
-      document.getElementById('commentOrderId').textContent = currentOrder.id;
-      document.getElementById('commentText').value = '';
-      document.getElementById('charCount').textContent = '0';
-      document.getElementById('commentModal').style.display = 'flex';
-      
-      // Фокус на textarea и добавление обработчика
-      setTimeout(() => {
-        const textarea = document.getElementById('commentText');
-        textarea.focus();
-        textarea.addEventListener('input', updateCharCount);
-      }, 100);
-    }
-
-    function closeCommentModal() {
-      document.getElementById('commentModal').style.display = 'none';
-    }
-
-    function updateCharCount() {
-      const textarea = document.getElementById('commentText');
-      const charCount = document.getElementById('charCount');
-      const count = textarea.value.length;
-      charCount.textContent = count;
-      
-      // Меняем цвет при приближении к лимиту
-      if (count > 450) {
-        charCount.style.color = '#ff6b35';
-      } else if (count > 400) {
-        charCount.style.color = '#ffa500';
-      } else {
-        charCount.style.color = '#999';
-      }
-    }
-
-    async function sendComment() {
-      const text = document.getElementById('commentText').value.trim();
-      
-      if (!text) {
-        alert('Введите комментарий');
-        return;
-      }
-      
-      if (text.length > 500) {
-        alert('Комментарий слишком длинный (максимум 500 символов)');
-        return;
-      }
-      
-      try {
-        const response = await fetch(api + '/orders/' + orderId + '/comment', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            comment: text
-          })
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || 'Ошибка отправки комментария');
-        }
-        
-        alert('Комментарий отправлен ресторану');
-        closeCommentModal();
-        
-      } catch (error) {
-        console.error('Error sending comment:', error);
-        alert('Ошибка отправки комментария: ' + error.message);
-      }
-    }
     
     // Initialize
     load();

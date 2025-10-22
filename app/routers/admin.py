@@ -29,6 +29,7 @@ class RestaurantCreate(BaseModel):
     delivery_time_minutes: int = 60
     address: str = ""
     phone: str = ""
+    email: str = ""
 
 
 class RestaurantUpdate(BaseModel):
@@ -38,6 +39,7 @@ class RestaurantUpdate(BaseModel):
     delivery_time_minutes: int | None = None
     address: str | None = None
     phone: str | None = None
+    email: str | None = None
     is_enabled: bool | None = None
     description: str | None = None
     image: str | None = None
@@ -62,6 +64,7 @@ async def list_restaurants_admin(db: Session = Depends(get_db)) -> List[Restaura
         delivery_time_minutes=r.delivery_time_minutes,
         address=r.address,
         phone=r.phone,
+        email=r.email,
         description=r.description,
         image=r.image,
         work_open_min=r.work_open_min,
@@ -85,6 +88,7 @@ async def create_restaurant(payload: RestaurantCreate, db: Session = Depends(get
         delivery_time_minutes=payload.delivery_time_minutes,
         address=payload.address,
         phone=payload.phone,
+        email=payload.email,
     )
     db.add(r)
     db.commit()
@@ -119,7 +123,7 @@ async def update_restaurant(restaurant_id: int, payload: RestaurantUpdate, db: S
         id=r.id, name=r.name, is_enabled=r.is_enabled, rating_agg=r.rating_agg,
         delivery_min_sum=r.delivery_min_sum, delivery_fee=r.delivery_fee,
         delivery_time_minutes=r.delivery_time_minutes, address=r.address, phone=r.phone,
-        description=r.description, image=r.image, work_open_min=r.work_open_min,
+        email=r.email, description=r.description, image=r.image, work_open_min=r.work_open_min,
         work_close_min=r.work_close_min, is_open_now=False
     ).model_dump()}
 

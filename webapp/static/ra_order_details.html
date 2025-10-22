@@ -1075,6 +1075,16 @@ const api = location.origin + '/api';
     }
     
     async function markDelivered() {
+      // Показываем модальное окно подтверждения
+      const confirmed = confirm('Изменить статус заказа на доставленный? При изменении статуса клиенту придет уведомление о доставке и предложение оценить Вашу службу и написать отзыв.');
+      
+      if (!confirmed) {
+        // Пользователь нажал "Нет" - показываем сообщение
+        alert('Отзыв можно будет оставить позже на странице заказа в профиле.');
+        return;
+      }
+      
+      // Пользователь нажал "Да" - меняем статус заказа
       try {
         const res = await fetch(api + '/ra/orders/' + orderId + '/delivered', {
           method: 'POST',
@@ -1095,12 +1105,12 @@ const api = location.origin + '/api';
           }
           
           // Скрываем кнопку "Доставлено"
-          const deliveredBtn = document.getElementById('delivered-btn');
+          const deliveredBtn = document.querySelector('.btn-delivered');
           if (deliveredBtn) {
             deliveredBtn.style.display = 'none';
           }
           
-          alert('Заказ отмечен как доставленный');
+          alert('Заказ отмечен как доставленный! Клиенту отправлено уведомление с предложением оценить Вашу службу.');
         } else {
           throw new Error('Ошибка отметки доставки');
         }

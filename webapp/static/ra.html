@@ -992,22 +992,43 @@
       
       try {
         if (action.startsWith('accept-')) {
-          const etaMinutes = parseInt(action.split('-')[1]);
-          console.log('Accepting order with ETA:', etaMinutes);
-          
-          const res = await fetch(api + '/ra/orders/' + orderId + '/accept?eta_minutes=' + etaMinutes, {
-            method: 'POST',
-            headers
-          });
-          
-          if (res.ok) {
-            alert('Заказ принят!');
-            // Закрываем модальное окно
-            document.querySelector('.order-modal-overlay').remove();
-            // Перезагружаем заказы
-            simpleLoad();
+          if (action === 'accept-pickup') {
+            // Для заказов на вынос принимаем без времени доставки
+            console.log('Accepting pickup order');
+            
+            const res = await fetch(api + '/ra/orders/' + orderId + '/accept', {
+              method: 'POST',
+              headers
+            });
+            
+            if (res.ok) {
+              alert('Заказ принят!');
+              // Закрываем модальное окно
+              document.querySelector('.order-modal-overlay').remove();
+              // Перезагружаем заказы
+              simpleLoad();
+            } else {
+              throw new Error('Ошибка принятия заказа');
+            }
           } else {
-            throw new Error('Ошибка принятия заказа');
+            // Для заказов на доставку принимаем с указанием времени
+            const etaMinutes = parseInt(action.split('-')[1]);
+            console.log('Accepting order with ETA:', etaMinutes);
+            
+            const res = await fetch(api + '/ra/orders/' + orderId + '/accept?eta_minutes=' + etaMinutes, {
+              method: 'POST',
+              headers
+            });
+            
+            if (res.ok) {
+              alert('Заказ принят!');
+              // Закрываем модальное окно
+              document.querySelector('.order-modal-overlay').remove();
+              // Перезагружаем заказы
+              simpleLoad();
+            } else {
+              throw new Error('Ошибка принятия заказа');
+            }
           }
         } else if (action === 'modify') {
           // Закрываем модальное окно и открываем окно изменения заказа
@@ -1066,7 +1087,7 @@
         
         // Проверяем статус заказа - модальное окно обработки должно показываться только для статуса "sent"
         if (order.status !== 'sent') {
-          alert('Этот заказ уже обработан. Окно обработки доступно только для новых заказов.');
+          alert('Этот заказ уже обработан. Для проверки деталей и изменения статуса нажмите на заказ в списке.');
           return;
         }
         
@@ -1119,26 +1140,35 @@
             </div>
             
             <div class="order-actions-section">
-              <div class="action-option" onclick="selectAction(this, 'accept-30')">
-                <input type="radio" name="action" value="accept-30" id="accept-30">
-                <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
-              </div>
-              <div class="action-option" onclick="selectAction(this, 'accept-60')">
-                <input type="radio" name="action" value="accept-60" id="accept-60">
-                <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
-              </div>
-              <div class="action-option" onclick="selectAction(this, 'accept-90')">
-                <input type="radio" name="action" value="accept-90" id="accept-90">
-                <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
-              </div>
-              <div class="action-option" onclick="selectAction(this, 'accept-120')">
-                <input type="radio" name="action" value="accept-120" id="accept-120">
-                <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
-              </div>
-              <div class="action-option" onclick="selectAction(this, 'accept-180')">
-                <input type="radio" name="action" value="accept-180" id="accept-180">
-                <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
-              </div>
+              ${order.delivery_type === 'pickup' ? `
+                <!-- Для заказов на вынос показываем только кнопку "Принять заказ" -->
+                <div class="action-option" onclick="selectAction(this, 'accept-pickup')">
+                  <input type="radio" name="action" value="accept-pickup" id="accept-pickup">
+                  <label class="action-option-label" for="accept-pickup">Принять заказ</label>
+                </div>
+              ` : `
+                <!-- Для заказов на доставку показываем кнопки с временем -->
+                <div class="action-option" onclick="selectAction(this, 'accept-30')">
+                  <input type="radio" name="action" value="accept-30" id="accept-30">
+                  <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
+                </div>
+                <div class="action-option" onclick="selectAction(this, 'accept-60')">
+                  <input type="radio" name="action" value="accept-60" id="accept-60">
+                  <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
+                </div>
+                <div class="action-option" onclick="selectAction(this, 'accept-90')">
+                  <input type="radio" name="action" value="accept-90" id="accept-90">
+                  <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
+                </div>
+                <div class="action-option" onclick="selectAction(this, 'accept-120')">
+                  <input type="radio" name="action" value="accept-120" id="accept-120">
+                  <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
+                </div>
+                <div class="action-option" onclick="selectAction(this, 'accept-180')">
+                  <input type="radio" name="action" value="accept-180" id="accept-180">
+                  <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
+                </div>
+              `}
               <div class="action-option" onclick="selectAction(this, 'modify')">
                 <input type="radio" name="action" value="modify" id="modify">
                 <label class="action-option-label" for="modify">Изменить заказ</label>
@@ -1714,7 +1744,7 @@
             
             // Проверяем статус заказа - модальное окно обработки должно показываться только для статуса "sent"
             if (order.status !== 'sent') {
-              alert(`Этот заказ уже обработан. Статус: "${order.status}". Окно обработки доступно только для новых заказов.`);
+              alert(`Этот заказ уже обработан. Для проверки деталей и изменения статуса нажмите на заказ в списке.`);
               return;
             }
             
@@ -1764,26 +1794,35 @@
                 </div>
                 
                 <div class="order-actions-section">
-                  <div class="action-option" onclick="selectAction(this, 'accept-30')">
-                    <input type="radio" name="action" value="accept-30" id="accept-30">
-                    <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
-                  </div>
-                  <div class="action-option" onclick="selectAction(this, 'accept-60')">
-                    <input type="radio" name="action" value="accept-60" id="accept-60">
-                    <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
-                  </div>
-                  <div class="action-option" onclick="selectAction(this, 'accept-90')">
-                    <input type="radio" name="action" value="accept-90" id="accept-90">
-                    <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
-                  </div>
-                  <div class="action-option" onclick="selectAction(this, 'accept-120')">
-                    <input type="radio" name="action" value="accept-120" id="accept-120">
-                    <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
-                  </div>
-                  <div class="action-option" onclick="selectAction(this, 'accept-180')">
-                    <input type="radio" name="action" value="accept-180" id="accept-180">
-                    <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
-                  </div>
+                  ${order.delivery_type === 'pickup' ? `
+                    <!-- Для заказов на вынос показываем только кнопку "Принять заказ" -->
+                    <div class="action-option" onclick="selectAction(this, 'accept-pickup')">
+                      <input type="radio" name="action" value="accept-pickup" id="accept-pickup">
+                      <label class="action-option-label" for="accept-pickup">Принять заказ</label>
+                    </div>
+                  ` : `
+                    <!-- Для заказов на доставку показываем кнопки с временем -->
+                    <div class="action-option" onclick="selectAction(this, 'accept-30')">
+                      <input type="radio" name="action" value="accept-30" id="accept-30">
+                      <label class="action-option-label" for="accept-30">Принять и доставить за 30 мин</label>
+                    </div>
+                    <div class="action-option" onclick="selectAction(this, 'accept-60')">
+                      <input type="radio" name="action" value="accept-60" id="accept-60">
+                      <label class="action-option-label" for="accept-60">Принять и доставить за 1 час</label>
+                    </div>
+                    <div class="action-option" onclick="selectAction(this, 'accept-90')">
+                      <input type="radio" name="action" value="accept-90" id="accept-90">
+                      <label class="action-option-label" for="accept-90">Принять и доставить за 1,5 часа</label>
+                    </div>
+                    <div class="action-option" onclick="selectAction(this, 'accept-120')">
+                      <input type="radio" name="action" value="accept-120" id="accept-120">
+                      <label class="action-option-label" for="accept-120">Принять и доставить за 2 часа</label>
+                    </div>
+                    <div class="action-option" onclick="selectAction(this, 'accept-180')">
+                      <input type="radio" name="action" value="accept-180" id="accept-180">
+                      <label class="action-option-label" for="accept-180">Принять и доставить за 3 часа</label>
+                    </div>
+                  `}
                   <div class="action-option" onclick="selectAction(this, 'modify')">
                     <input type="radio" name="action" value="modify" id="modify">
                     <label class="action-option-label" for="modify">Изменить заказ</label>

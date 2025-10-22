@@ -35,10 +35,10 @@
         <span class="nav-icon nav-icon-home"></span>
         <span>Главное</span>
       </a>
-      <span class="nav-item disabled">
+      <a id="navPromotions" href="#" class="nav-item">
         <span class="nav-icon nav-icon-promo"></span>
         <span>Акции</span>
-      </span>
+      </a>
       <a id="navCart" href="#" class="nav-item">
         <span class="nav-icon nav-icon-cart"></span>
         <span>Корзина</span>
@@ -486,7 +486,8 @@
         }
         if (data && data.status === 'too_many_restaurants') {
           showTooManyModal(data.current_restaurant_ids || [], async () => {
-            await fetch(api + '/cart/items?force=true' + (uid ? ('&uid=' + uid) : ''), {
+            // Повторяем попытку добавления с force=true
+            const retryRes = await fetch(api + '/cart/items?force=true' + (uid ? ('&uid=' + uid) : ''), {
               method: 'POST', 
               headers: {
                 ...headers,
@@ -494,6 +495,20 @@
               },
               body: JSON.stringify(cartData)
             });
+            
+            if (retryRes.ok) {
+              const retryData = await retryRes.json();
+              if (retryData.status === 'ok') {
+                // Успешно добавлено, обновляем кнопку
+                addBtn.textContent = 'Далее';
+                addBtn.style.background = '#28a745';
+                addBtn.style.borderColor = '#28a745';
+                addBtn.classList.add('success-animation');
+                setTimeout(() => {
+                  addBtn.classList.remove('success-animation');
+                }, 600);
+              }
+            }
           });
         }
       } catch (error) {
@@ -511,6 +526,7 @@
       document.getElementById('navCart').onclick = (e) => { e.preventDefault(); location.href = toUrl('/static/cart.html'); };
       document.getElementById('navProfile').onclick = (e) => { e.preventDefault(); location.href = toUrl('/static/profile.html'); };
       document.getElementById('navMenu').onclick = (e) => { e.preventDefault(); const q = new URLSearchParams(location.search); if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1'); location.href = '/static/restaurant.html?id=' + (dish?.restaurant_id || 0) + '&' + q.toString(); };
+      document.getElementById('navPromotions').onclick = (e) => { e.preventDefault(); const q = new URLSearchParams(location.search); if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1'); location.href = '/static/promotions.html?' + q.toString(); };
       
       // Инициализируем свайп
       initSwipe();
@@ -628,7 +644,7 @@
         row.className = 'row';
         row.innerHTML = `<div>${r.name}</div><button class="trash">🗑</button>`;
         row.querySelector('.trash').onclick = async () => {
-          await fetch(api + '/cart/clear?restaurant_id=' + r.id + (uid ? ('&uid=' + uid) : ''), { method: 'POST' });
+          await fetch(api + '/cart/clear?restaurant_id=' + r.id + (uid ? ('&uid=' + uid) : ''), { method: 'POST', headers });
           row.remove();
         };
         list.appendChild(row);

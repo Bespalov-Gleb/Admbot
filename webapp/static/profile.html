@@ -54,7 +54,7 @@
           <div>
             <button id="saveProfile">Сохранить</button>
           </div>
-          <div class="meta">Правовые документы: <a href="#" id="docTerms">Пользовательское соглашение</a> · <a href="#" id="docPolicy">Политика конфиденциальности</a></div>
+          <div class="meta">Правовые документы: <a href="/api/public/documents/user-agreement" id="docTerms" target="_blank">📄 Пользовательское соглашение</a> · <a href="/api/public/documents/privacy-policy" id="docPolicy" target="_blank">📄 Политика конфиденциальности</a></div>
         </div>
       </div>
     </div>
@@ -77,10 +77,10 @@
         <span class="nav-icon nav-icon-home"></span>
         <span>Главное</span>
       </a>
-      <span class="nav-item disabled">
+      <a id="navPromotions" href="#" class="nav-item">
         <span class="nav-icon nav-icon-promo"></span>
         <span>Акции</span>
-      </span>
+      </a>
       <a id="navCart" href="#" class="nav-item">
         <span class="nav-icon nav-icon-cart"></span>
         <span>Корзина</span>
@@ -149,6 +149,11 @@
     document.getElementById('navCart').onclick = (e) => { 
       e.preventDefault(); 
       location.href = '/static/cart.html?' + p.toString(); 
+    };
+    
+    document.getElementById('navPromotions').onclick = (e) => { 
+      e.preventDefault(); 
+      location.href = '/static/promotions.html?' + p.toString(); 
     };
     
     // Функции для сворачивания/разворачивания секций
