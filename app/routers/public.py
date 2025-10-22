@@ -135,16 +135,26 @@ async def get_public_promotions(db: Session = Depends(get_db)):
 async def download_user_agreement():
     """Скачать пользовательское соглашение"""
     file_path = "webapp/static/Пользовательское-соглашение-ВкусАпп.pdf"
-    if os.path.exists(file_path):
-        return FileResponse(
-            path=file_path,
-            filename="Пользовательское соглашение ВкусАпп.pdf",
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": "attachment; filename=\"Пользовательское соглашение ВкусАпп.pdf\""}
-        )
-    else:
+    try:
+        if os.path.exists(file_path):
+            print(f"DEBUG: Serving user agreement from {file_path}")
+            return FileResponse(
+                path=file_path,
+                filename="Пользовательское соглашение ВкусАпп.pdf",
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": "inline; filename=\"Пользовательское соглашение ВкусАпп.pdf\"",
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+        else:
+            print(f"DEBUG: User agreement file not found at {file_path}")
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Файл не найден")
+    except Exception as e:
+        print(f"DEBUG: Error serving user agreement: {str(e)}")
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Файл не найден")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 
 @router.get("/documents/privacy-policy")
@@ -155,8 +165,11 @@ async def download_privacy_policy():
         return FileResponse(
             path=file_path,
             filename="Политика конфиденциальности ВкусАпп.pdf",
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": "attachment; filename=\"Политика конфиденциальности ВкусАпп.pdf\""}
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "inline; filename=\"Политика конфиденциальности ВкусАпп.pdf\"",
+                "Cache-Control": "public, max-age=3600"
+            }
         )
     else:
         from fastapi import HTTPException
@@ -171,8 +184,11 @@ async def download_restaurant_offer():
         return FileResponse(
             path=file_path,
             filename="Оферта ВкусАпп.pdf",
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": "attachment; filename=\"Оферта ВкусАпп.pdf\""}
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "inline; filename=\"Оферта ВкусАпп.pdf\"",
+                "Cache-Control": "public, max-age=3600"
+            }
         )
     else:
         from fastapi import HTTPException
