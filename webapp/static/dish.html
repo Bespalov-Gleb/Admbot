@@ -536,6 +536,19 @@
     function goBack() {
       const q = new URLSearchParams(location.search);
       if (!q.get('ngrok-skip-browser-warning')) q.set('ngrok-skip-browser-warning','1');
+      
+      // Проверяем, пришли ли мы из корзины
+      const from = q.get('from');
+      const ref = document.referrer || '';
+      
+      if (from === 'cart' || ref.includes('/static/cart.html')) {
+        // Если пришли из корзины, возвращаемся в корзину
+        q.delete('from');
+        location.href = '/static/cart.html?' + q.toString();
+        return;
+      }
+      
+      // Иначе возвращаемся в ресторан (существующая логика)
       const categoryId = q.get('category_id');
       if (categoryId) {
         q.set('scroll_to_category', categoryId);
