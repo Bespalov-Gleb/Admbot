@@ -131,6 +131,11 @@ async def get_public_promotions(db: Session = Depends(get_db)):
 
 # ========== DOCUMENTS API ==========
 
+def encode_filename_for_header(filename: str) -> str:
+    """Кодирует имя файла для использования в HTTP заголовках"""
+    import urllib.parse
+    return f"filename*=UTF-8''{urllib.parse.quote(filename)}"
+
 @router.get("/documents/user-agreement")
 async def download_user_agreement():
     """Скачать пользовательское соглашение"""
@@ -138,12 +143,13 @@ async def download_user_agreement():
     try:
         if os.path.exists(file_path):
             print(f"DEBUG: Serving user agreement from {file_path}")
+            filename = "Пользовательское соглашение ВкусАпп.pdf"
             return FileResponse(
                 path=file_path,
-                filename="Пользовательское соглашение ВкусАпп.pdf",
+                filename=filename,
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": "inline; filename=\"Пользовательское соглашение ВкусАпп.pdf\"",
+                    "Content-Disposition": f"inline; {encode_filename_for_header(filename)}",
                     "Cache-Control": "public, max-age=3600"
                 }
             )
@@ -161,35 +167,51 @@ async def download_user_agreement():
 async def download_privacy_policy():
     """Скачать политику конфиденциальности"""
     file_path = "webapp/static/Политика-конфиденциальности-ВкусАпп.pdf"
-    if os.path.exists(file_path):
-        return FileResponse(
-            path=file_path,
-            filename="Политика конфиденциальности ВкусАпп.pdf",
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "inline; filename=\"Политика конфиденциальности ВкусАпп.pdf\"",
-                "Cache-Control": "public, max-age=3600"
-            }
-        )
-    else:
+    try:
+        if os.path.exists(file_path):
+            print(f"DEBUG: Serving privacy policy from {file_path}")
+            filename = "Политика конфиденциальности ВкусАпп.pdf"
+            return FileResponse(
+                path=file_path,
+                filename=filename,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"inline; {encode_filename_for_header(filename)}",
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+        else:
+            print(f"DEBUG: Privacy policy file not found at {file_path}")
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Файл не найден")
+    except Exception as e:
+        print(f"DEBUG: Error serving privacy policy: {str(e)}")
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Файл не найден")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 
 @router.get("/documents/restaurant-offer")
 async def download_restaurant_offer():
     """Скачать оферту для ресторанов"""
     file_path = "webapp/static/Оферта-ВкусАпп.pdf"
-    if os.path.exists(file_path):
-        return FileResponse(
-            path=file_path,
-            filename="Оферта ВкусАпп.pdf",
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "inline; filename=\"Оферта ВкусАпп.pdf\"",
-                "Cache-Control": "public, max-age=3600"
-            }
-        )
-    else:
+    try:
+        if os.path.exists(file_path):
+            print(f"DEBUG: Serving restaurant offer from {file_path}")
+            filename = "Оферта ВкусАпп.pdf"
+            return FileResponse(
+                path=file_path,
+                filename=filename,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"inline; {encode_filename_for_header(filename)}",
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+        else:
+            print(f"DEBUG: Restaurant offer file not found at {file_path}")
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Файл не найден")
+    except Exception as e:
+        print(f"DEBUG: Error serving restaurant offer: {str(e)}")
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Файл не найден") 
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}") 
