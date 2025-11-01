@@ -1,0 +1,422 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Поиск</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/styles.v23.css?v=88" />
+  <script src="/static/preload-system.js" defer></script>
+  <script src="/static/page-cache.js" defer></script>
+  <script src="/static/page-transitions.js" defer></script>
+  <script src="/static/loading-system.js" defer></script>
+  <script src="/static/micro-animations.js" defer></script>
+  <script src="/static/toast-system.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Поисковая строка -->
+    <div class="search-page-header">
+      <button class="search-back-btn" id="searchBackBtn">
+        <span>←</span>
+      </button>
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Быстрый поиск" />
+        <button class="search-clear-btn" id="searchClearBtn" style="display: none;">✕</button>
+      </div>
+    </div>
+    
+    <!-- Предложения поиска -->
+    <div id="searchSuggestions" class="search-suggestions"></div>
+    
+    <!-- Фильтры и результаты -->
+    <div id="searchFilters" class="search-filters">
+      <span class="search-results-count" id="searchResultsCount"></span>
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="restaurants">Рестораны</button>
+        <button class="filter-btn" data-filter="dishes">Блюда</button>
+        <button class="filter-btn" data-filter="promotions">С акцией</button>
+      </div>
+    </div>
+    
+    <!-- Популярные рестораны (когда поле пустое) -->
+    <div id="popularRestaurants" class="popular-restaurants-section">
+      <h3 class="popular-section-title">Часто ищут</h3>
+      <div id="popularRestaurantsList" class="popular-restaurants-list">
+        <!-- Здесь будут популярные рестораны -->
+      </div>
+    </div>
+    
+    <!-- Результаты поиска (когда есть запрос) -->
+    <div id="searchResults" class="search-results" style="display: none;"></div>
+    
+    <div class="nav-container">
+      <a id="navHome" href="#" class="nav-item">
+        <span class="nav-icon nav-icon-home"></span>
+        <span>Главное</span>
+      </a>
+      <a id="navPromotions" href="/static/promotions.html" class="nav-item">
+        <span class="nav-icon nav-icon-promo"></span>
+        <span>Акции</span>
+      </a>
+      <a id="navCart" href="#" class="nav-item">
+        <span class="nav-icon nav-icon-cart"></span>
+        <span>Корзина</span>
+      </a>
+      <a id="navProfile" href="#" class="nav-item">
+        <span class="nav-icon nav-icon-profile"></span>
+        <span>Профиль</span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const api = location.origin + '/api';
+    const tg = window.Telegram?.WebApp;
+    const q = new URLSearchParams(location.search);
+    const uid = (q.get('uid') && Number(q.get('uid'))) || tg?.initDataUnsafe?.user?.id || 0;
+    const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
+    
+    const searchInput = document.getElementById('searchInput');
+    const searchClearBtn = document.getElementById('searchClearBtn');
+    const searchBackBtn = document.getElementById('searchBackBtn');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    const searchFilters = document.getElementById('searchFilters');
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsCount = document.getElementById('searchResultsCount');
+    const popularRestaurants = document.getElementById('popularRestaurants');
+    const popularRestaurantsList = document.getElementById('popularRestaurantsList');
+    
+    let searchTimeout;
+    let currentFilter = 'all';
+    let currentQuery = '';
+    
+    // Популярные запросы
+    const popularQueries = ['вкус', 'пицца', 'бургер', 'суши', 'роллы'];
+    
+    // Функция для перехода в ресторан
+    function goToRestaurant(restaurantId) {
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      p.delete('id');
+      p.set('id', restaurantId.toString());
+      location.href = `/static/restaurant.html?${p.toString()}`;
+    }
+    
+    // Загружаем популярные рестораны при загрузке страницы
+    async function loadPopularRestaurants() {
+      try {
+        // Сначала проверяем кэш PreloadSystem
+        let restaurants = null;
+        if (window.PreloadSystem && window.PreloadSystem.cache && window.PreloadSystem.cache.has('restaurants_data')) {
+          restaurants = window.PreloadSystem.cache.get('restaurants_data');
+          console.log('Using preloaded restaurants data from cache');
+        }
+        
+        // Если нет в кэше, проверяем sessionStorage
+        if (!restaurants) {
+          try {
+            const cached = sessionStorage.getItem('restaurants_data');
+            if (cached) {
+              restaurants = JSON.parse(cached);
+              console.log('Using restaurants data from sessionStorage');
+            }
+          } catch (e) {
+            console.log('No cached data in sessionStorage');
+          }
+        }
+        
+        // Если всё ещё нет, загружаем с сервера
+        if (!restaurants) {
+          const res = await fetch(api + '/restaurants', { headers: getHeaders });
+          if (!res.ok) throw new Error('Failed to load restaurants');
+          restaurants = await res.json();
+          
+          // Кэшируем в sessionStorage для следующих разов
+          try {
+            sessionStorage.setItem('restaurants_data', JSON.stringify(restaurants));
+          } catch (e) {
+            console.log('Could not cache to sessionStorage');
+          }
+        }
+        
+        const sorted = restaurants
+          .filter(r => r.is_enabled)
+          .sort((a, b) => {
+            const ratingA = a.rating_agg || 0;
+            const ratingB = b.rating_agg || 0;
+            return ratingB - ratingA;
+          })
+          .slice(0, 10);
+        
+        if (sorted.length === 0) {
+          popularRestaurantsList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #6b7280;">Нет популярных ресторанов</div>';
+          return;
+        }
+        
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        
+        popularRestaurantsList.innerHTML = sorted.map(r => {
+          const ratingText = r.rating_agg && r.rating_agg > 0 
+            ? `★ ${r.rating_agg.toFixed(1)}`
+            : 'Мало оценок';
+          
+          const promoLabel = r.delivery_fee === 0 ? '<span class="promo-label green">Бесплатная доставка</span>' : '';
+          
+          return `
+            <div class="popular-restaurant-item" onclick="goToRestaurant(${r.id})">
+              ${r.image ? `<img src="${r.image}" alt="${r.name}" class="popular-restaurant-image" onerror="this.style.display='none'"/>` : '<div class="popular-restaurant-image"></div>'}
+              <div class="popular-restaurant-info">
+                <div class="popular-restaurant-name">${r.name}</div>
+                <div class="popular-restaurant-meta">
+                  <span class="popular-restaurant-rating">${ratingText}</span>
+                  <span>·</span>
+                  <span>${r.delivery_time_minutes || '--'} мин</span>
+                </div>
+                ${promoLabel ? `<div class="popular-restaurant-promos">${promoLabel}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('Error loading popular restaurants:', error);
+        popularRestaurantsList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #dc2626;">Ошибка загрузки</div>';
+      }
+    }
+    
+    function renderSuggestions() {
+      if (!currentQuery || currentQuery.length < 2) {
+        searchSuggestions.innerHTML = '';
+        searchSuggestions.style.display = 'none';
+        return;
+      }
+      
+      const filtered = popularQueries.filter(q => q.toLowerCase().includes(currentQuery.toLowerCase()));
+      if (filtered.length === 0) {
+        searchSuggestions.style.display = 'none';
+        return;
+      }
+      
+      searchSuggestions.innerHTML = filtered.map(q => 
+        `<button class="suggestion-chip" onclick="setSearchQuery('${q}')">${q}</button>`
+      ).join('');
+      searchSuggestions.style.display = 'flex';
+    }
+    
+    window.setSearchQuery = function(query) {
+      searchInput.value = query;
+      currentQuery = query;
+      searchClearBtn.style.display = 'flex';
+      searchSuggestions.style.display = 'none';
+      performSearch();
+    };
+    
+    async function performSearch() {
+      if (!currentQuery || currentQuery.trim().length < 2) {
+        searchResults.innerHTML = '';
+        searchResultsCount.textContent = '';
+        searchResults.style.display = 'none';
+        popularRestaurants.style.display = 'block';
+        return;
+      }
+      
+      // Скрываем популярные рестораны и показываем результаты
+      popularRestaurants.style.display = 'none';
+      searchResults.style.display = 'block';
+      searchFilters.style.display = 'block';
+      
+      try {
+        const params = new URLSearchParams({
+          q: currentQuery
+        });
+        
+        if (currentFilter === 'restaurants') {
+          params.append('type', 'restaurants');
+        } else if (currentFilter === 'dishes') {
+          params.append('type', 'dishes');
+        }
+        
+        if (currentFilter === 'promotions') {
+          params.append('with_promotions', 'true');
+        }
+        
+        const res = await fetch(api + '/public/search?' + params.toString());
+        if (!res.ok) throw new Error('Search failed');
+        
+        const data = await res.json();
+        
+        if (data.total === 0) {
+          searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #6b7280;">Ничего не найдено</div>';
+          searchResultsCount.textContent = 'Найдено 0 результатов';
+          return;
+        }
+        
+        searchResultsCount.textContent = `Найдено ${data.total} результатов`;
+        
+        if (data.restaurants.length === 0) {
+          searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #6b7280;">Ничего не найдено</div>';
+          return;
+        }
+        
+        searchResults.innerHTML = data.restaurants.map(restaurant => {
+          const p = new URLSearchParams(location.search);
+          if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+          
+          let dishesHtml = '';
+          if (restaurant.dishes && restaurant.dishes.length > 0) {
+            dishesHtml = `
+              <div class="search-dishes-scroll">
+                ${restaurant.dishes.map(dish => `
+                  <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${p.toString()}'">
+                    ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="search-dish-image" onerror="this.style.display='none'"/>` : '<div class="search-dish-image"></div>'}
+                    <div class="search-dish-info">
+                      <div class="search-dish-name">${dish.name}</div>
+                      <div class="search-dish-price">${dish.price} ₽</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+          
+          const ratingText = restaurant.rating && restaurant.rating > 0 
+            ? `★ ${restaurant.rating.toFixed(1)}`
+            : 'Мало оценок';
+          
+          return `
+            <div class="search-restaurant-block">
+              <div class="search-restaurant-header" onclick="goToRestaurant(${restaurant.id})">
+                ${restaurant.image ? `<img src="${restaurant.image}" alt="${restaurant.name}" class="search-restaurant-image" onerror="this.style.display='none'"/>` : '<div class="search-restaurant-image"></div>'}
+                <div class="search-restaurant-info">
+                  <div class="search-restaurant-name">${restaurant.name}</div>
+                  <div class="search-restaurant-meta">
+                    <span class="search-restaurant-rating">${ratingText}</span>
+                    <span>·</span>
+                    <span>${restaurant.delivery_time_minutes || '--'} мин</span>
+                    ${restaurant.delivery_fee === 0 ? '<span style="color: #059669; font-weight: 600;">Бесплатная доставка</span>' : ''}
+                  </div>
+                </div>
+              </div>
+              ${dishesHtml}
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #dc2626;">Ошибка при поиске</div>';
+      }
+    }
+    
+    searchInput.addEventListener('input', (e) => {
+      currentQuery = e.target.value;
+      
+      if (currentQuery.length > 0) {
+        searchClearBtn.style.display = 'flex';
+      } else {
+        searchClearBtn.style.display = 'none';
+        searchResults.style.display = 'none';
+        searchResultsCount.textContent = '';
+        searchFilters.style.display = 'none';
+        popularRestaurants.style.display = 'block';
+      }
+      
+      renderSuggestions();
+      
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        if (currentQuery.trim().length >= 2) {
+          performSearch();
+        } else {
+          searchResults.style.display = 'none';
+          popularRestaurants.style.display = 'block';
+        }
+      }, 300);
+    });
+    
+    searchClearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      currentQuery = '';
+      searchClearBtn.style.display = 'none';
+      searchResults.style.display = 'none';
+      searchResultsCount.textContent = '';
+      searchFilters.style.display = 'none';
+      popularRestaurants.style.display = 'block';
+      searchInput.focus();
+    });
+    
+    searchBackBtn.addEventListener('click', () => {
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      location.href = '/static/index.html?' + p.toString();
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        if (currentQuery.trim().length >= 2) {
+          performSearch();
+        }
+      });
+    });
+    
+    // Навигация
+    document.getElementById('navHome').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/index.html?' + p.toString(); 
+    };
+    document.getElementById('navCart').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      p.set('from', 'search');
+      location.href = '/static/cart.html?' + p.toString(); 
+    };
+    document.getElementById('navProfile').onclick = (e) => { 
+      e.preventDefault(); 
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/profile.html?' + p.toString(); 
+    };
+    
+    // Инициализация - загружаем данные и фокусируемся после загрузки
+    async function initialize() {
+      // Показываем UI сразу (пока данные загружаются)
+      popularRestaurants.style.display = 'block';
+      
+      // Параллельно загружаем популярные рестораны и фокусируемся на поле
+      const loadPromise = loadPopularRestaurants();
+      
+      // Фокусируемся сразу (не ждем загрузки данных)
+      requestAnimationFrame(() => {
+        try {
+          searchInput.focus();
+        } catch (e) {
+          // Браузер может блокировать autofocus в iframe - это нормально
+          console.log('Focus blocked by browser security policy (cross-origin), user can click manually');
+        }
+      });
+      
+      // Ждем загрузки данных
+      await loadPromise;
+    }
+    
+    // Запускаем инициализацию после загрузки DOM
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+      initialize();
+    }
+  </script>
+</body>
+</html>
+

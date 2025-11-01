@@ -6,7 +6,7 @@
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/static/page-cache.js"></script>
-    <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
+    <link rel="stylesheet" href="/static/styles.v23.css?v=87" />
   <script src="/static/page-transitions.js"></script>
   <script src="/static/loading-system.js"></script>
   <script src="/static/preload-system.js"></script>
@@ -15,9 +15,35 @@
 </head>
 <body>
   <div class="container">
-    <h2>Главная</h2>
+    <!-- Поисковая строка -->
+    <div id="searchContainer" class="search-container">
+      <div class="search-bar">
+        <button class="search-back-btn" id="searchBackBtn" style="display: none;">
+          <span>←</span>
+        </button>
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" class="search-input" placeholder="Быстрый поиск" />
+          <button class="search-clear-btn" id="searchClearBtn" style="display: none;">✕</button>
+        </div>
+      </div>
+      <div id="searchSuggestions" class="search-suggestions" style="display: none;"></div>
+      <div id="searchFilters" class="search-filters" style="display: none;">
+        <span class="search-results-count" id="searchResultsCount"></span>
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">Все</button>
+          <button class="filter-btn" data-filter="restaurants">Рестораны</button>
+          <button class="filter-btn" data-filter="dishes">Блюда</button>
+          <button class="filter-btn" data-filter="promotions">С акцией</button>
+        </div>
+      </div>
+    </div>
+    
+    <h2 id="pageTitle">Главная</h2>
     <div id="selections"></div>
     <div id="restaurants"></div>
+    <div id="searchResults" style="display: none;"></div>
+    
     <div class="nav-container">
       <a id="navHome" href="#" class="nav-item active">
         <span class="nav-icon nav-icon-home"></span>
@@ -614,6 +640,234 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       location.href = '/static/profile.html?' + p.toString(); 
     };
 
+    // ===== ПОИСК =====
+    const searchInput = document.getElementById('searchInput');
+    const searchClearBtn = document.getElementById('searchClearBtn');
+    const searchBackBtn = document.getElementById('searchBackBtn');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    const searchFilters = document.getElementById('searchFilters');
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsCount = document.getElementById('searchResultsCount');
+    const pageTitle = document.getElementById('pageTitle');
+    const selectionsDiv = document.getElementById('selections');
+    const restaurantsDiv = document.getElementById('restaurants');
+    
+    let searchTimeout;
+    let currentFilter = 'all';
+    let currentQuery = '';
+    
+    // Популярные запросы (можно расширить)
+    const popularQueries = ['вкус', 'пицца', 'бургер', 'суши', 'роллы'];
+    
+    function showSearchMode() {
+      searchBackBtn.style.display = 'flex';
+      searchFilters.style.display = 'block';
+      searchResults.style.display = 'block';
+      pageTitle.style.display = 'none';
+      selectionsDiv.style.display = 'none';
+      restaurantsDiv.style.display = 'none';
+      document.body.classList.add('search-mode');
+    }
+    
+    function hideSearchMode() {
+      searchBackBtn.style.display = 'none';
+      searchFilters.style.display = 'none';
+      searchResults.style.display = 'none';
+      pageTitle.style.display = 'block';
+      selectionsDiv.style.display = '';
+      restaurantsDiv.style.display = '';
+      searchInput.value = '';
+      searchClearBtn.style.display = 'none';
+      searchSuggestions.style.display = 'none';
+      currentQuery = '';
+      currentFilter = 'all';
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === 'all') btn.classList.add('active');
+      });
+      document.body.classList.remove('search-mode');
+    }
+    
+    function renderSuggestions() {
+      if (!currentQuery || currentQuery.length < 2) {
+        searchSuggestions.innerHTML = '';
+        searchSuggestions.style.display = 'none';
+        return;
+      }
+      
+      const filtered = popularQueries.filter(q => q.toLowerCase().includes(currentQuery.toLowerCase()));
+      if (filtered.length === 0) {
+        searchSuggestions.style.display = 'none';
+        return;
+      }
+      
+      searchSuggestions.innerHTML = filtered.map(q => 
+        `<button class="suggestion-chip" onclick="setSearchQuery('${q}')">${q}</button>`
+      ).join('');
+      searchSuggestions.style.display = 'flex';
+    }
+    
+    window.setSearchQuery = function(query) {
+      searchInput.value = query;
+      currentQuery = query;
+      searchClearBtn.style.display = 'flex';
+      searchSuggestions.style.display = 'none';
+      performSearch();
+    };
+    
+    async function performSearch() {
+      if (!currentQuery || currentQuery.trim().length < 2) {
+        searchResults.innerHTML = '';
+        searchResultsCount.textContent = '';
+        return;
+      }
+      
+      showSearchMode();
+      
+      try {
+        const params = new URLSearchParams({
+          q: currentQuery
+        });
+        
+        if (currentFilter === 'restaurants') {
+          params.append('type', 'restaurants');
+        } else if (currentFilter === 'dishes') {
+          params.append('type', 'dishes');
+        }
+        
+        if (currentFilter === 'promotions') {
+          params.append('with_promotions', 'true');
+        }
+        
+        const res = await fetch(api + '/public/search?' + params.toString());
+        if (!res.ok) throw new Error('Search failed');
+        
+        const data = await res.json();
+        
+        if (data.total === 0) {
+          searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #6b7280;">Ничего не найдено</div>';
+          searchResultsCount.textContent = 'Найдено 0 результатов';
+          return;
+        }
+        
+        searchResultsCount.textContent = `Найдено ${data.total} результатов`;
+        
+        if (data.restaurants.length === 0) {
+          searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #6b7280;">Ничего не найдено</div>';
+          return;
+        }
+        
+        searchResults.innerHTML = data.restaurants.map(restaurant => {
+          const p = new URLSearchParams(location.search);
+          if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+          
+          let dishesHtml = '';
+          if (restaurant.dishes && restaurant.dishes.length > 0) {
+            dishesHtml = `
+              <div class="search-dishes-scroll">
+                ${restaurant.dishes.map(dish => `
+                  <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${p.toString()}'">
+                    ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="search-dish-image" onerror="this.style.display='none'"/>` : '<div class="search-dish-image"></div>'}
+                    <div class="search-dish-info">
+                      <div class="search-dish-name">${dish.name}</div>
+                      <div class="search-dish-price">${dish.price} ₽</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+          
+          const ratingText = restaurant.rating && restaurant.rating > 0 
+            ? `★ ${restaurant.rating.toFixed(1)}`
+            : 'Мало оценок';
+          
+          return `
+            <div class="search-restaurant-block">
+              <div class="search-restaurant-header" onclick="goToRestaurant(${restaurant.id})">
+                ${restaurant.image ? `<img src="${restaurant.image}" alt="${restaurant.name}" class="search-restaurant-image" onerror="this.style.display='none'"/>` : '<div class="search-restaurant-image"></div>'}
+                <div class="search-restaurant-info">
+                  <div class="search-restaurant-name">${restaurant.name}</div>
+                  <div class="search-restaurant-meta">
+                    <span class="search-restaurant-rating">${ratingText}</span>
+                    <span>·</span>
+                    <span>${restaurant.delivery_time_minutes || '--'} мин</span>
+                    ${restaurant.delivery_fee === 0 ? '<span style="color: #059669; font-weight: 600;">Бесплатная доставка</span>' : ''}
+                  </div>
+                </div>
+              </div>
+              ${dishesHtml}
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #dc2626;">Ошибка при поиске</div>';
+      }
+    }
+    
+    searchInput.addEventListener('input', (e) => {
+      const newValue = e.target.value;
+      currentQuery = newValue;
+      
+      // Закрываем модальное окно при вводе
+      if (document.getElementById('searchModal').style.display !== 'none') {
+        document.getElementById('searchModal').style.display = 'none';
+      }
+      
+      if (currentQuery.length > 0) {
+        searchClearBtn.style.display = 'flex';
+      } else {
+        searchClearBtn.style.display = 'none';
+        // НЕ вызываем hideSearchMode() здесь, чтобы не сбрасывать ввод
+      }
+      
+      renderSuggestions();
+      
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        if (currentQuery.trim().length >= 2) {
+          performSearch();
+        } else if (currentQuery.trim().length === 0) {
+          // Только если поле полностью пустое, скрываем результаты
+          searchResults.innerHTML = '';
+          searchResultsCount.textContent = '';
+          searchFilters.style.display = 'none';
+          searchBackBtn.style.display = 'none';
+        }
+      }, 300);
+    });
+    
+    searchInput.addEventListener('focus', () => {
+      // При фокусе переходим на страницу поиска
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      location.href = '/static/search.html?' + p.toString();
+    });
+    
+    searchClearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      currentQuery = '';
+      searchClearBtn.style.display = 'none';
+      hideSearchMode();
+      searchInput.focus();
+    });
+    
+    searchBackBtn.addEventListener('click', () => {
+      hideSearchMode();
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        if (currentQuery.trim().length >= 2) {
+          performSearch();
+        }
+      });
+    });
     
   </script>
 </body>

@@ -2160,3 +2160,357 @@ div[class*="restaurant-card"] {
   font-size: 8px !important;
 }
 
+/* ===== ПОИСК В СТИЛЕ ЯНДЕКС.ЕДА ===== */
+.search-container {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #fff;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-back-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: #374151;
+  padding: 0;
+}
+
+.search-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 20px;
+  padding: 8px 16px;
+}
+
+.search-icon {
+  font-size: 18px;
+  margin-right: 8px;
+  color: #6b7280;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 16px;
+  color: #1f2937;
+  padding: 0;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-clear-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #6b7280;
+  padding: 0;
+  margin-left: 8px;
+}
+
+.search-clear-btn:hover {
+  background: #e5e7eb;
+}
+
+.search-suggestions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.search-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestion-chip {
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-chip:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.search-filters {
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.search-results-count {
+  display: block;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filter-buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: #f9fafb;
+}
+
+.filter-btn.active {
+  background: #1f2937;
+  color: #fff;
+  border-color: #1f2937;
+}
+
+/* Результаты поиска */
+.search-results {
+  padding: 12px;
+}
+
+.search-restaurant-block {
+  margin-bottom: 24px;
+}
+
+.search-restaurant-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.search-restaurant-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.search-restaurant-info {
+  flex: 1;
+}
+
+.search-restaurant-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.search-restaurant-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.search-restaurant-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-dishes-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.search-dishes-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.search-dish-card {
+  min-width: 200px;
+  max-width: 200px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-dish-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.search-dish-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.search-dish-info {
+  padding: 12px;
+}
+
+.search-dish-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.search-dish-price {
+  font-weight: 600;
+  font-size: 16px;
+  color: #dc2626;
+}
+
+/* Страница поиска */
+.search-page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.popular-restaurants-section {
+  padding: 20px 12px;
+}
+
+.popular-section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+}
+
+.popular-restaurants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popular-restaurant-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+}
+
+.popular-restaurant-item:hover {
+  background: #f9fafb;
+}
+
+.popular-restaurant-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.popular-restaurant-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.popular-restaurant-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.popular-restaurant-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.popular-restaurant-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.popular-restaurant-promos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.promo-label {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.promo-label.green {
+  background: #d1fae5;
+  color: #059669;
+}
+

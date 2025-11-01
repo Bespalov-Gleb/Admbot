@@ -1086,8 +1086,28 @@
         renderCategories();
         renderDishes();
         
+        // Проверяем, нужно ли прокрутить к блюду после загрузки
+        const urlParams = new URLSearchParams(location.search);
+        const dishIdFromUrl = urlParams.get('dish_id');
+        if (dishIdFromUrl) {
+          setTimeout(() => {
+            scrollToDishAndOpen(Number(dishIdFromUrl));
+          }, 200);
+        }
+        
       } catch (error) {
         console.error('Error loading menu:', error);
+      }
+    }
+    
+    // Функция для прокрутки к блюду
+    function scrollToDishAndOpen(dishId) {
+      const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
+      if (dishCard) {
+        // Прокручиваем к карточке блюда
+        dishCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        console.log('Dish card not found for dish_id:', dishId);
       }
     }
     
@@ -1206,6 +1226,7 @@
         categoryDishes.forEach((dish, index) => {
           const card = document.createElement('div');
           card.className = 'dish-card';
+          card.setAttribute('data-dish-id', dish.id);
           
           // Добавляем задержку для анимации появления
           card.style.animationDelay = `${index * 0.1}s`;

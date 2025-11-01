@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Управление меню</title>
-    <link rel="stylesheet" href="/static/styles.v23.css?v=79" />
+    <link rel="stylesheet" href="/static/styles.v23.css?v=80" />
   <style>
     /* ===== СОВРЕМЕННЫЙ ДИЗАЙН СТРАНИЦЫ УПРАВЛЕНИЯ МЕНЮ ===== */
     
@@ -824,9 +824,11 @@ const api = location.origin + '/api';
           loadMenu();
         };
         
+        // Создаем контейнер для блюд
         const dishesContainer = document.createElement('div');
         dishesContainer.className = 'dishes-container';
         
+        // Обрабатываем блюда для этой категории
         ds.forEach(d => {
           const row = document.createElement('div');
           row.className = 'dish-row';
