@@ -1911,19 +1911,13 @@
         return;
       }
 
-      // 1.5) Возврат в поиск - ТОЛЬКО если пришли НАПРЯМУЮ из поиска
-      if (from === 'search' && ref.includes('/static/search.html')) {
-        console.log('Возврат в поиск (пришли напрямую из поиска)');
+      // 1.5) Возврат в поиск - ТОЛЬКО если есть поисковый запрос
+      const searchQuery = params.get('search_query');
+      if (from === 'search' && searchQuery) {
+        console.log('Возврат в поиск с запросом:', searchQuery);
         const p = new URLSearchParams(location.search);
         if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-        // Восстанавливаем поисковый запрос, если он был
-        const searchQuery = params.get('search_query');
-        if (searchQuery) {
-          // Переходим на страницу поиска и автоматически выполняем поиск
-          location.href = '/static/search.html?' + p.toString();
-          return;
-        }
-        // Если запроса нет, просто переходим в поиск
+        // Переходим на страницу поиска и автоматически выполняем поиск
         location.href = '/static/search.html?' + p.toString();
         return;
       }

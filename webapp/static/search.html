@@ -103,6 +103,8 @@
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       p.delete('id');
       p.set('id', restaurantId.toString());
+      p.set('from', 'search');
+      p.set('search_query', currentQuery);
       location.href = `/static/restaurant.html?${p.toString()}`;
     }
     
