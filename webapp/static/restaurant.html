@@ -1902,7 +1902,7 @@
       const params = new URLSearchParams(location.search);
       const from = params.get('from');
       const ref = document.referrer || '';
-      
+
       // 1) Явный возврат на Акции
       if (from === 'promotions') {
         const p = new URLSearchParams(location.search);
@@ -1910,9 +1910,10 @@
         location.href = '/static/promotions.html?' + p.toString();
         return;
       }
-      
-      // 1.5) Возврат в поиск
-      if (from === 'search') {
+
+      // 1.5) Возврат в поиск - ТОЛЬКО если пришли НАПРЯМУЮ из поиска
+      if (from === 'search' && ref.includes('/static/search.html')) {
+        console.log('Возврат в поиск (пришли напрямую из поиска)');
         const p = new URLSearchParams(location.search);
         if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
         // Восстанавливаем поисковый запрос, если он был
