@@ -310,6 +310,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
                 card.onclick = () => {
                   const p = new URLSearchParams(location.search);
                   if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+                  // Удаляем параметры поиска
+                  p.delete('from');
+                  p.delete('search_query');
+                  p.delete('id');
 
                   // Если это блюдо из подборки — открываем его как модалку в ресторане
                   const dishId = it.item_id || it.dish_id || (it.dish && it.dish.id);
@@ -379,6 +383,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
                 card.onclick = () => {
                   const p = new URLSearchParams(location.search);
                   if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+                  // Удаляем параметры поиска
+                  p.delete('from');
+                  p.delete('search_query');
+                  p.delete('id');
 
                   // Переходим в ресторан и сразу открываем блюдо в модалке
                   const dishId = it.item_id || it.dish_id || (it.dish && it.dish.id);
@@ -539,6 +547,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     async function openMenu(restaurantId) {
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Удаляем параметры поиска
+      p.delete('from');
+      p.delete('search_query');
+      p.delete('id');
       location.href = `/static/restaurant.html?id=${restaurantId}&${p.toString()}`;
     }
 
@@ -559,6 +571,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       // Очищаем старые параметры id и добавляем новый
       p.delete('id');
       p.set('id', restaurantId.toString());
+      
+      // Удаляем параметры поиска, чтобы не передавать их в ресторан
+      p.delete('from');
+      p.delete('search_query');
       
       const finalUrl = `/static/restaurant.html?${p.toString()}`;
       console.log('Final URL:', finalUrl);

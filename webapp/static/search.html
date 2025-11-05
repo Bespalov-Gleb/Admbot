@@ -360,6 +360,10 @@
     searchBackBtn.addEventListener('click', () => {
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Удаляем параметры поиска при возврате на главную
+      p.delete('from');
+      p.delete('search_query');
+      p.delete('id');
       location.href = '/static/index.html?' + p.toString();
     });
     
@@ -378,7 +382,11 @@
     document.getElementById('navHome').onclick = (e) => { 
       e.preventDefault(); 
       const p = new URLSearchParams(location.search); 
-      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Удаляем параметры поиска при переходе на главную
+      p.delete('from');
+      p.delete('search_query');
+      p.delete('id');
       location.href = '/static/index.html?' + p.toString(); 
     };
     document.getElementById('navCart').onclick = (e) => { 
