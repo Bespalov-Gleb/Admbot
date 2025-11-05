@@ -157,11 +157,52 @@ async def set_restaurant_status(restaurant_id: int, enabled: bool, db: Session =
 
 @router.delete("/restaurants/{restaurant_id}")
 async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -> dict:
+    from app.models import Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption
+    from app.models import Review as DBReview, RestaurantAdmin as DBRestaurantAdmin, Promotion as DBPromotion
+    
     r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
     if not r:
         return {"status": "not_found"}
+    
+    # Удаляем связанные записи каскадно
+    # 1. Удаляем элементы корзины
+    from app.models import CartItem as DBCartItem
+    db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete()
+    
+    # 2. Удаляем элементы заказов и сами заказы
+    from app.models import Order as DBOrder, OrderItem as DBOrderItem
+    orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
+    for order in orders:
+        db.query(DBOrderItem).filter(DBOrderItem.order_id == order.id).delete()
+    db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete()
+    
+    # 3. Удаляем опции и группы опций через блюда
+    dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
+    for dish in dishes:
+        option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
+        for group in option_groups:
+            db.query(DBOption).filter(DBOption.group_id == group.id).delete()
+        db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete()
+    
+    # 4. Удаляем блюда
+    db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete()
+    
+    # 5. Удаляем категории
+    db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete()
+    
+    # 6. Удаляем отзывы
+    db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete()
+    
+    # 7. Удаляем админов ресторана
+    db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete()
+    
+    # 8. Удаляем акции
+    db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete()
+    
+    # 9. Удаляем сам ресторан
     db.delete(r)
     db.commit()
+    
     try:
         await send_admin_message(f"[admin] Удалён ресторан id={restaurant_id}")
     except Exception:

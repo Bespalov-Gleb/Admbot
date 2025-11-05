@@ -911,6 +911,7 @@
           const p = new URLSearchParams(location.search);
           if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
           p.set('from', 'cart'); // Указываем, что переход из корзины
+          p.set('r', activeRestaurantId); // Сохраняем активный ресторан
           location.href = '/static/dish.html?id=' + d.id + '&' + p.toString();
         };
         

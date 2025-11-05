@@ -878,6 +878,13 @@
   </style>
 </head>
 <body>
+  <!-- Надпись когда ресторан не работает -->
+  <div id="restaurantClosedNotice" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); color: white; padding: 32px 40px; border-radius: 16px; z-index: 99999; text-align: center; font-size: 18px; font-weight: 600; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+    <div style="font-size: 48px; margin-bottom: 16px;">🕐</div>
+    <div>В данное время ресторан не работает</div>
+    <div id="restaurantWorkingHoursText" style="margin-top: 12px; font-size: 14px; font-weight: 400; color: #d1d5db;"></div>
+  </div>
+  
   <script>
     // Блокируем прокрутку body при открытой модалке блюда
     (function lockScrollForDishModal(){
@@ -1111,8 +1118,53 @@
       }
     }
     
+    // Функция для проверки рабочего времени ресторана
+    function checkRestaurantWorkingHours(restaurant) {
+      if (!restaurant.work_open_min || !restaurant.work_close_min) {
+        // Если режим работы не задан, считаем что ресторан всегда работает
+        return;
+      }
+      
+      // Получаем текущее время в часовом поясе ресторана
+      const timezone = restaurant.timezone || 'UTC+9';
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      
+      const openMin = restaurant.work_open_min;
+      const closeMin = restaurant.work_close_min;
+      
+      // Проверяем, работает ли ресторан
+      let isOpen = false;
+      if (closeMin > openMin) {
+        // Обычный случай (например, 09:00 - 22:00)
+        isOpen = currentMinutes >= openMin && currentMinutes < closeMin;
+      } else {
+        // Работает через полночь (например, 18:00 - 03:00)
+        isOpen = currentMinutes >= openMin || currentMinutes < closeMin;
+      }
+      
+      // Показываем или скрываем надпись
+      const notice = document.getElementById('restaurantClosedNotice');
+      const hoursText = document.getElementById('restaurantWorkingHoursText');
+      
+      if (!isOpen) {
+        const openHours = Math.floor(openMin / 60).toString().padStart(2, '0');
+        const openMinutes = (openMin % 60).toString().padStart(2, '0');
+        const closeHours = Math.floor(closeMin / 60).toString().padStart(2, '0');
+        const closeMinutes = (closeMin % 60).toString().padStart(2, '0');
+        
+        hoursText.textContent = `Режим работы: ${openHours}:${openMinutes} - ${closeHours}:${closeMinutes}`;
+        notice.style.display = 'block';
+      } else {
+        notice.style.display = 'none';
+      }
+    }
+    
     async function renderRestaurantHeader(restaurant) {
       document.getElementById('restaurantName').textContent = restaurant.name;
+      
+      // Проверяем, работает ли ресторан в текущее время
+      checkRestaurantWorkingHours(restaurant);
       
       // Формируем рейтинг
       const rating = restaurant.rating_agg 
@@ -1361,9 +1413,17 @@
             }
           }
         });
-      } else {
-        await loadCartAndSync();
+        return;
       }
+      
+      if (data.status === 'options_required') {
+        // Блюдо требует выбора обязательных опций - открываем модалку
+        const categoryId = dish?.category_id;
+        await openDishModal(dishId, categoryId);
+        return;
+      }
+      
+      await loadCartAndSync();
     }
     
     async function loadCartAndSync() {
@@ -1776,7 +1836,8 @@
       ov.style.display = 'flex';
       ov.querySelector('#ovDone').onclick = async () => {
         ov.style.display = 'none';
-        if (onDone) await onDone();
+        // Не вызываем onDone - пользователь должен сам удалить корзины через кнопки 🗑
+        // onDone вызывается только если пользователь удалил корзины
       };
     }
     
@@ -1850,6 +1911,22 @@
         return;
       }
       
+      // 1.5) Возврат в поиск
+      if (from === 'search') {
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        // Восстанавливаем поисковый запрос, если он был
+        const searchQuery = params.get('search_query');
+        if (searchQuery) {
+          // Переходим на страницу поиска и автоматически выполняем поиск
+          location.href = '/static/search.html?' + p.toString();
+          return;
+        }
+        // Если запроса нет, просто переходим в поиск
+        location.href = '/static/search.html?' + p.toString();
+        return;
+      }
+      
       // 2) Если пришли из корзины, следующая "Назад" должна вести на Главную
       if (ref.includes('/static/cart.html')) {
         const p2 = new URLSearchParams(location.search);
@@ -1861,17 +1938,15 @@
         return;
       }
       
-      // 3) Иначе пробуем стандартный back
-      if (window.history && window.history.length > 1) {
-        try { window.history.back(); return; } catch(_) {}
-      }
-      
-      // 4) По умолчанию — на главную
+      // 3) По умолчанию — на главную (прямой переход без history.back для быстроты на Android)
       const p3 = new URLSearchParams(location.search);
       if (!p3.get('ngrok-skip-browser-warning')) p3.set('ngrok-skip-browser-warning', '1');
       p3.delete('id');
       p3.delete('category_id');
       p3.delete('scroll_to_category');
+      p3.delete('dish_id');
+      p3.delete('from');
+      p3.delete('search_query');
       location.href = '/static/index.html?' + p3.toString();
     }
     

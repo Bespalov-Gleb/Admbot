@@ -182,8 +182,9 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 return f"{safe_dish_name(it.name)}×{it.qty}"
             
             items_txt = ", ".join(fmt_item(it) for it in snapped_items)
+            pickup_label = " (Самовывоз)" if db_order.delivery_type == "pickup" else ""
             admin_msg = (
-                f"🆕 НОВЫЙ ЗАКАЗ №{db_order.id}\n\n"
+                f"🆕 НОВЫЙ ЗАКАЗ №{db_order.id}{pickup_label}\n\n"
                 f"💰 Сумма: {db_order.total_price} ₽\n"
                 f"🚚 Тип: {db_order.delivery_type}\n"
                 f"💳 Оплата: {db_order.payment_method}\n"
@@ -250,8 +251,9 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
                 restaurant_name = f"ресторана \"{r.name}\""
             
             # pretty formatted message
+            pickup_label = " (Самовывоз)" if db_order.delivery_type == "pickup" else ""
             lines = [
-                f"Заказ отправлен в {restaurant_name}. Ждите подтверждения.",
+                f"Заказ{pickup_label} отправлен в {restaurant_name}. Ждите подтверждения.",
                 "",
                 "СОСТАВ ЗАКАЗА",
                 "------------------------------",

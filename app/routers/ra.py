@@ -135,7 +135,7 @@ async def ra_accept(order_id: int, eta_minutes: int = 60, rid: int = Depends(req
             rr = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
             if rr:
                 name = rr.name
-            await notify_user_order_accepted(o.user_id, f"{WEBAPP_URL}/static/order.html?id={o.id}", name, eta_minutes)
+            await notify_user_order_accepted(o.user_id, f"{WEBAPP_URL}/static/order.html?id={o.id}", name, eta_minutes, o.delivery_type)
     except Exception:
         pass
     return {"status": "ok"}

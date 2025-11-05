@@ -93,11 +93,17 @@ async def notify_user_order_cancelled(chat_id: int, restaurant_name: str, reason
             return
 
 
-async def notify_user_order_accepted(chat_id: int, url: str, restaurant_name: str, eta_minutes: int) -> None:
+async def notify_user_order_accepted(chat_id: int, url: str, restaurant_name: str, eta_minutes: int, delivery_type: str = "delivery") -> None:
     if not BOT_TOKEN or not chat_id:
         return
     api = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    text = f"Ресторан \"{restaurant_name}\" принял Ваш заказ.  Время доставки - {eta_minutes} мин."
+    
+    # Формируем текст в зависимости от типа доставки
+    if delivery_type == "pickup":
+        text = f"Ресторан \"{restaurant_name}\" принял Ваш заказ на самовывоз."
+    else:
+        text = f"Ресторан \"{restaurant_name}\" принял Ваш заказ.  Время доставки - {eta_minutes} мин."
+    
     payload = {
         "chat_id": chat_id,
         "text": text,

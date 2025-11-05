@@ -663,7 +663,10 @@
         list.appendChild(row);
       });
       ov.style.display = 'flex';
-      ov.querySelector('#ovDone').onclick = async () => { ov.style.display = 'none'; if (onDone) await onDone(); };
+      ov.querySelector('#ovDone').onclick = async () => { 
+        ov.style.display = 'none'; 
+        // Не вызываем onDone - пользователь должен сам удалить корзины через кнопки 🗑
+      };
     }
   </script>
 </body>

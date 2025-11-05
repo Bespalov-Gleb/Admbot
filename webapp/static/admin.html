@@ -48,22 +48,44 @@
     .admin-item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 8px;
-      margin-bottom: 5px;
+      align-items: flex-start;
+      padding: 12px;
+      margin-bottom: 8px;
       background: #f1f5f9;
-      border-radius: 4px;
+      border-radius: 8px;
+      gap: 12px;
     }
     
     .admin-info {
+      flex: 1;
+      min-width: 0;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .admin-info span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    
+    .admin-info span:first-child {
+      font-weight: 500;
+      color: #1e293b;
+    }
+    
+    .admin-info span:last-child {
+      color: #64748b;
+      font-size: 13px;
     }
     
     .admin-actions {
       display: flex;
       gap: 5px;
+      flex-shrink: 0;
     }
     
     .remove-admin-btn {
@@ -96,6 +118,337 @@
     
     .hidden {
       display: none !important;
+    }
+    
+    /* === Стили модального окна управления пользователями === */
+    .users-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    
+    .users-modal-content {
+      background: white;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      margin: 20px;
+    }
+    
+    .users-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .users-modal-header h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #1e293b;
+    }
+    
+    .users-modal-close {
+      background: none;
+      border: none;
+      font-size: 32px;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    
+    .users-modal-close:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    
+    .users-modal-body {
+      padding: 24px;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .users-search-bar {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .users-search-bar input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    
+    .users-search-bar button {
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+    
+    .users-search-bar button:hover {
+      background: #2563eb;
+    }
+    
+    .users-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .users-filters .filter-btn {
+      padding: 8px 16px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .users-filters .filter-btn:hover {
+      background: #f1f5f9;
+    }
+    
+    .users-filters .filter-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    
+    .users-list-container {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    
+    #usersListContent {
+      padding: 12px;
+    }
+    
+    .user-item {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .user-item:hover {
+      border-color: #3b82f6;
+      background: #f8fafc;
+    }
+    
+    .user-item.selected {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .user-main-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .user-id {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 14px;
+    }
+    
+    .user-username {
+      color: #3b82f6;
+      font-size: 14px;
+    }
+    
+    .user-name {
+      color: #64748b;
+      font-size: 13px;
+    }
+    
+    .user-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      font-size: 13px;
+    }
+    
+    .user-phone {
+      color: #64748b;
+    }
+    
+    .user-status {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .user-status.status-active {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .user-status.status-blocked {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .user-admin {
+      color: #ca8a04;
+      font-size: 12px;
+    }
+    
+    .users-actions {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .selected-user-info {
+      padding: 12px;
+      background: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      color: #1e293b;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .action-buttons button {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .action-buttons button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    #blockUserBtn {
+      background: #ef4444;
+      color: white;
+    }
+    
+    #blockUserBtn:hover:not(:disabled) {
+      background: #dc2626;
+    }
+    
+    .users-modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    
+    .secondary-btn {
+      padding: 12px 24px;
+      background: #f1f5f9;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .secondary-btn:hover {
+      background: #e2e8f0;
+    }
+    
+    #unblockUserBtn {
+      background: #10b981;
+      color: white;
+    }
+    
+    #unblockUserBtn:hover:not(:disabled) {
+      background: #059669;
+    }
+    
+    #revokeAdminBtn {
+      background: #f97316;
+      color: white;
+    }
+    
+    #revokeAdminBtn:hover:not(:disabled) {
+      background: #ea580c;
+    }
+    
+    .no-users {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+      font-size: 16px;
+    }
+    
+    .primary-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .primary-btn:hover {
+      background: #2563eb;
     }
   </style>
 </head>
@@ -153,41 +506,39 @@
           <span id="usersIcon">▶</span> Управление пользователями
         </h3>
         <div id="usersContent" style="display: none;">
-          <div class="form-group">
-            <label>ID пользователя или @username</label>
-            <input id="uidInput" placeholder="123456 или @username"/>
-          </div>
-          <div class="form-row">
-            <button id="blk">🚫 Заблокировать</button>
-            <button id="unblk">✅ Разблокировать</button>
-            <button id="revokeRA">🛑 Снять права админа ресторана</button>
+          <button id="openUsersModal" class="primary-btn" style="padding: 12px 24px; font-size: 16px; margin-bottom: 16px;">
+            👥 Открыть список пользователей
+          </button>
+          
+          <!-- Форма назначения админа ресторана -->
+          <div class="form-section" style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 16px 0; color: #1e293b;">👑 Назначить админом ресторана</h4>
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label>ID пользователя или @username</label>
+              <input id="uidInput" placeholder="123456 или @username" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;"/>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label>Выберите ресторан</label>
+              <div class="restaurant-selector">
+                <input id="restaurantSearch" placeholder="Поиск ресторана..." class="restaurant-search"/>
+                <div id="restaurantDropdown" class="restaurant-dropdown" style="display: none;">
+                  <div id="restaurantList" class="restaurant-list"></div>
+                </div>
+                <div id="selectedRestaurant" class="selected-restaurant" style="display: none;">
+                  <span class="selected-name"></span>
+                  <button type="button" class="clear-selection" onclick="clearRestaurantSelection()">×</button>
+                </div>
+              </div>
+            </div>
+            <button id="bindRA" class="bind-admin-btn" disabled style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500;">👑 Назначить админом</button>
           </div>
           
-          <!-- Список ресторанов с админами -->
-          <div class="restaurant-admins-section" style="margin-top: 20px;">
-            <h4 id="restaurantAdminsToggle" style="cursor: pointer; user-select: none; margin-bottom: 10px;">
-              <span id="restaurantAdminsIcon">▶</span> Админы ресторанов
-            </h4>
-            <div id="restaurantAdminsContent" style="display: none;">
-              <div id="restaurantAdminsList"></div>
-            </div>
+          <!-- Кнопка для открытия модалки админов ресторанов -->
+          <div style="margin-top: 20px;">
+            <button id="openRestaurantAdminsModal" class="primary-btn" style="padding: 12px 24px; font-size: 16px;">
+              👑 Управление админами ресторанов
+            </button>
           </div>
-          <div class="form-group">
-            <label>Назначить админом ресторана</label>
-            <div class="restaurant-selector">
-              <input id="restaurantSearch" placeholder="Поиск ресторана..." class="restaurant-search"/>
-              <div id="restaurantDropdown" class="restaurant-dropdown" style="display: none;">
-                <div id="restaurantList" class="restaurant-list"></div>
-              </div>
-              <div id="selectedRestaurant" class="selected-restaurant" style="display: none;">
-                <span class="selected-name"></span>
-                <button type="button" class="clear-selection" onclick="clearRestaurantSelection()">×</button>
-              </div>
-            </div>
-            <button id="bindRA" class="bind-admin-btn" disabled>👑 Назначить админом</button>
-          </div>
-          <button id="uload">🔄 Обновить список</button>
-          <div id="ulist"></div>
         </div>
       </div>
        
@@ -518,7 +869,6 @@
         document.getElementById('newRestName').value = '';
         document.getElementById('newRestUsername').value = '';
         load();
-        loadUsers();
       } catch (error) {
         showMessage('Ошибка: ' + error.message, 'error');
       } finally {
@@ -534,32 +884,9 @@
       window.open(url, '_blank');
     };
 
-    async function loadUsers() {
-      const res = await fetch(api + '/admin/users?t=' + Date.now(), { headers });
-      if (!res.ok) return;
-      const us = await res.json();
-      const root = document.getElementById('ulist');
-      root.innerHTML = '';
-      us.forEach(u => {
-        const el = document.createElement('div');
-        el.className = 'restaurant';
-        el.innerHTML = `
-          <div class="restaurant-item">
-            <div class="restaurant-info">
-              <div class="title">👤 Пользователь #${u.id}${u.username ? `<span class="username">@${u.username}</span>` : ''}</div>
-              <div class="meta">
-                <span class="status-${u.is_blocked ? 'off' : 'on'}">● ${u.is_blocked ? 'Заблокирован' : 'Активен'}</span>
-                ${u.restaurant_admin_of ? `👑 Админ ресторана #${u.restaurant_admin_of}` : ''}
-              </div>
-              ${u.username ? `<div class="meta"><span class="username-info">@${u.username}</span></div>` : ''}
-              ${u.name ? `<div class="meta">Имя: ${u.name}</div>` : ''}
-              ${u.phone ? `<div class="meta">Телефон: ${u.phone}</div>` : ''}
-            </div>
-          </div>`;
-        root.appendChild(el);
-      });
-    }
-
+    // Старая функция loadUsers() и обработчики удалены - теперь используется модальное окно
+    
+    // Вспомогательная функция для определения user_id по ID или @username
     async function resolveUserId(input) {
       const value = input.trim();
       if (/^\d+$/.test(value)) {
@@ -575,46 +902,7 @@
         throw new Error('Введите ID пользователя или @username');
       }
     }
-
-    document.getElementById('blk').onclick = async () => {
-      try {
-        const input = (document.getElementById('uidInput').value||'').trim();
-        if (!input) return alert('Введите ID или @username');
-        const id = await resolveUserId(input);
-        await fetch(api + '/admin/users/block?user_id=' + id + '&block=true', { method:'POST', headers });
-        loadUsers();
-        alert('Пользователь заблокирован');
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-    document.getElementById('unblk').onclick = async () => {
-      try {
-        const input = (document.getElementById('uidInput').value||'').trim();
-        if (!input) return alert('Введите ID или @username');
-        const id = await resolveUserId(input);
-        await fetch(api + '/admin/users/block?user_id=' + id + '&block=false', { method:'POST', headers });
-        loadUsers();
-        alert('Пользователь разблокирован');
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-    // Снять права админа ресторана
-    document.getElementById('revokeRA').onclick = async () => {
-      try {
-        const input = (document.getElementById('uidInput').value||'').trim();
-        if (!input) return alert('Введите ID или @username');
-        const id = await resolveUserId(input);
-        const res = await fetch(api + '/admin/users/unbind-admin?user_id=' + id, { method: 'POST', headers });
-        if (!res.ok) throw new Error('Не удалось снять права админа');
-        loadUsers();
-        alert('Права администратора ресторана сняты');
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-    document.getElementById('uload').onclick = loadUsers;
+    
     // Переменные для управления ресторанами
     let allRestaurants = [];
     let selectedRestaurantId = null;
@@ -709,15 +997,19 @@
         
         const restaurantName = document.querySelector('.selected-name').textContent;
         alert(`✅ Пользователь назначен админом ресторана "${restaurantName}"`);
-        loadUsers();
+        
+        // Очищаем форму
+        document.getElementById('uidInput').value = '';
         clearRestaurantSelection();
+        
+        // Обновляем список админов ресторанов
+        loadRestaurantAdmins();
       } catch (error) {
         alert('Ошибка: ' + error.message);
       }
     };
 
     load();
-    loadUsers();
     loadRestaurants();
 
     async function loadStatsGlobal() {
@@ -1130,11 +1422,27 @@
         }
       }
       
+      // Временное хранилище выбранных блюд для каждого ресторана
+      const selectedDishesByRestaurant = {};
+      
       async function loadDishes(restaurantId) {
         try {
           console.log('loadDishes called with restaurantId:', restaurantId);
           console.log('API base URL:', api);
           console.log('Headers:', headers);
+          
+          const select = document.getElementById('dishSelect');
+          if (!select) {
+            console.error('dishSelect element not found!');
+            return;
+          }
+          
+          // Сохраняем текущий выбор для текущего ресторана перед загрузкой
+          const currentRestaurant = document.getElementById('restaurantSelect').value;
+          if (currentRestaurant && select.value) {
+            selectedDishesByRestaurant[currentRestaurant] = select.value;
+            console.log('Saved selected dish for restaurant', currentRestaurant, ':', select.value);
+          }
           
           const url = restaurantId 
             ? api + '/collections/dishes?restaurant_id=' + restaurantId
@@ -1155,13 +1463,6 @@
           const dishes = await res.json();
           console.log('Loaded dishes:', dishes);
           
-          const select = document.getElementById('dishSelect');
-          console.log('dishSelect element:', select);
-          if (!select) {
-            console.error('dishSelect element not found!');
-            return;
-          }
-          
           select.innerHTML = '<option value="">Выберите блюдо</option>';
           
           if (dishes.length === 0) {
@@ -1177,6 +1478,21 @@
             select.appendChild(option);
           });
           console.log('Dishes loaded into select, count:', dishes.length);
+          
+          // Восстанавливаем выбор для этого ресторана, если он был сохранен
+          if (restaurantId && selectedDishesByRestaurant[restaurantId]) {
+            const savedDishId = selectedDishesByRestaurant[restaurantId];
+            const dishExists = Array.from(select.options).some(opt => opt.value === savedDishId);
+            
+            if (dishExists) {
+              select.value = savedDishId;
+              console.log('Restored selected dish for restaurant', restaurantId, ':', savedDishId);
+            } else {
+              // Если блюдо больше не доступно, удаляем из сохраненных
+              delete selectedDishesByRestaurant[restaurantId];
+              console.log('Saved dish no longer available, cleared selection');
+            }
+          }
         } catch (error) {
           console.error('Error loading dishes:', error);
           showMessage('Ошибка загрузки блюд: ' + error.message, 'error');
@@ -1492,6 +1808,10 @@
 
     // Функция создания модального окна для создания подборки
     function showCreateCollectionModal() {
+      // Очищаем глобальное хранилище выбранных элементов при открытии новой модалки
+      selectedItemsGlobal = {};
+      console.log('Очищено хранилище выбранных элементов');
+      
       const modal = document.createElement('div');
       modal.className = 'modal';
       modal.innerHTML = `
@@ -1692,6 +2012,9 @@
       }
     }
     
+    // Глобальное хранилище выбранных элементов
+    let selectedItemsGlobal = {};
+    
     // Функция загрузки элементов для подборки
     async function loadItemsForCollection() {
       const type = document.querySelector('input[name="newCollectionType"]:checked').value;
@@ -1699,6 +2022,13 @@
       
       console.log('loadItemsForCollection вызвана с типом:', type);
       console.log('Контейнер:', container);
+      
+      // СОХРАНЯЕМ выбранные элементы ПЕРЕД очисткой
+      document.querySelectorAll('#itemsSelector input[type="checkbox"]:checked').forEach(checkbox => {
+        const itemData = JSON.parse(checkbox.dataset.item);
+        selectedItemsGlobal[itemData.id] = itemData;
+        console.log('Сохранен выбранный элемент:', itemData.name, 'ID:', itemData.id);
+      });
       
       container.innerHTML = '<div class="loading">⏳ Загрузка...</div>';
       
@@ -1734,9 +2064,14 @@
           const itemEl = document.createElement('div');
           itemEl.className = 'collection-item-selector';
           itemEl.style.animationDelay = `${index * 0.1}s`;
+          
+          // Проверяем, был ли этот элемент выбран ранее
+          const isSelected = selectedItemsGlobal[item.id] !== undefined;
+          const checkedAttr = isSelected ? 'checked' : '';
+          
           itemEl.innerHTML = `
             <div class="item-content">
-              <input type="checkbox" id="item_${item.id}" value="${item.id}" data-item='${JSON.stringify(item)}' onchange="toggleItemSelection(this)">
+              <input type="checkbox" id="item_${item.id}" value="${item.id}" data-item='${JSON.stringify(item)}' onchange="toggleItemSelection(this)" ${checkedAttr}>
               <label for="item_${item.id}" class="item-label">
                 <div class="item-image">
                   ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<div class="no-image">📷</div>'}
@@ -1752,6 +2087,10 @@
               <button type="button" onclick="event.stopPropagation(); document.getElementById('upload_${item.id}').click()" title="Загрузить фото">📷</button>
             </div>
           `;
+          
+          if (isSelected) {
+            console.log('Восстановлен выбор для:', item.name);
+          }
           
           // Делаем всю карточку кликабельной
           itemEl.addEventListener('click', (e) => {
@@ -1772,20 +2111,34 @@
     // Функция переключения выбора элемента
     function toggleItemSelection(checkbox) {
       const itemSelector = checkbox.closest('.collection-item-selector');
+      const itemData = JSON.parse(checkbox.dataset.item);
+      
       if (checkbox.checked) {
         itemSelector.classList.add('selected');
+        // Добавляем в глобальное хранилище
+        selectedItemsGlobal[itemData.id] = itemData;
+        console.log('Добавлен в выбранные:', itemData.name);
       } else {
         itemSelector.classList.remove('selected');
+        // Удаляем из глобального хранилища
+        delete selectedItemsGlobal[itemData.id];
+        console.log('Удален из выбранных:', itemData.name);
       }
+      
+      console.log('Всего выбрано элементов:', Object.keys(selectedItemsGlobal).length);
     }
     
     // Функция получения выбранных элементов
     function getSelectedItems() {
-      const selected = [];
+      // Сначала собираем текущие отмеченные чекбоксы
       document.querySelectorAll('#itemsSelector input[type="checkbox"]:checked').forEach(checkbox => {
         const itemData = JSON.parse(checkbox.dataset.item);
-        selected.push(itemData);
+        selectedItemsGlobal[itemData.id] = itemData;
       });
+      
+      // Возвращаем все сохраненные элементы (из всех ресторанов)
+      const selected = Object.values(selectedItemsGlobal);
+      console.log('getSelectedItems возвращает:', selected.length, 'элементов');
       return selected;
     }
     
@@ -1852,13 +2205,6 @@
     
     document.getElementById('usersToggle').onclick = () => {
       toggleSection('usersContent', 'usersIcon');
-    };
-    
-    document.getElementById('restaurantAdminsToggle').onclick = () => {
-      toggleSection('restaurantAdminsContent', 'restaurantAdminsIcon');
-      if (document.getElementById('restaurantAdminsContent').style.display !== 'none') {
-        loadRestaurantAdmins();
-      }
     };
     
     document.getElementById('systemToggle').onclick = () => {
@@ -2052,7 +2398,6 @@
 
     // первичная инициализация
     load();
-    loadUsers();
     loadStatsGlobal();
     populateRestaurantsSelect().then(() => { loadStatsByRestaurant(); });
     loadReviews();
@@ -2060,6 +2405,26 @@
     loadCollections();
     
   </script>
+  
+  <!-- Модальное окно для управления админами ресторанов -->
+  <div id="restaurantAdminsModal" class="users-modal">
+    <div class="users-modal-content">
+      <div class="users-modal-header">
+        <h2>👑 Управление админами ресторанов</h2>
+        <button class="users-modal-close" onclick="closeRestaurantAdminsModal()">×</button>
+      </div>
+      
+      <div class="users-modal-body">
+        <div id="restaurantAdminsModalList" style="overflow-y: auto; max-height: calc(90vh - 200px);">
+          <!-- Здесь будет список ресторанов с админами -->
+        </div>
+      </div>
+      
+      <div class="users-modal-footer">
+        <button class="secondary-btn" onclick="closeRestaurantAdminsModal()">Закрыть</button>
+      </div>
+    </div>
+  </div>
   
   <!-- Модальное окно для рассылки -->
   <div id="broadcastModal" class="modal-overlay" style="display: none;">
@@ -2554,7 +2919,7 @@
         if (!usersRes.ok) return;
         const users = await usersRes.json();
         
-        const container = document.getElementById('restaurantAdminsList');
+        const container = document.getElementById('restaurantAdminsModalList');
         container.innerHTML = '';
         
         restaurants.forEach(restaurant => {
@@ -2563,19 +2928,20 @@
           
           const restaurantDiv = document.createElement('div');
           restaurantDiv.className = 'restaurant-item';
+          restaurantDiv.style.cssText = 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: white;';
           restaurantDiv.innerHTML = `
-            <div class="restaurant-header">
-              <div class="restaurant-name">${restaurant.name} (ID: ${restaurant.id})</div>
-              <div class="restaurant-toggle" onclick="toggleRestaurantAdmins(${restaurant.id})">
-                <span id="toggle-${restaurant.id}">▶</span> Показать админов (${admins.length})
+            <div class="restaurant-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div class="restaurant-name" style="font-weight: 600; color: #1e293b; font-size: 16px;">${restaurant.name} <span style="color: #64748b; font-weight: 400; font-size: 14px;">(ID: ${restaurant.id})</span></div>
+              <div class="restaurant-toggle" onclick="toggleRestaurantAdmins(${restaurant.id})" style="cursor: pointer; color: #3b82f6; font-size: 14px; user-select: none;">
+                <span id="toggle-${restaurant.id}">▶</span> <span id="toggle-text-${restaurant.id}">Показать админов (${admins.length})</span>
               </div>
             </div>
-            <div id="admins-${restaurant.id}" class="admins-list hidden">
-              ${admins.map(admin => `
+            <div id="admins-${restaurant.id}" class="admins-list hidden" style="margin-top: 12px; padding-left: 0;">
+              ${admins.length > 0 ? admins.map(admin => `
                 <div class="admin-item">
                   <div class="admin-info">
                     <span>👤 ${admin.username ? '@' + admin.username : 'ID: ' + admin.id}</span>
-                    ${admin.name ? `<span>(${admin.name})</span>` : ''}
+                    ${admin.name ? `<span>${admin.name}</span>` : ''}
                   </div>
                   <div class="admin-actions">
                     <button class="remove-admin-btn" onclick="removeRestaurantAdmin(${admin.id}, ${restaurant.id})">
@@ -2583,8 +2949,8 @@
                     </button>
                   </div>
                 </div>
-              `).join('')}
-              <div style="margin-top: 10px;">
+              `).join('') : '<div style="color: #64748b; font-size: 14px; padding: 8px;">Нет админов</div>'}
+              <div style="margin-top: 12px;">
                 <button class="add-admin-btn" onclick="showAddAdminModal(${restaurant.id})">
                   ➕ Добавить админа
                 </button>
@@ -2595,22 +2961,50 @@
         });
       } catch (error) {
         console.error('Error loading restaurant admins:', error);
-        document.getElementById('restaurantAdminsList').innerHTML = '<div class="error">Ошибка загрузки админов</div>';
+        const container = document.getElementById('restaurantAdminsModalList');
+        if (container) {
+          container.innerHTML = '<div style="color: #ef4444; padding: 16px; text-align: center;">Ошибка загрузки админов</div>';
+        }
       }
     }
     
     function toggleRestaurantAdmins(restaurantId) {
       const adminsList = document.getElementById(`admins-${restaurantId}`);
       const toggle = document.getElementById(`toggle-${restaurantId}`);
+      const toggleText = document.getElementById(`toggle-text-${restaurantId}`);
       
       if (adminsList.classList.contains('hidden')) {
         adminsList.classList.remove('hidden');
-        toggle.textContent = '▼ Скрыть админов';
+        toggle.textContent = '▼';
+        const count = adminsList.querySelectorAll('.admin-item').length;
+        toggleText.textContent = `Скрыть админов (${count})`;
       } else {
         adminsList.classList.add('hidden');
-        toggle.textContent = '▶ Показать админов';
+        toggle.textContent = '▶';
+        const count = adminsList.querySelectorAll('.admin-item').length;
+        toggleText.textContent = `Показать админов (${count})`;
       }
     }
+    
+    function openRestaurantAdminsModal() {
+      const modal = document.getElementById('restaurantAdminsModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        loadRestaurantAdmins();
+      } else {
+        console.error('restaurantAdminsModal not found');
+      }
+    }
+    
+    function closeRestaurantAdminsModal() {
+      const modal = document.getElementById('restaurantAdminsModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+    
+    // Назначаем обработчик для кнопки открытия модалки админов ресторанов
+    document.getElementById('openRestaurantAdminsModal').onclick = openRestaurantAdminsModal;
     
     async function removeRestaurantAdmin(userId, restaurantId) {
       if (!confirm('Удалить этого админа из ресторана?')) return;
@@ -2659,6 +3053,247 @@
         alert('Ошибка: ' + error.message);
       }
     }
+    // === Модальное окно управления пользователями ===
+    let allUsers = [];
+    let filteredUsers = [];
+    let selectedUserId = null;
+    let usersSearchQuery = '';
+    let usersFilter = 'all'; // all, active, blocked, admins
+    
+    document.getElementById('openUsersModal').onclick = openUsersModal;
+    
+    async function openUsersModal() {
+      // Создаем модальное окно если его еще нет
+      if (!document.getElementById('usersModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'usersModal';
+        modal.className = 'users-modal';
+        modal.innerHTML = `
+          <div class="users-modal-content">
+            <div class="users-modal-header">
+              <h2>Управление пользователями</h2>
+              <button class="users-modal-close" onclick="closeUsersModal()">×</button>
+            </div>
+            <div class="users-modal-body">
+              <!-- Поиск -->
+              <div class="users-search-bar">
+                <input type="text" id="usersSearchInput" placeholder="Поиск по ID, @username, имени, телефону..." />
+                <button onclick="searchUsers()">🔍 Найти</button>
+              </div>
+              
+              <!-- Фильтры -->
+              <div class="users-filters">
+                <button class="filter-btn active" data-filter="all" onclick="filterUsers('all')">Все</button>
+                <button class="filter-btn" data-filter="active" onclick="filterUsers('active')">Активные</button>
+                <button class="filter-btn" data-filter="blocked" onclick="filterUsers('blocked')">Заблокированные</button>
+                <button class="filter-btn" data-filter="admins" onclick="filterUsers('admins')">Админы ресторанов</button>
+              </div>
+              
+              <!-- Список пользователей -->
+              <div class="users-list-container">
+                <div id="usersListContent"></div>
+              </div>
+              
+              <!-- Действия -->
+              <div class="users-actions">
+                <div class="selected-user-info" id="selectedUserInfo" style="display: none;">
+                  Выбран: <span id="selectedUserName"></span>
+                </div>
+                <div class="action-buttons">
+                  <button id="blockUserBtn" onclick="blockSelectedUser()" disabled>🚫 Заблокировать</button>
+                  <button id="unblockUserBtn" onclick="unblockSelectedUser()" disabled>✅ Разблокировать</button>
+                  <button id="revokeAdminBtn" onclick="revokeAdminSelectedUser()" disabled>🛑 Снять права админа</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      // Загружаем пользователей
+      await loadAllUsers();
+      
+      // Показываем модалку
+      document.getElementById('usersModal').style.display = 'flex';
+    }
+    
+    function closeUsersModal() {
+      document.getElementById('usersModal').style.display = 'none';
+      selectedUserId = null;
+      updateSelectedUserUI();
+    }
+    
+    async function loadAllUsers() {
+      try {
+        const res = await fetch(api + '/admin/users?t=' + Date.now(), { headers });
+        if (!res.ok) throw new Error('Failed to load users');
+        allUsers = await res.json();
+        filteredUsers = allUsers;
+        renderUsersList();
+      } catch (error) {
+        console.error('Error loading users:', error);
+        alert('Ошибка загрузки пользователей');
+      }
+    }
+    
+    function filterUsers(filter) {
+      usersFilter = filter;
+      
+      // Обновляем кнопки фильтров
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+      });
+      
+      // Применяем фильтр
+      applyFiltersAndSearch();
+    }
+    
+    function searchUsers() {
+      usersSearchQuery = document.getElementById('usersSearchInput').value.trim().toLowerCase();
+      applyFiltersAndSearch();
+    }
+    
+    function applyFiltersAndSearch() {
+      filteredUsers = allUsers.filter(user => {
+        // Фильтр по статусу
+        if (usersFilter === 'active' && user.is_blocked) return false;
+        if (usersFilter === 'blocked' && !user.is_blocked) return false;
+        if (usersFilter === 'admins' && !user.restaurant_admin_of) return false;
+        
+        // Поиск
+        if (usersSearchQuery) {
+          const searchStr = usersSearchQuery;
+          const userId = String(user.id);
+          const username = (user.username || '').toLowerCase();
+          const name = (user.name || '').toLowerCase();
+          const phone = (user.phone || '').toLowerCase();
+          
+          if (!userId.includes(searchStr) && 
+              !username.includes(searchStr) && 
+              !name.includes(searchStr) && 
+              !phone.includes(searchStr)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      renderUsersList();
+    }
+    
+    function renderUsersList() {
+      const container = document.getElementById('usersListContent');
+      
+      if (filteredUsers.length === 0) {
+        container.innerHTML = '<div class="no-users">Пользователи не найдены</div>';
+        return;
+      }
+      
+      container.innerHTML = filteredUsers.map(user => {
+        const isSelected = user.id === selectedUserId;
+        return `
+          <div class="user-item ${isSelected ? 'selected' : ''}" onclick="selectUser(${user.id})">
+            <div class="user-main-info">
+              <div class="user-id">ID: ${user.id}</div>
+              ${user.username ? `<div class="user-username">@${user.username}</div>` : ''}
+              ${user.name ? `<div class="user-name">${user.name}</div>` : ''}
+            </div>
+            <div class="user-meta">
+              ${user.phone ? `<div class="user-phone">📱 ${user.phone}</div>` : ''}
+              <div class="user-status status-${user.is_blocked ? 'blocked' : 'active'}">
+                ${user.is_blocked ? '🚫 Заблокирован' : '✅ Активен'}
+              </div>
+              ${user.restaurant_admin_of ? `<div class="user-admin">👑 Админ ресторана #${user.restaurant_admin_of}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function selectUser(userId) {
+      selectedUserId = userId;
+      updateSelectedUserUI();
+      renderUsersList(); // Перерисовываем для обновления выделения
+    }
+    
+    function updateSelectedUserUI() {
+      const selectedInfo = document.getElementById('selectedUserInfo');
+      const selectedName = document.getElementById('selectedUserName');
+      const blockBtn = document.getElementById('blockUserBtn');
+      const unblockBtn = document.getElementById('unblockUserBtn');
+      const revokeBtn = document.getElementById('revokeAdminBtn');
+      
+      if (selectedUserId) {
+        const user = allUsers.find(u => u.id === selectedUserId);
+        if (user) {
+          selectedInfo.style.display = 'block';
+          selectedName.textContent = `#${user.id}${user.username ? ' @' + user.username : ''}${user.name ? ' (' + user.name + ')' : ''}`;
+          
+          blockBtn.disabled = user.is_blocked;
+          unblockBtn.disabled = !user.is_blocked;
+          revokeBtn.disabled = !user.restaurant_admin_of;
+        }
+      } else {
+        selectedInfo.style.display = 'none';
+        blockBtn.disabled = true;
+        unblockBtn.disabled = true;
+        revokeBtn.disabled = true;
+      }
+    }
+    
+    async function blockSelectedUser() {
+      if (!selectedUserId) return;
+      
+      if (!confirm('Заблокировать пользователя #' + selectedUserId + '?')) return;
+      
+      try {
+        await fetch(api + '/admin/users/block?user_id=' + selectedUserId + '&block=true', { method: 'POST', headers });
+        await loadAllUsers();
+        alert('Пользователь заблокирован');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+    
+    async function unblockSelectedUser() {
+      if (!selectedUserId) return;
+      
+      try {
+        await fetch(api + '/admin/users/block?user_id=' + selectedUserId + '&block=false', { method: 'POST', headers });
+        await loadAllUsers();
+        alert('Пользователь разблокирован');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+    
+    async function revokeAdminSelectedUser() {
+      if (!selectedUserId) return;
+      
+      if (!confirm('Снять права администратора ресторана у пользователя #' + selectedUserId + '?')) return;
+      
+      try {
+        const res = await fetch(api + '/admin/users/unbind-admin?user_id=' + selectedUserId, { method: 'POST', headers });
+        if (!res.ok) throw new Error('Не удалось снять права');
+        await loadAllUsers();
+        alert('Права администратора сняты');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+    
+    // Поиск при Enter
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('usersSearchInput');
+      if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') searchUsers();
+        });
+      }
+    });
+    
   </script>
 </body>
 </html>

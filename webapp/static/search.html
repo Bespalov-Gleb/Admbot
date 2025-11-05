@@ -16,7 +16,7 @@
 <body>
   <div class="container">
     <!-- Поисковая строка -->
-    <div class="search-page-header">
+    <div class="search-page-header" style="position: sticky; top: 0; z-index: 1000; background: white; padding-bottom: 8px;">
       <button class="search-back-btn" id="searchBackBtn">
         <span>←</span>
       </button>
@@ -271,15 +271,20 @@
           if (restaurant.dishes && restaurant.dishes.length > 0) {
             dishesHtml = `
               <div class="search-dishes-scroll">
-                ${restaurant.dishes.map(dish => `
-                  <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${p.toString()}'">
+                ${restaurant.dishes.map(dish => {
+                  const dishParams = new URLSearchParams(p);
+                  dishParams.set('from', 'search');
+                  dishParams.set('search_query', currentQuery);
+                  return `
+                  <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${dishParams.toString()}'">
                     ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="search-dish-image" onerror="this.style.display='none'"/>` : '<div class="search-dish-image"></div>'}
                     <div class="search-dish-info">
                       <div class="search-dish-name">${dish.name}</div>
                       <div class="search-dish-price">${dish.price} ₽</div>
                     </div>
                   </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             `;
           }
@@ -390,24 +395,52 @@
     
     // Инициализация - загружаем данные и фокусируемся после загрузки
     async function initialize() {
-      // Показываем UI сразу (пока данные загружаются)
-      popularRestaurants.style.display = 'block';
+      // Проверяем, есть ли сохраненный поисковый запрос в URL
+      const urlParams = new URLSearchParams(location.search);
+      const savedQuery = urlParams.get('search_query');
       
-      // Параллельно загружаем популярные рестораны и фокусируемся на поле
-      const loadPromise = loadPopularRestaurants();
-      
-      // Фокусируемся сразу (не ждем загрузки данных)
-      requestAnimationFrame(() => {
-        try {
-          searchInput.focus();
-        } catch (e) {
-          // Браузер может блокировать autofocus в iframe - это нормально
-          console.log('Focus blocked by browser security policy (cross-origin), user can click manually');
+      if (savedQuery) {
+        // Восстанавливаем поисковый запрос
+        searchInput.value = savedQuery;
+        currentQuery = savedQuery;
+        
+        // Показываем кнопку очистки
+        if (savedQuery.length > 0) {
+          searchClearBtn.style.display = 'flex';
         }
-      });
-      
-      // Ждем загрузки данных
-      await loadPromise;
+        
+        // Выполняем поиск
+        await performSearch();
+        
+        // Фокусируемся на поле поиска
+        requestAnimationFrame(() => {
+          try {
+            searchInput.focus();
+          } catch (e) {
+            console.log('Focus blocked by browser security policy (cross-origin), user can click manually');
+          }
+        });
+      } else {
+        // Обычная инициализация без поискового запроса
+        // Показываем UI сразу (пока данные загружаются)
+        popularRestaurants.style.display = 'block';
+        
+        // Параллельно загружаем популярные рестораны и фокусируемся на поле
+        const loadPromise = loadPopularRestaurants();
+        
+        // Фокусируемся сразу (не ждем загрузки данных)
+        requestAnimationFrame(() => {
+          try {
+            searchInput.focus();
+          } catch (e) {
+            // Браузер может блокировать autofocus в iframe - это нормально
+            console.log('Focus blocked by browser security policy (cross-origin), user can click manually');
+          }
+        });
+        
+        // Ждем загрузки данных
+        await loadPromise;
+      }
     }
     
     // Запускаем инициализацию после загрузки DOM
