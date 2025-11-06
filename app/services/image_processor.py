@@ -87,9 +87,9 @@ class ImageProcessor:
                 filename = f"{base_filename}{file_extension}"
                 file_path = os.path.join(base_dir, size_name, filename)
                 
-                # Сохраняем с оптимизацией
+                # Сохраняем с оптимизацией (quality=85 для баланса размер/качество)
                 if file_extension.lower() in ['.jpg', '.jpeg']:
-                    final_image.save(file_path, 'JPEG', quality=95, optimize=True)
+                    final_image.save(file_path, 'JPEG', quality=85, optimize=True, progressive=True)
                 else:
                     final_image.save(file_path, 'PNG', optimize=True)
                 
@@ -102,7 +102,7 @@ class ImageProcessor:
                 os.makedirs(os.path.join(base_dir, "original"))
             
             if file_extension.lower() in ['.jpg', '.jpeg']:
-                image.save(original_path, 'JPEG', quality=95, optimize=True)
+                image.save(original_path, 'JPEG', quality=90, optimize=True, progressive=True)
             else:
                 image.save(original_path, 'PNG', optimize=True)
             

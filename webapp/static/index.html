@@ -65,6 +65,13 @@
   </div>
 
   <script>
+    // ОПТИМИЗАЦИЯ: отключаем console.log в продакшене для скорости
+    const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isDev) {
+      console.log = () => {};
+      console.debug = () => {};
+    }
+    
     const api = location.origin + '/api';
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
@@ -119,12 +126,15 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       });
     }
     
-    // Функция для безопасной загрузки изображения
+    // Функция для безопасной загрузки изображения с lazy loading
     function safeImageLoad(imgElement, src) {
       if (!src) {
         imgElement.style.display = 'none';
         return;
       }
+      
+      // Добавляем lazy loading для производительности
+      imgElement.loading = 'lazy';
       
       imgElement.onload = () => {
         imgElement.style.display = '';
@@ -586,8 +596,11 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     // Инициализация
     async function initialize() {
       console.log('=== initialize() called ===');
-      await loadSelections();
-      await loadRestaurants();
+      // ОПТИМИЗАЦИЯ: запускаем запросы параллельно
+      await Promise.all([
+        loadSelections(),
+        loadRestaurants()
+      ]);
       console.log('=== initialize() completed ===');
       // Восстанавливаем якорь после рендера
       restoreHomeAnchor();
@@ -611,6 +624,13 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
      } catch (e) {}
      return true;
    }
+
+  // Регистрируем Service Worker для кэширования (работает только на HTTPS)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('/static/sw.js')
+      .then(() => console.log('[SW] Registered'))
+      .catch((err) => console.warn('[SW] Registration failed:', err));
+  }
 
   // Загружаем контент сразу; восстановление скролла управляется спейсером/наблюдателями
   (async () => {
