@@ -1535,10 +1535,34 @@ async def broadcast_cancel(message: types.Message) -> None:
 async def main() -> None:
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is required")
+    
     bot = Bot(BOT_TOKEN)
-    await dp.start_polling(bot)
+    
+    max_retries = 5
+    retry_delay = 10
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Starting bot polling (attempt {attempt + 1}/{max_retries})...")
+            await dp.start_polling(bot, handle_signals=True)
+            break
+        except Exception as e:
+            logger.exception(f"Bot polling failed (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.error("Max retries reached. Bot will exit and should be restarted by systemd.")
+                raise
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user (Ctrl+C)")
+    except Exception as e:
+        logger.exception(f"Fatal error: {e}")
+        exit(1)
 
