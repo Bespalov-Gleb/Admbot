@@ -1558,8 +1558,9 @@ async def main() -> None:
             await asyncio.sleep(2)
     
     # Дополнительная задержка перед запуском polling, чтобы Telegram освободил соединение
-    logger.info("Waiting 5 seconds before starting polling to ensure webhook is fully released...")
-    await asyncio.sleep(5)
+    # Telegram может держать соединение до 60 секунд после завершения предыдущего процесса
+    logger.info("Waiting 30 seconds before starting polling to ensure Telegram fully releases previous connection...")
+    await asyncio.sleep(30)
     
     max_retries = 5
     retry_delay = 10
