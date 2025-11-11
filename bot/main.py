@@ -1538,6 +1538,13 @@ async def main() -> None:
     
     bot = Bot(BOT_TOKEN)
     
+    # Удаляем webhook перед запуском polling, чтобы избежать конфликтов
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Webhook deleted successfully (if existed)")
+    except Exception as e:
+        logger.warning(f"Failed to delete webhook (may not exist): {e}")
+    
     max_retries = 5
     retry_delay = 10
     
