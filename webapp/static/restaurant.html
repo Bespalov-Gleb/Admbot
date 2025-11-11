@@ -1907,6 +1907,12 @@
       if (from === 'promotions') {
         const p = new URLSearchParams(location.search);
         if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        // Очищаем параметры, которые не нужны на странице акций
+        p.delete('id');
+        p.delete('category_id');
+        p.delete('scroll_to_category');
+        p.delete('dish_id');
+        p.delete('from');
         location.href = '/static/promotions.html?' + p.toString();
         return;
       }

@@ -351,6 +351,7 @@
       }
       const p = new URLSearchParams(location.search);
       if (!p.has('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      p.set('from', 'promotions'); // Указываем, что переход из акций
       location.href = `/static/restaurant.html?id=${restaurantId}&${p.toString()}`;
     }
     

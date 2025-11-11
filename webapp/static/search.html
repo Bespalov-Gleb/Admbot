@@ -105,6 +105,8 @@
       p.set('id', restaurantId.toString());
       p.set('from', 'search');
       p.set('search_query', currentQuery);
+      // Сохраняем ID ресторана для возврата к позиции
+      p.set('scroll_to_restaurant_id', restaurantId.toString());
       location.href = `/static/restaurant.html?${p.toString()}`;
     }
     
@@ -277,6 +279,8 @@
                   const dishParams = new URLSearchParams(p);
                   dishParams.set('from', 'search');
                   dishParams.set('search_query', currentQuery);
+                  // Сохраняем ID ресторана для возврата к позиции
+                  dishParams.set('scroll_to_restaurant_id', restaurant.id.toString());
                   return `
                   <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${dishParams.toString()}'">
                     ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="search-dish-image" onerror="this.style.display='none'"/>` : '<div class="search-dish-image"></div>'}
@@ -296,7 +300,7 @@
             : 'Мало оценок';
           
           return `
-            <div class="search-restaurant-block">
+            <div class="search-restaurant-block" data-restaurant-id="${restaurant.id}">
               <div class="search-restaurant-header" onclick="goToRestaurant(${restaurant.id})">
                 ${restaurant.image ? `<img src="${restaurant.image}" alt="${restaurant.name}" class="search-restaurant-image" onerror="this.style.display='none'"/>` : '<div class="search-restaurant-image"></div>'}
                 <div class="search-restaurant-info">
@@ -313,6 +317,23 @@
             </div>
           `;
         }).join('');
+        
+        // После рендеринга результатов проверяем, нужно ли прокрутить к элементу
+        const urlParams = new URLSearchParams(location.search);
+        const scrollToRestaurantId = urlParams.get('scroll_to_restaurant_id');
+        if (scrollToRestaurantId) {
+          // Небольшая задержка для завершения рендеринга
+          setTimeout(() => {
+            const element = document.querySelector(`[data-restaurant-id="${scrollToRestaurantId}"]`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Удаляем параметр из URL после прокрутки
+              urlParams.delete('scroll_to_restaurant_id');
+              const newUrl = location.pathname + '?' + urlParams.toString();
+              history.replaceState({}, '', newUrl);
+            }
+          }, 100);
+        }
         
       } catch (error) {
         console.error('Search error:', error);
@@ -364,6 +385,7 @@
       p.delete('from');
       p.delete('search_query');
       p.delete('id');
+      p.delete('scroll_to_restaurant_id');
       location.href = '/static/index.html?' + p.toString();
     });
     
@@ -387,6 +409,7 @@
       p.delete('from');
       p.delete('search_query');
       p.delete('id');
+      p.delete('scroll_to_restaurant_id');
       location.href = '/static/index.html?' + p.toString(); 
     };
     document.getElementById('navCart').onclick = (e) => { 
