@@ -635,7 +635,29 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
   // Загружаем контент сразу; восстановление скролла управляется спейсером/наблюдателями
   (async () => {
     if (await checkAccess()) {
-      initialize();
+      await initialize();
+      
+      // Восстанавливаем позицию скролла, если вернулись из поиска
+      const urlParams = new URLSearchParams(location.search);
+      if (urlParams.get('restore_scroll') === '1') {
+        try {
+          const savedScroll = sessionStorage.getItem('main_page_scroll');
+          if (savedScroll) {
+            const scrollPosition = parseInt(savedScroll, 10);
+            // Небольшая задержка для завершения рендеринга
+            setTimeout(() => {
+              window.scrollTo({ top: scrollPosition, behavior: 'auto' });
+              sessionStorage.removeItem('main_page_scroll');
+              // Удаляем параметр из URL
+              urlParams.delete('restore_scroll');
+              const newUrl = location.pathname + '?' + urlParams.toString();
+              history.replaceState({}, '', newUrl);
+            }, 100);
+          }
+        } catch (e) {
+          console.log('Could not restore scroll position');
+        }
+      }
     }
   })();
     
@@ -879,6 +901,15 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       // При фокусе переходим на страницу поиска
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Сохраняем позицию скролла перед переходом в поиск
+      try {
+        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        if (currentScroll > 0) {
+          sessionStorage.setItem('main_page_scroll', currentScroll.toString());
+        }
+      } catch (e) {
+        console.log('Could not save scroll position');
+      }
       location.href = '/static/search.html?' + p.toString();
     });
     

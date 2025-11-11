@@ -238,7 +238,7 @@
 </head>
 <body>
   <div class="container">
-    <a href="/static/index.html" class="back-btn">
+    <a href="#" class="back-btn" onclick="goBack(); return false;">
       ← Назад
     </a>
     
@@ -375,6 +375,31 @@
           ">Попробовать снова</button>
         </div>
       `;
+    }
+    
+    // ===== ФУНКЦИЯ ВОЗВРАТА НАЗАД =====
+    function goBack() {
+      const params = new URLSearchParams(location.search);
+      const from = params.get('from');
+      const restaurantId = params.get('restaurant_id');
+      
+      // Если пришли из ресторана, возвращаемся в ресторан
+      if (from === 'restaurant' && restaurantId) {
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+        p.delete('from');
+        p.delete('restaurant_id');
+        p.set('id', restaurantId);
+        location.href = '/static/restaurant.html?' + p.toString();
+        return;
+      }
+      
+      // Иначе возвращаемся на главную
+      const p = new URLSearchParams(location.search);
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      p.delete('from');
+      p.delete('restaurant_id');
+      location.href = '/static/index.html?' + p.toString();
     }
     
     // ===== ИНИЦИАЛИЗАЦИЯ =====

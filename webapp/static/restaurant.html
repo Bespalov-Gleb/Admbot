@@ -1867,6 +1867,12 @@
       e.preventDefault(); 
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      // Указываем, что переход из ресторана, сохраняем ID ресторана
+      p.set('from', 'restaurant');
+      const restaurantId = p.get('id');
+      if (restaurantId) {
+        p.set('restaurant_id', restaurantId);
+      }
       location.href = '/static/promotions.html?' + p.toString(); 
     };
     

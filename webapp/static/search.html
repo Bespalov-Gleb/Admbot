@@ -386,6 +386,8 @@
       p.delete('search_query');
       p.delete('id');
       p.delete('scroll_to_restaurant_id');
+      // Сохраняем флаг для восстановления позиции скролла
+      p.set('restore_scroll', '1');
       location.href = '/static/index.html?' + p.toString();
     });
     
@@ -410,6 +412,8 @@
       p.delete('search_query');
       p.delete('id');
       p.delete('scroll_to_restaurant_id');
+      // Сохраняем флаг для восстановления позиции скролла
+      p.set('restore_scroll', '1');
       location.href = '/static/index.html?' + p.toString(); 
     };
     document.getElementById('navCart').onclick = (e) => { 
