@@ -1538,12 +1538,28 @@ async def main() -> None:
     
     bot = Bot(BOT_TOKEN)
     
-    # Удаляем webhook перед запуском polling, чтобы избежать конфликтов
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Webhook deleted successfully (if existed)")
-    except Exception as e:
-        logger.warning(f"Failed to delete webhook (may not exist): {e}")
+    # Агрессивно удаляем webhook перед запуском polling, чтобы избежать конфликтов
+    logger.info("Deleting webhook before starting polling...")
+    for webhook_attempt in range(3):
+        try:
+            result = await bot.delete_webhook(drop_pending_updates=True)
+            logger.info(f"Webhook deletion attempt {webhook_attempt + 1}/3: {result}")
+            # Проверяем, что webhook действительно удален
+            webhook_info = await bot.get_webhook_info()
+            if not webhook_info.url:
+                logger.info("Webhook successfully deleted and confirmed")
+                break
+            else:
+                logger.warning(f"Webhook still exists: {webhook_info.url}, retrying...")
+        except Exception as e:
+            logger.warning(f"Failed to delete webhook (attempt {webhook_attempt + 1}/3): {e}")
+        
+        if webhook_attempt < 2:
+            await asyncio.sleep(2)
+    
+    # Дополнительная задержка перед запуском polling, чтобы Telegram освободил соединение
+    logger.info("Waiting 5 seconds before starting polling to ensure webhook is fully released...")
+    await asyncio.sleep(5)
     
     max_retries = 5
     retry_delay = 10
@@ -1557,6 +1573,12 @@ async def main() -> None:
             logger.exception(f"Bot polling failed (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 logger.info(f"Retrying in {retry_delay} seconds...")
+                # Перед повторной попыткой снова удаляем webhook
+                try:
+                    await bot.delete_webhook(drop_pending_updates=True)
+                    logger.info("Webhook deleted before retry")
+                except Exception as retry_e:
+                    logger.warning(f"Failed to delete webhook before retry: {retry_e}")
                 await asyncio.sleep(retry_delay)
                 retry_delay *= 2  # Exponential backoff
             else:
