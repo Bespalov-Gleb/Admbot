@@ -1533,6 +1533,9 @@ async def broadcast_cancel(message: types.Message) -> None:
 
 
 async def main() -> None:
+    from app.logging_config import setup_logging
+    setup_logging()
+    
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is required")
     
