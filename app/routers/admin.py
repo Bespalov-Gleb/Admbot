@@ -170,19 +170,31 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         
         # Удаляем связанные записи каскадно (все в одной транзакции)
         try:
+            # Для SQLite временно отключаем проверку foreign keys для каскадного удаления
+            from app.db import DATABASE_URL
+            from sqlalchemy import text
+            if DATABASE_URL.startswith("sqlite"):
+                db.execute(text("PRAGMA foreign_keys=OFF"))
+                logger.info("Temporarily disabled foreign key constraints for SQLite")
+            
             # 1. Удаляем элементы корзины
             from app.models import CartItem as DBCartItem
             db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted cart items for restaurant {restaurant_id}")
             
-            # 2. Сначала удаляем отзывы (они ссылаются на заказы через order_id)
-            db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete(synchronize_session=False)
-            logger.info(f"Deleted reviews for restaurant {restaurant_id}")
-            
-            # 3. Удаляем элементы заказов и сами заказы
+            # 2. Получаем все заказы ресторана для удаления связанных данных
             from app.models import Order as DBOrder, OrderItem as DBOrderItem
             orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
             order_ids = [order.id for order in orders]
+            
+            # 3. Сначала удаляем отзывы (они ссылаются на заказы через order_id)
+            if order_ids:
+                db.query(DBReview).filter(DBReview.order_id.in_(order_ids)).delete(synchronize_session=False)
+            # Также удаляем отзывы по restaurant_id на всякий случай
+            db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete(synchronize_session=False)
+            logger.info(f"Deleted reviews for restaurant {restaurant_id}")
+            
+            # 4. Удаляем элементы заказов и сами заказы
             if order_ids:
                 # Удаляем все OrderItem для всех заказов сразу
                 db.query(DBOrderItem).filter(DBOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
@@ -190,7 +202,7 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted orders for restaurant {restaurant_id}")
             
-            # 4. Удаляем опции и группы опций через блюда
+            # 5. Удаляем опции и группы опций через блюда
             dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
             for dish in dishes:
                 option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
@@ -199,28 +211,41 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                 db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete(synchronize_session=False)
             logger.info(f"Deleted option groups for restaurant {restaurant_id}")
             
-            # 5. Удаляем блюда
+            # 6. Удаляем блюда
             db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted dishes for restaurant {restaurant_id}")
             
-            # 6. Удаляем категории
+            # 7. Удаляем категории
             db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted categories for restaurant {restaurant_id}")
             
-            # 7. Удаляем админов ресторана
+            # 8. Удаляем админов ресторана
             db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
             
-            # 8. Удаляем акции
+            # 9. Удаляем акции
             db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted promotions for restaurant {restaurant_id}")
             
-            # 9. Удаляем сам ресторан
+            # 10. Удаляем сам ресторан
             db.delete(r)
+            
+            # Включаем обратно проверку foreign keys для SQLite
+            if DATABASE_URL.startswith("sqlite"):
+                db.execute(text("PRAGMA foreign_keys=ON"))
+                logger.info("Re-enabled foreign key constraints for SQLite")
+            
             db.commit()
             logger.info(f"Successfully deleted restaurant {restaurant_id}")
         except Exception as e:
             logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
+            # Включаем обратно проверку foreign keys даже при ошибке
+            try:
+                if DATABASE_URL.startswith("sqlite"):
+                    from sqlalchemy import text
+                    db.execute(text("PRAGMA foreign_keys=ON"))
+            except Exception:
+                pass
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Error deleting restaurant: {str(e)}")
         
