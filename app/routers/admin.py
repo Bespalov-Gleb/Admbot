@@ -355,10 +355,6 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             except Exception as inner_e:
                 db.rollback()
                 raise inner_e
-        except Exception as e:
-            logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Error deleting restaurant: {str(e)}")
         
         try:
             await send_admin_message(f"[admin] Удалён ресторан id={restaurant_id}")
@@ -370,9 +366,9 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error deleting restaurant {restaurant_id}: {e}")
+        logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting restaurant: {str(e)}")
 
 
 class Broadcast(BaseModel):
