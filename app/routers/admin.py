@@ -174,7 +174,11 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             from app.db import DATABASE_URL
             from sqlalchemy import text
             if DATABASE_URL.startswith("sqlite"):
-                db.execute(text("PRAGMA foreign_keys=OFF"))
+                # Выполняем PRAGMA на том же соединении, что использует сессия
+                # В SQLite PRAGMA работает только на уровне соединения
+                # Используем connection() для получения raw connection из сессии
+                raw_conn = db.connection()
+                raw_conn.execute(text("PRAGMA foreign_keys=OFF"))
                 logger.info("Temporarily disabled foreign key constraints for SQLite")
             
             # 1. Удаляем элементы корзины
@@ -230,12 +234,13 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             # 10. Удаляем сам ресторан
             db.delete(r)
             
+            db.commit()
+            
             # Включаем обратно проверку foreign keys для SQLite
             if DATABASE_URL.startswith("sqlite"):
-                db.execute(text("PRAGMA foreign_keys=ON"))
+                raw_conn = db.connection()
+                raw_conn.execute(text("PRAGMA foreign_keys=ON"))
                 logger.info("Re-enabled foreign key constraints for SQLite")
-            
-            db.commit()
             logger.info(f"Successfully deleted restaurant {restaurant_id}")
         except Exception as e:
             logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
@@ -243,7 +248,8 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             try:
                 if DATABASE_URL.startswith("sqlite"):
                     from sqlalchemy import text
-                    db.execute(text("PRAGMA foreign_keys=ON"))
+                    raw_conn = db.connection()
+                    raw_conn.execute(text("PRAGMA foreign_keys=ON"))
             except Exception:
                 pass
             db.rollback()
