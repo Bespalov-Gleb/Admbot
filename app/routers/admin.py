@@ -172,44 +172,47 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         try:
             # 1. Удаляем элементы корзины
             from app.models import CartItem as DBCartItem
-            db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete()
+            db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted cart items for restaurant {restaurant_id}")
             
-            # 2. Удаляем элементы заказов и сами заказы
+            # 2. Сначала удаляем отзывы (они ссылаются на заказы через order_id)
+            db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete(synchronize_session=False)
+            logger.info(f"Deleted reviews for restaurant {restaurant_id}")
+            
+            # 3. Удаляем элементы заказов и сами заказы
             from app.models import Order as DBOrder, OrderItem as DBOrderItem
             orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
-            for order in orders:
-                db.query(DBOrderItem).filter(DBOrderItem.order_id == order.id).delete()
-            db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete()
+            order_ids = [order.id for order in orders]
+            if order_ids:
+                # Удаляем все OrderItem для всех заказов сразу
+                db.query(DBOrderItem).filter(DBOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+            # Теперь удаляем сами заказы
+            db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted orders for restaurant {restaurant_id}")
             
-            # 3. Удаляем опции и группы опций через блюда
+            # 4. Удаляем опции и группы опций через блюда
             dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
             for dish in dishes:
                 option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
                 for group in option_groups:
-                    db.query(DBOption).filter(DBOption.group_id == group.id).delete()
-                db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete()
+                    db.query(DBOption).filter(DBOption.group_id == group.id).delete(synchronize_session=False)
+                db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete(synchronize_session=False)
             logger.info(f"Deleted option groups for restaurant {restaurant_id}")
             
-            # 4. Удаляем блюда
-            db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete()
+            # 5. Удаляем блюда
+            db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted dishes for restaurant {restaurant_id}")
             
-            # 5. Удаляем категории
-            db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete()
+            # 6. Удаляем категории
+            db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted categories for restaurant {restaurant_id}")
             
-            # 6. Удаляем отзывы
-            db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete()
-            logger.info(f"Deleted reviews for restaurant {restaurant_id}")
-            
             # 7. Удаляем админов ресторана
-            db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete()
+            db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
             
             # 8. Удаляем акции
-            db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete()
+            db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete(synchronize_session=False)
             logger.info(f"Deleted promotions for restaurant {restaurant_id}")
             
             # 9. Удаляем сам ресторан
