@@ -168,20 +168,27 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
     
     logger = get_logger("admin")
     logger.info(f"=== DELETE RESTAURANT {restaurant_id} START ===")
+    logger.info(f"DATABASE_URL={DATABASE_URL}")
     
     try:
-        # Проверяем существование ресторана через прямое соединение для SQLite
         # Для SQLite ВСЕГДА используем прямое соединение с отключенными foreign keys
+        # Проверяем всеми возможными способами
         db_url = str(engine.url)
+        driver_name = engine.dialect.name if hasattr(engine, 'dialect') else 'unknown'
+        
         is_sqlite = (
             DATABASE_URL.startswith("sqlite") or 
             db_url.startswith("sqlite") or 
-            (hasattr(engine, 'dialect') and engine.dialect.name == "sqlite")
+            driver_name == "sqlite" or
+            "sqlite" in DATABASE_URL.lower() or
+            "sqlite" in db_url.lower()
         )
         
-        logger.info(f"DATABASE_URL={DATABASE_URL}, engine.url={db_url}, is_sqlite={is_sqlite}")
+        logger.info(f"Engine URL: {db_url}, Driver: {driver_name}, is_sqlite={is_sqlite}")
         
-        if is_sqlite:
+        # ПРИНУДИТЕЛЬНО используем прямое соединение для SQLite
+        # Если проверка не сработала, но это SQLite - все равно используем прямое соединение
+        if is_sqlite or "sqlite" in str(DATABASE_URL).lower() or "sqlite" in str(db_url).lower():
             # Для SQLite используем ТОЛЬКО прямое соединение
             logger.info("Using SQLite direct connection - FORCING this path")
             
@@ -296,6 +303,12 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                 raise inner_e
         else:
             # Для других БД используем ORM
+            # ВАЖНО: Если это SQLite, мы НЕ должны попадать сюда!
+            logger.warning(f"WARNING: Using ORM approach! DATABASE_URL={DATABASE_URL}, engine.url={db_url}, driver={driver_name}")
+            if "sqlite" in str(DATABASE_URL).lower() or "sqlite" in str(db_url).lower():
+                logger.error("CRITICAL: SQLite detected but using ORM path! This should not happen!")
+                raise HTTPException(status_code=500, detail="SQLite database detected but ORM path was used. This is a bug.")
+            
             logger.info("Using ORM approach for non-SQLite database")
             r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
             if not r:
