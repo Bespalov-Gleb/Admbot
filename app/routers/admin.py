@@ -159,55 +159,81 @@ async def set_restaurant_status(restaurant_id: int, enabled: bool, db: Session =
 async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -> dict:
     from app.models import Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption
     from app.models import Review as DBReview, RestaurantAdmin as DBRestaurantAdmin, Promotion as DBPromotion
+    from app.logging_config import get_logger
     
-    r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
-    if not r:
-        return {"status": "not_found"}
-    
-    # Удаляем связанные записи каскадно
-    # 1. Удаляем элементы корзины
-    from app.models import CartItem as DBCartItem
-    db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete()
-    
-    # 2. Удаляем элементы заказов и сами заказы
-    from app.models import Order as DBOrder, OrderItem as DBOrderItem
-    orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
-    for order in orders:
-        db.query(DBOrderItem).filter(DBOrderItem.order_id == order.id).delete()
-    db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete()
-    
-    # 3. Удаляем опции и группы опций через блюда
-    dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
-    for dish in dishes:
-        option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
-        for group in option_groups:
-            db.query(DBOption).filter(DBOption.group_id == group.id).delete()
-        db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete()
-    
-    # 4. Удаляем блюда
-    db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete()
-    
-    # 5. Удаляем категории
-    db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete()
-    
-    # 6. Удаляем отзывы
-    db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete()
-    
-    # 7. Удаляем админов ресторана
-    db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete()
-    
-    # 8. Удаляем акции
-    db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete()
-    
-    # 9. Удаляем сам ресторан
-    db.delete(r)
-    db.commit()
+    logger = get_logger("admin")
     
     try:
-        await send_admin_message(f"[admin] Удалён ресторан id={restaurant_id}")
-    except Exception:
-        pass
-    return {"status": "ok"}
+        r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
+        if not r:
+            return {"status": "not_found"}
+        
+        # Удаляем связанные записи каскадно (все в одной транзакции)
+        try:
+            # 1. Удаляем элементы корзины
+            from app.models import CartItem as DBCartItem
+            db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted cart items for restaurant {restaurant_id}")
+            
+            # 2. Удаляем элементы заказов и сами заказы
+            from app.models import Order as DBOrder, OrderItem as DBOrderItem
+            orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
+            for order in orders:
+                db.query(DBOrderItem).filter(DBOrderItem.order_id == order.id).delete()
+            db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted orders for restaurant {restaurant_id}")
+            
+            # 3. Удаляем опции и группы опций через блюда
+            dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
+            for dish in dishes:
+                option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
+                for group in option_groups:
+                    db.query(DBOption).filter(DBOption.group_id == group.id).delete()
+                db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete()
+            logger.info(f"Deleted option groups for restaurant {restaurant_id}")
+            
+            # 4. Удаляем блюда
+            db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted dishes for restaurant {restaurant_id}")
+            
+            # 5. Удаляем категории
+            db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted categories for restaurant {restaurant_id}")
+            
+            # 6. Удаляем отзывы
+            db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted reviews for restaurant {restaurant_id}")
+            
+            # 7. Удаляем админов ресторана
+            db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
+            
+            # 8. Удаляем акции
+            db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete()
+            logger.info(f"Deleted promotions for restaurant {restaurant_id}")
+            
+            # 9. Удаляем сам ресторан
+            db.delete(r)
+            db.commit()
+            logger.info(f"Successfully deleted restaurant {restaurant_id}")
+        except Exception as e:
+            logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Error deleting restaurant: {str(e)}")
+        
+        try:
+            await send_admin_message(f"[admin] Удалён ресторан id={restaurant_id}")
+        except Exception as e:
+            logger.warning(f"Failed to send admin message about restaurant deletion: {e}")
+            # Не прерываем выполнение, если не удалось отправить сообщение
+        
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error deleting restaurant {restaurant_id}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 class Broadcast(BaseModel):
