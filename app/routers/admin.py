@@ -161,174 +161,147 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
     from app.models import Review as DBReview, RestaurantAdmin as DBRestaurantAdmin, Promotion as DBPromotion
     from app.models import Order as DBOrder, OrderItem as DBOrderItem, CartItem as DBCartItem
     from app.logging_config import get_logger
-    from app.db import DATABASE_URL
+    from app.db import DATABASE_URL, engine
     from sqlalchemy import text
+    import sqlite3
+    import os
     
     logger = get_logger("admin")
+    logger.info(f"=== DELETE RESTAURANT {restaurant_id} START ===")
     
     try:
-        r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
-        if not r:
-            return {"status": "not_found"}
+        # Проверяем существование ресторана через прямое соединение для SQLite
+        # Для SQLite ВСЕГДА используем прямое соединение с отключенными foreign keys
+        db_url = str(engine.url)
+        is_sqlite = (
+            DATABASE_URL.startswith("sqlite") or 
+            db_url.startswith("sqlite") or 
+            (hasattr(engine, 'dialect') and engine.dialect.name == "sqlite")
+        )
         
-        # Удаляем связанные записи каскадно (все в одной транзакции)
-        try:
-            logger.info(f"Starting restaurant deletion for id={restaurant_id}, DATABASE_URL={DATABASE_URL}")
-            # Для SQLite ВСЕГДА используем прямое соединение, чтобы гарантировать применение PRAGMA
-            # Проверяем и через DATABASE_URL, и через engine.url, и через драйвер
-            from app.db import engine
-            db_url = str(engine.url)
-            driver_name = engine.dialect.name if hasattr(engine, 'dialect') else 'unknown'
-            logger.info(f"Engine URL: {db_url}, Driver: {driver_name}, DATABASE_URL starts with sqlite: {DATABASE_URL.startswith('sqlite')}, db_url starts with sqlite: {db_url.startswith('sqlite')}")
-            # Проверяем всеми возможными способами
-            is_sqlite = (
-                DATABASE_URL.startswith("sqlite") or 
-                db_url.startswith("sqlite") or 
-                driver_name == "sqlite" or
-                "sqlite" in DATABASE_URL.lower() or
-                "sqlite" in db_url.lower()
-            )
-            logger.info(f"is_sqlite = {is_sqlite}")
+        logger.info(f"DATABASE_URL={DATABASE_URL}, engine.url={db_url}, is_sqlite={is_sqlite}")
+        
+        if is_sqlite:
+            # Для SQLite используем ТОЛЬКО прямое соединение
+            logger.info("Using SQLite direct connection - FORCING this path")
             
-            if is_sqlite:
-                logger.info("Using SQLite direct connection approach")
-                # Для SQLite используем прямое соединение с базой данных
-                # Обходим SQLAlchemy session, чтобы гарантировать применение PRAGMA
-                import sqlite3
-                import os
-                
-                # Получаем путь к базе данных из engine (уже импортирован выше)
-                # SQLAlchemy хранит URL в формате sqlite:///path/to/db
-                logger.info(f"Engine URL: {db_url}")
-                if db_url.startswith("sqlite:///"):
-                    db_path = db_url.replace("sqlite:///", "")
-                    # Обрабатываем относительные пути
-                    if db_path.startswith("./"):
-                        db_path = os.path.join(os.getcwd(), db_path[2:])
-                    elif not os.path.isabs(db_path):
-                        db_path = os.path.join(os.getcwd(), db_path)
-                else:
-                    # Fallback на DATABASE_URL
-                    db_path = DATABASE_URL.replace("sqlite:///", "")
-                    if db_path.startswith("./"):
-                        db_path = os.path.join(os.getcwd(), db_path[2:])
-                
-                logger.info(f"Database path: {db_path}")
-                
-                # Открываем прямое соединение с базой данных
-                raw_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=20.0)
-                # Устанавливаем PRAGMA через cursor для надежности
-                cursor = raw_conn.cursor()
-                cursor.execute("PRAGMA foreign_keys=OFF")
-                
-                try:
-                    # Проверяем, что PRAGMA применился
-                    cursor.execute("PRAGMA foreign_keys")
-                    fk_status = cursor.fetchone()[0]
-                    if fk_status != 0:
-                        logger.warning(f"Foreign keys might still be enabled (status={fk_status}), but continuing...")
-                    logger.info("Temporarily disabled foreign key constraints for SQLite")
-                    
-                    # 1. Удаляем элементы коллекций, которые ссылаются на ресторан
-                    cursor.execute("DELETE FROM collection_items WHERE item_type = 'restaurant' AND item_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted collection items for restaurant {restaurant_id}")
-                    
-                    # 2. Удаляем элементы корзины
-                    cursor.execute("DELETE FROM cart_items WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted cart items for restaurant {restaurant_id}")
-                    
-                    # 3. Получаем все заказы ресторана
-                    cursor.execute("SELECT id FROM orders WHERE restaurant_id = ?", (restaurant_id,))
-                    order_ids = [row[0] for row in cursor.fetchall()]
-                    
-                    # 4. Удаляем отзывы (сначала по order_id, потом по restaurant_id)
-                    if order_ids:
-                        placeholders = ','.join(['?' for _ in order_ids])
-                        cursor.execute(f"DELETE FROM reviews WHERE order_id IN ({placeholders})", order_ids)
-                    cursor.execute("DELETE FROM reviews WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted reviews for restaurant {restaurant_id}")
-                    
-                    # 5. Удаляем элементы заказов ПЕРЕД удалением заказов
-                    if order_ids:
-                        placeholders = ','.join(['?' for _ in order_ids])
-                        cursor.execute(f"DELETE FROM order_items WHERE order_id IN ({placeholders})", order_ids)
-                        logger.info(f"Deleted order items for {len(order_ids)} orders")
-                    
-                    # 6. Удаляем сами заказы
-                    cursor.execute("DELETE FROM orders WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted orders for restaurant {restaurant_id}")
-                    
-                    # 7. Получаем все блюда ресторана
-                    cursor.execute("SELECT id FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
-                    dish_ids = [row[0] for row in cursor.fetchall()]
-                    
-                    # 8. Удаляем опции и группы опций через блюда
-                    if dish_ids:
-                        # Получаем группы опций для всех блюд
-                        placeholders = ','.join(['?' for _ in dish_ids])
-                        cursor.execute(f"SELECT id FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
-                        group_ids = [row[0] for row in cursor.fetchall()]
-                        
-                        # Удаляем опции
-                        if group_ids:
-                            placeholders = ','.join(['?' for _ in group_ids])
-                            cursor.execute(f"DELETE FROM options WHERE group_id IN ({placeholders})", group_ids)
-                        
-                        # Удаляем группы опций
-                        placeholders = ','.join(['?' for _ in dish_ids])
-                        cursor.execute(f"DELETE FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
-                    logger.info(f"Deleted option groups for restaurant {restaurant_id}")
-                    
-                    # 9. Удаляем блюда
-                    cursor.execute("DELETE FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted dishes for restaurant {restaurant_id}")
-                    
-                    # 10. Удаляем категории
-                    cursor.execute("DELETE FROM categories WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted categories for restaurant {restaurant_id}")
-                    
-                    # 11. Удаляем админов ресторана
-                    cursor.execute("DELETE FROM restaurant_admins WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
-                    
-                    # 12. Удаляем акции
-                    cursor.execute("DELETE FROM promotions WHERE restaurant_id = ?", (restaurant_id,))
-                    logger.info(f"Deleted promotions for restaurant {restaurant_id}")
-                    
-                    # 13. Удаляем сам ресторан
-                    cursor.execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
-                    logger.info(f"Deleted restaurant {restaurant_id}")
-                    
-                    # Коммитим все изменения
-                    raw_conn.commit()
-                    
-                    # Включаем обратно проверку foreign keys
-                    cursor.execute("PRAGMA foreign_keys=ON")
-                    cursor.close()
-                    raw_conn.close()
-                    logger.info("Re-enabled foreign key constraints for SQLite")
-                    logger.info(f"Successfully deleted restaurant {restaurant_id}")
-                    
-                except Exception as inner_e:
-                    # Включаем обратно проверку foreign keys даже при ошибке
-                    try:
-                        cursor.execute("PRAGMA foreign_keys=ON")
-                        raw_conn.rollback()
-                    except Exception:
-                        pass
-                    finally:
-                        try:
-                            cursor.close()
-                        except:
-                            pass
-                        try:
-                            raw_conn.close()
-                        except:
-                            pass
-                    raise inner_e
+            # Получаем путь к базе данных
+            if db_url.startswith("sqlite:///"):
+                db_path = db_url.replace("sqlite:///", "")
+                if db_path.startswith("./"):
+                    db_path = os.path.join(os.getcwd(), db_path[2:])
+                elif not os.path.isabs(db_path):
+                    db_path = os.path.join(os.getcwd(), db_path)
             else:
-                # Для других БД используем ORM
-                logger.info("Using ORM approach for non-SQLite database")
+                db_path = DATABASE_URL.replace("sqlite:///", "")
+                if db_path.startswith("./"):
+                    db_path = os.path.join(os.getcwd(), db_path[2:])
+            
+            logger.info(f"Database path: {db_path}")
+            
+            # Открываем прямое соединение
+            raw_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=20.0)
+            cursor = raw_conn.cursor()
+            cursor.execute("PRAGMA foreign_keys=OFF")
+            
+            # Проверяем существование ресторана
+            cursor.execute("SELECT id FROM restaurants WHERE id = ?", (restaurant_id,))
+            if not cursor.fetchone():
+                cursor.close()
+                raw_conn.close()
+                return {"status": "not_found"}
+            
+            try:
+                logger.info("Foreign keys disabled, starting deletion")
+                
+                # 1. Удаляем элементы коллекций
+                cursor.execute("DELETE FROM collection_items WHERE item_type = 'restaurant' AND item_id = ?", (restaurant_id,))
+                
+                # 2. Удаляем элементы корзины
+                cursor.execute("DELETE FROM cart_items WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 3. Получаем все заказы ресторана
+                cursor.execute("SELECT id FROM orders WHERE restaurant_id = ?", (restaurant_id,))
+                order_ids = [row[0] for row in cursor.fetchall()]
+                
+                # 4. Удаляем отзывы
+                if order_ids:
+                    placeholders = ','.join(['?' for _ in order_ids])
+                    cursor.execute(f"DELETE FROM reviews WHERE order_id IN ({placeholders})", order_ids)
+                cursor.execute("DELETE FROM reviews WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 5. Удаляем элементы заказов
+                if order_ids:
+                    placeholders = ','.join(['?' for _ in order_ids])
+                    cursor.execute(f"DELETE FROM order_items WHERE order_id IN ({placeholders})", order_ids)
+                
+                # 6. Удаляем заказы
+                cursor.execute("DELETE FROM orders WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 7. Получаем все блюда
+                cursor.execute("SELECT id FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
+                dish_ids = [row[0] for row in cursor.fetchall()]
+                
+                # 8. Удаляем опции и группы опций
+                if dish_ids:
+                    placeholders = ','.join(['?' for _ in dish_ids])
+                    cursor.execute(f"SELECT id FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
+                    group_ids = [row[0] for row in cursor.fetchall()]
+                    
+                    if group_ids:
+                        placeholders = ','.join(['?' for _ in group_ids])
+                        cursor.execute(f"DELETE FROM options WHERE group_id IN ({placeholders})", group_ids)
+                    
+                    placeholders = ','.join(['?' for _ in dish_ids])
+                    cursor.execute(f"DELETE FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
+                
+                # 9. Удаляем блюда
+                cursor.execute("DELETE FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 10. Удаляем категории
+                cursor.execute("DELETE FROM categories WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 11. Удаляем админов
+                cursor.execute("DELETE FROM restaurant_admins WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 12. Удаляем акции
+                cursor.execute("DELETE FROM promotions WHERE restaurant_id = ?", (restaurant_id,))
+                
+                # 13. Удаляем ресторан
+                cursor.execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
+                
+                # Коммитим
+                raw_conn.commit()
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+                raw_conn.close()
+                
+                logger.info(f"Successfully deleted restaurant {restaurant_id}")
+                
+            except Exception as inner_e:
+                try:
+                    cursor.execute("PRAGMA foreign_keys=ON")
+                    raw_conn.rollback()
+                except:
+                    pass
+                finally:
+                    try:
+                        cursor.close()
+                    except:
+                        pass
+                    try:
+                        raw_conn.close()
+                    except:
+                        pass
+                raise inner_e
+        else:
+            # Для других БД используем ORM
+            logger.info("Using ORM approach for non-SQLite database")
+            r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
+            if not r:
+                return {"status": "not_found"}
+            
+            try:
                 # 1. Удаляем элементы корзины
                 db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
@@ -366,6 +339,9 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                 db.delete(r)
                 db.commit()
                 logger.info(f"Successfully deleted restaurant {restaurant_id}")
+            except Exception as inner_e:
+                db.rollback()
+                raise inner_e
         except Exception as e:
             logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
             db.rollback()
