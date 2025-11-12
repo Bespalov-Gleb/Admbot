@@ -172,13 +172,14 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         try:
             # Для SQLite временно отключаем проверку foreign keys для каскадного удаления
             from app.db import DATABASE_URL
-            from sqlalchemy import text
             if DATABASE_URL.startswith("sqlite"):
-                # Выполняем PRAGMA на том же соединении, что использует сессия
+                # Выполняем PRAGMA на raw DBAPI connection
                 # В SQLite PRAGMA работает только на уровне соединения
-                # Используем connection() для получения raw connection из сессии
-                raw_conn = db.connection()
-                raw_conn.execute(text("PRAGMA foreign_keys=OFF"))
+                # Получаем raw sqlite3 connection через dbapi_connection
+                raw_conn = db.connection().dbapi_connection
+                cursor = raw_conn.cursor()
+                cursor.execute("PRAGMA foreign_keys=OFF")
+                cursor.close()
                 logger.info("Temporarily disabled foreign key constraints for SQLite")
             
             # 1. Удаляем элементы корзины
@@ -238,8 +239,10 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             
             # Включаем обратно проверку foreign keys для SQLite
             if DATABASE_URL.startswith("sqlite"):
-                raw_conn = db.connection()
-                raw_conn.execute(text("PRAGMA foreign_keys=ON"))
+                raw_conn = db.connection().dbapi_connection
+                cursor = raw_conn.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
                 logger.info("Re-enabled foreign key constraints for SQLite")
             logger.info(f"Successfully deleted restaurant {restaurant_id}")
         except Exception as e:
@@ -247,9 +250,10 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
             # Включаем обратно проверку foreign keys даже при ошибке
             try:
                 if DATABASE_URL.startswith("sqlite"):
-                    from sqlalchemy import text
-                    raw_conn = db.connection()
-                    raw_conn.execute(text("PRAGMA foreign_keys=ON"))
+                    raw_conn = db.connection().dbapi_connection
+                    cursor = raw_conn.cursor()
+                    cursor.execute("PRAGMA foreign_keys=ON")
+                    cursor.close()
             except Exception:
                 pass
             db.rollback()
