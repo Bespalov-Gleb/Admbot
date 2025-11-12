@@ -175,10 +175,20 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         try:
             logger.info(f"Starting restaurant deletion for id={restaurant_id}, DATABASE_URL={DATABASE_URL}")
             # Для SQLite ВСЕГДА используем прямое соединение, чтобы гарантировать применение PRAGMA
-            # Проверяем и через DATABASE_URL, и через engine.url
+            # Проверяем и через DATABASE_URL, и через engine.url, и через драйвер
             from app.db import engine
             db_url = str(engine.url)
-            is_sqlite = DATABASE_URL.startswith("sqlite") or db_url.startswith("sqlite")
+            driver_name = engine.dialect.name if hasattr(engine, 'dialect') else 'unknown'
+            logger.info(f"Engine URL: {db_url}, Driver: {driver_name}, DATABASE_URL starts with sqlite: {DATABASE_URL.startswith('sqlite')}, db_url starts with sqlite: {db_url.startswith('sqlite')}")
+            # Проверяем всеми возможными способами
+            is_sqlite = (
+                DATABASE_URL.startswith("sqlite") or 
+                db_url.startswith("sqlite") or 
+                driver_name == "sqlite" or
+                "sqlite" in DATABASE_URL.lower() or
+                "sqlite" in db_url.lower()
+            )
+            logger.info(f"is_sqlite = {is_sqlite}")
             
             if is_sqlite:
                 logger.info("Using SQLite direct connection approach")
