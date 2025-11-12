@@ -173,16 +173,23 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         
         # Удаляем связанные записи каскадно (все в одной транзакции)
         try:
-            if DATABASE_URL.startswith("sqlite"):
+            logger.info(f"Starting restaurant deletion for id={restaurant_id}, DATABASE_URL={DATABASE_URL}")
+            # Для SQLite ВСЕГДА используем прямое соединение, чтобы гарантировать применение PRAGMA
+            # Проверяем и через DATABASE_URL, и через engine.url
+            from app.db import engine
+            db_url = str(engine.url)
+            is_sqlite = DATABASE_URL.startswith("sqlite") or db_url.startswith("sqlite")
+            
+            if is_sqlite:
+                logger.info("Using SQLite direct connection approach")
                 # Для SQLite используем прямое соединение с базой данных
                 # Обходим SQLAlchemy session, чтобы гарантировать применение PRAGMA
                 import sqlite3
                 import os
-                from app.db import engine
                 
-                # Получаем путь к базе данных из engine
+                # Получаем путь к базе данных из engine (уже импортирован выше)
                 # SQLAlchemy хранит URL в формате sqlite:///path/to/db
-                db_url = str(engine.url)
+                logger.info(f"Engine URL: {db_url}")
                 if db_url.startswith("sqlite:///"):
                     db_path = db_url.replace("sqlite:///", "")
                     # Обрабатываем относительные пути
@@ -196,10 +203,13 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                     if db_path.startswith("./"):
                         db_path = os.path.join(os.getcwd(), db_path[2:])
                 
+                logger.info(f"Database path: {db_path}")
+                
                 # Открываем прямое соединение с базой данных
                 raw_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=20.0)
-                raw_conn.execute("PRAGMA foreign_keys=OFF")
+                # Устанавливаем PRAGMA через cursor для надежности
                 cursor = raw_conn.cursor()
+                cursor.execute("PRAGMA foreign_keys=OFF")
                 
                 try:
                     # Проверяем, что PRAGMA применился
@@ -308,6 +318,7 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                     raise inner_e
             else:
                 # Для других БД используем ORM
+                logger.info("Using ORM approach for non-SQLite database")
                 # 1. Удаляем элементы корзины
                 db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
