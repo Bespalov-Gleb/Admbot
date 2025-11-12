@@ -175,21 +175,26 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         try:
             if DATABASE_URL.startswith("sqlite"):
                 # Для SQLite используем raw SQL с отключенными foreign keys
-                # Получаем raw connection через SQLAlchemy
+                # Важно: используем одно соединение для всех операций
+                # Начинаем явную транзакцию, чтобы все операции выполнялись на одном соединении
+                trans = db.begin()
+                
+                # Получаем соединение один раз и используем его для всех операций
                 connection = db.connection()
                 raw_conn = connection.dbapi_connection
-                
-                # Отключаем foreign keys на этом соединении
-                cursor = raw_conn.cursor()
-                cursor.execute("PRAGMA foreign_keys=OFF")
-                # Проверяем, что PRAGMA применился
-                cursor.execute("PRAGMA foreign_keys")
-                fk_status = cursor.fetchone()[0]
-                if fk_status != 0:
-                    logger.warning(f"Foreign keys might still be enabled (status={fk_status}), but continuing...")
-                logger.info("Temporarily disabled foreign key constraints for SQLite")
+                cursor = None
                 
                 try:
+                    # Отключаем foreign keys на этом соединении
+                    cursor = raw_conn.cursor()
+                    cursor.execute("PRAGMA foreign_keys=OFF")
+                    # Проверяем, что PRAGMA применился
+                    cursor.execute("PRAGMA foreign_keys")
+                    fk_status = cursor.fetchone()[0]
+                    if fk_status != 0:
+                        logger.warning(f"Foreign keys might still be enabled (status={fk_status}), but continuing...")
+                    logger.info("Temporarily disabled foreign key constraints for SQLite")
+                    
                     # 1. Удаляем элементы корзины
                     cursor.execute("DELETE FROM cart_items WHERE restaurant_id = ?", (restaurant_id,))
                     logger.info(f"Deleted cart items for restaurant {restaurant_id}")
@@ -256,24 +261,35 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                     cursor.execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
                     logger.info(f"Deleted restaurant {restaurant_id}")
                     
-                    # Включаем обратно проверку foreign keys
+                    # Включаем обратно проверку foreign keys на том же соединении
                     cursor.execute("PRAGMA foreign_keys=ON")
                     cursor.close()
                     logger.info("Re-enabled foreign key constraints for SQLite")
                     
                     # Коммитим транзакцию
-                    raw_conn.commit()
-                    db.commit()
+                    trans.commit()
                     logger.info(f"Successfully deleted restaurant {restaurant_id}")
                     
                 except Exception as inner_e:
                     # Включаем обратно проверку foreign keys даже при ошибке
                     try:
-                        cursor.execute("PRAGMA foreign_keys=ON")
-                        cursor.close()
+                        if cursor is not None:
+                            try:
+                                cursor.execute("PRAGMA foreign_keys=ON")
+                                cursor.close()
+                            except:
+                                # Если cursor уже закрыт, получаем новое соединение
+                                cursor = raw_conn.cursor()
+                                cursor.execute("PRAGMA foreign_keys=ON")
+                                cursor.close()
+                        else:
+                            # Если cursor не был создан, создаем новый
+                            cursor = raw_conn.cursor()
+                            cursor.execute("PRAGMA foreign_keys=ON")
+                            cursor.close()
                     except Exception:
                         pass
-                    db.rollback()
+                    trans.rollback()
                     raise inner_e
             else:
                 # Для других БД используем ORM
