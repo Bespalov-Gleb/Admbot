@@ -159,7 +159,10 @@ async def set_restaurant_status(restaurant_id: int, enabled: bool, db: Session =
 async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -> dict:
     from app.models import Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption
     from app.models import Review as DBReview, RestaurantAdmin as DBRestaurantAdmin, Promotion as DBPromotion
+    from app.models import Order as DBOrder, OrderItem as DBOrderItem, CartItem as DBCartItem
     from app.logging_config import get_logger
+    from app.db import DATABASE_URL
+    from sqlalchemy import text
     
     logger = get_logger("admin")
     
@@ -170,98 +173,114 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
         
         # Удаляем связанные записи каскадно (все в одной транзакции)
         try:
-            from app.db import DATABASE_URL
-            from sqlalchemy import text
-            
-            # Для SQLite используем raw SQL с отключенными foreign keys
             if DATABASE_URL.startswith("sqlite"):
-                # Получаем raw connection и отключаем foreign keys
-                raw_conn = db.connection().dbapi_connection
+                # Для SQLite используем raw SQL с отключенными foreign keys
+                # Получаем raw connection через SQLAlchemy
+                connection = db.connection()
+                raw_conn = connection.dbapi_connection
+                
+                # Отключаем foreign keys на этом соединении
                 cursor = raw_conn.cursor()
                 cursor.execute("PRAGMA foreign_keys=OFF")
+                # Проверяем, что PRAGMA применился
+                cursor.execute("PRAGMA foreign_keys")
+                fk_status = cursor.fetchone()[0]
+                if fk_status != 0:
+                    logger.warning(f"Foreign keys might still be enabled (status={fk_status}), but continuing...")
                 logger.info("Temporarily disabled foreign key constraints for SQLite")
                 
-                # Выполняем все удаления через raw SQL на том же соединении через cursor
-                # 1. Удаляем элементы корзины
-                cursor.execute("DELETE FROM cart_items WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted cart items for restaurant {restaurant_id}")
-                
-                # 2. Получаем все заказы ресторана
-                cursor.execute("SELECT id FROM orders WHERE restaurant_id = ?", (restaurant_id,))
-                order_ids = [row[0] for row in cursor.fetchall()]
-                
-                # 3. Удаляем отзывы (сначала по order_id, потом по restaurant_id)
-                if order_ids:
-                    placeholders = ','.join(['?' for _ in order_ids])
-                    cursor.execute(f"DELETE FROM reviews WHERE order_id IN ({placeholders})", order_ids)
-                cursor.execute("DELETE FROM reviews WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted reviews for restaurant {restaurant_id}")
-                
-                # 4. Удаляем элементы заказов и сами заказы
-                if order_ids:
-                    placeholders = ','.join(['?' for _ in order_ids])
-                    cursor.execute(f"DELETE FROM order_items WHERE order_id IN ({placeholders})", order_ids)
-                cursor.execute("DELETE FROM orders WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted orders for restaurant {restaurant_id}")
-                
-                # 5. Получаем все блюда ресторана
-                cursor.execute("SELECT id FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
-                dish_ids = [row[0] for row in cursor.fetchall()]
-                
-                # 6. Удаляем опции и группы опций через блюда
-                if dish_ids:
-                    # Получаем группы опций для всех блюд
-                    placeholders = ','.join(['?' for _ in dish_ids])
-                    cursor.execute(f"SELECT id FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
-                    group_ids = [row[0] for row in cursor.fetchall()]
+                try:
+                    # 1. Удаляем элементы корзины
+                    cursor.execute("DELETE FROM cart_items WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted cart items for restaurant {restaurant_id}")
                     
-                    # Удаляем опции
-                    if group_ids:
-                        placeholders = ','.join(['?' for _ in group_ids])
-                        cursor.execute(f"DELETE FROM options WHERE group_id IN ({placeholders})", group_ids)
+                    # 2. Получаем все заказы ресторана
+                    cursor.execute("SELECT id FROM orders WHERE restaurant_id = ?", (restaurant_id,))
+                    order_ids = [row[0] for row in cursor.fetchall()]
                     
-                    # Удаляем группы опций
-                    placeholders = ','.join(['?' for _ in dish_ids])
-                    cursor.execute(f"DELETE FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
-                logger.info(f"Deleted option groups for restaurant {restaurant_id}")
-                
-                # 7. Удаляем блюда
-                cursor.execute("DELETE FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted dishes for restaurant {restaurant_id}")
-                
-                # 8. Удаляем категории
-                cursor.execute("DELETE FROM categories WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted categories for restaurant {restaurant_id}")
-                
-                # 9. Удаляем админов ресторана
-                cursor.execute("DELETE FROM restaurant_admins WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
-                
-                # 10. Удаляем акции
-                cursor.execute("DELETE FROM promotions WHERE restaurant_id = ?", (restaurant_id,))
-                logger.info(f"Deleted promotions for restaurant {restaurant_id}")
-                
-                # 11. Удаляем сам ресторан
-                cursor.execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
-                logger.info(f"Deleted restaurant {restaurant_id}")
-                
-                # Включаем обратно проверку foreign keys
-                cursor.execute("PRAGMA foreign_keys=ON")
-                cursor.close()
-                logger.info("Re-enabled foreign key constraints for SQLite")
-                
-                # Коммитим транзакцию
-                raw_conn.commit()
-                db.commit()  # Также коммитим сессию
-                logger.info(f"Successfully deleted restaurant {restaurant_id}")
+                    # 3. Удаляем отзывы (сначала по order_id, потом по restaurant_id)
+                    if order_ids:
+                        placeholders = ','.join(['?' for _ in order_ids])
+                        cursor.execute(f"DELETE FROM reviews WHERE order_id IN ({placeholders})", order_ids)
+                    cursor.execute("DELETE FROM reviews WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted reviews for restaurant {restaurant_id}")
+                    
+                    # 4. Удаляем элементы заказов ПЕРЕД удалением заказов
+                    if order_ids:
+                        placeholders = ','.join(['?' for _ in order_ids])
+                        cursor.execute(f"DELETE FROM order_items WHERE order_id IN ({placeholders})", order_ids)
+                        logger.info(f"Deleted order items for {len(order_ids)} orders")
+                    
+                    # 5. Удаляем сами заказы
+                    cursor.execute("DELETE FROM orders WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted orders for restaurant {restaurant_id}")
+                    
+                    # 6. Получаем все блюда ресторана
+                    cursor.execute("SELECT id FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
+                    dish_ids = [row[0] for row in cursor.fetchall()]
+                    
+                    # 7. Удаляем опции и группы опций через блюда
+                    if dish_ids:
+                        # Получаем группы опций для всех блюд
+                        placeholders = ','.join(['?' for _ in dish_ids])
+                        cursor.execute(f"SELECT id FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
+                        group_ids = [row[0] for row in cursor.fetchall()]
+                        
+                        # Удаляем опции
+                        if group_ids:
+                            placeholders = ','.join(['?' for _ in group_ids])
+                            cursor.execute(f"DELETE FROM options WHERE group_id IN ({placeholders})", group_ids)
+                        
+                        # Удаляем группы опций
+                        placeholders = ','.join(['?' for _ in dish_ids])
+                        cursor.execute(f"DELETE FROM option_groups WHERE dish_id IN ({placeholders})", dish_ids)
+                    logger.info(f"Deleted option groups for restaurant {restaurant_id}")
+                    
+                    # 8. Удаляем блюда
+                    cursor.execute("DELETE FROM dishes WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted dishes for restaurant {restaurant_id}")
+                    
+                    # 9. Удаляем категории
+                    cursor.execute("DELETE FROM categories WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted categories for restaurant {restaurant_id}")
+                    
+                    # 10. Удаляем админов ресторана
+                    cursor.execute("DELETE FROM restaurant_admins WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted restaurant admins for restaurant {restaurant_id}")
+                    
+                    # 11. Удаляем акции
+                    cursor.execute("DELETE FROM promotions WHERE restaurant_id = ?", (restaurant_id,))
+                    logger.info(f"Deleted promotions for restaurant {restaurant_id}")
+                    
+                    # 12. Удаляем сам ресторан
+                    cursor.execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
+                    logger.info(f"Deleted restaurant {restaurant_id}")
+                    
+                    # Включаем обратно проверку foreign keys
+                    cursor.execute("PRAGMA foreign_keys=ON")
+                    cursor.close()
+                    logger.info("Re-enabled foreign key constraints for SQLite")
+                    
+                    # Коммитим транзакцию
+                    raw_conn.commit()
+                    db.commit()
+                    logger.info(f"Successfully deleted restaurant {restaurant_id}")
+                    
+                except Exception as inner_e:
+                    # Включаем обратно проверку foreign keys даже при ошибке
+                    try:
+                        cursor.execute("PRAGMA foreign_keys=ON")
+                        cursor.close()
+                    except Exception:
+                        pass
+                    db.rollback()
+                    raise inner_e
             else:
-                # Для других БД используем ORM (если понадобится в будущем)
+                # Для других БД используем ORM
                 # 1. Удаляем элементы корзины
-                from app.models import CartItem as DBCartItem
                 db.query(DBCartItem).filter(DBCartItem.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
                 # 2. Получаем все заказы ресторана
-                from app.models import Order as DBOrder, OrderItem as DBOrderItem
                 orders = db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).all()
                 order_ids = [order.id for order in orders]
                 
@@ -270,12 +289,14 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                     db.query(DBReview).filter(DBReview.order_id.in_(order_ids)).delete(synchronize_session=False)
                 db.query(DBReview).filter(DBReview.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
-                # 4. Удаляем элементы заказов и сами заказы
+                # 4. Удаляем элементы заказов ПЕРЕД удалением заказов
                 if order_ids:
                     db.query(DBOrderItem).filter(DBOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+                
+                # 5. Удаляем сами заказы
                 db.query(DBOrder).filter(DBOrder.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
-                # 5. Удаляем опции и группы опций
+                # 6. Удаляем опции и группы опций
                 dishes = db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).all()
                 for dish in dishes:
                     option_groups = db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).all()
@@ -283,28 +304,18 @@ async def delete_restaurant(restaurant_id: int, db: Session = Depends(get_db)) -
                         db.query(DBOption).filter(DBOption.group_id == group.id).delete(synchronize_session=False)
                     db.query(DBOptionGroup).filter(DBOptionGroup.dish_id == dish.id).delete(synchronize_session=False)
                 
-                # 6-9. Удаляем остальное
+                # 7-10. Удаляем остальное
                 db.query(DBDish).filter(DBDish.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 db.query(DBCategory).filter(DBCategory.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 db.query(DBPromotion).filter(DBPromotion.restaurant_id == restaurant_id).delete(synchronize_session=False)
                 
-                # 10. Удаляем сам ресторан
+                # 11. Удаляем сам ресторан
                 db.delete(r)
                 db.commit()
                 logger.info(f"Successfully deleted restaurant {restaurant_id}")
         except Exception as e:
             logger.exception(f"Error deleting restaurant {restaurant_id} or related data: {e}")
-            # Включаем обратно проверку foreign keys даже при ошибке
-            try:
-                from app.db import DATABASE_URL
-                if DATABASE_URL.startswith("sqlite"):
-                    raw_conn = db.connection().dbapi_connection
-                    cursor = raw_conn.cursor()
-                    cursor.execute("PRAGMA foreign_keys=ON")
-                    cursor.close()
-            except Exception:
-                pass
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Error deleting restaurant: {str(e)}")
         
