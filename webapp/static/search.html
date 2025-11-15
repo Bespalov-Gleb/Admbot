@@ -74,6 +74,12 @@
   </div>
 
   <script>
+    // Отключаем автоматическое восстановление скролла браузером (важно для iOS)
+    // Должно быть в самом начале, до любых других операций
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    
     const api = location.origin + '/api';
     const tg = window.Telegram?.WebApp;
     const q = new URLSearchParams(location.search);
@@ -95,11 +101,25 @@
     let currentFilter = 'all';
     let currentQuery = '';
     
+    // Переменные для отслеживания восстановления позиции (защита от iOS)
+    let isRestoringScroll = false;
+    let targetScrollPosition = 0;
+    let scrollRestoreTimeout = null;
+    
     // Популярные запросы
     const popularQueries = ['вкус', 'пицца', 'бургер', 'суши', 'роллы'];
     
     // Функция для перехода в ресторан
     function goToRestaurant(restaurantId) {
+      // Сохраняем позицию скролла перед переходом
+      try {
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        sessionStorage.setItem('search_page_scroll', scrollY.toString());
+        console.log('Saved search scroll position:', scrollY);
+      } catch (e) {
+        console.log('Could not save scroll position:', e);
+      }
+      
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       p.delete('id');
@@ -283,7 +303,7 @@
                   // Сохраняем ID ресторана для возврата к позиции
                   dishParams.set('scroll_to_restaurant_id', restaurant.id.toString());
                   return `
-                  <div class="search-dish-card" onclick="location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${dishParams.toString()}'">
+                  <div class="search-dish-card" onclick="(function(){try{const s=window.pageYOffset||document.documentElement.scrollTop;sessionStorage.setItem('search_page_scroll',s.toString());}catch(e){}}());location.href='/static/restaurant.html?id=${restaurant.id}&dish_id=${dish.id}&${dishParams.toString()}'">
                     ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="search-dish-image" onerror="this.style.display='none'"/>` : '<div class="search-dish-image"></div>'}
                     <div class="search-dish-info">
                       <div class="search-dish-name">${dish.name}</div>
@@ -320,10 +340,13 @@
         }).join('');
         
         // После рендеринга результатов проверяем, нужно ли прокрутить к элементу
+        // НО: если есть сохраненная позиция скролла, используем её вместо scrollIntoView
         const urlParams = new URLSearchParams(location.search);
         const scrollToRestaurantId = urlParams.get('scroll_to_restaurant_id');
-        if (scrollToRestaurantId) {
-          // Небольшая задержка для завершения рендеринга
+        const hasSavedScroll = sessionStorage.getItem('search_page_scroll');
+        
+        if (scrollToRestaurantId && !hasSavedScroll) {
+          // Только если нет сохраненной позиции, прокручиваем к элементу
           setTimeout(() => {
             const element = document.querySelector(`[data-restaurant-id="${scrollToRestaurantId}"]`);
             if (element) {
@@ -334,6 +357,12 @@
               history.replaceState({}, '', newUrl);
             }
           }, 100);
+        } else if (scrollToRestaurantId && hasSavedScroll) {
+          // Если есть сохраненная позиция, удаляем параметр, но не прокручиваем
+          // Восстановление позиции произойдет в restoreScrollPosition()
+          urlParams.delete('scroll_to_restaurant_id');
+          const newUrl = location.pathname + '?' + urlParams.toString();
+          history.replaceState({}, '', newUrl);
         }
         
       } catch (error) {
@@ -441,8 +470,153 @@
       location.href = '/static/profile.html?' + p.toString(); 
     };
     
+    // Функция для восстановления позиции скролла (с защитой от iOS Safari)
+    function restoreScrollPosition() {
+      try {
+        const savedScroll = sessionStorage.getItem('search_page_scroll');
+        if (!savedScroll) return;
+        
+        const scrollY = parseInt(savedScroll, 10);
+        if (scrollY <= 0) return;
+        
+        // Отключаем автоматическое восстановление скролла браузером
+        if ('scrollRestoration' in history) {
+          history.scrollRestoration = 'manual';
+        }
+        
+        let scrollRestored = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        // Устанавливаем флаг восстановления
+        isRestoringScroll = true;
+        targetScrollPosition = scrollY;
+        
+        // Функция для проверки и восстановления позиции
+        const checkAndScroll = () => {
+          attempts++;
+          const pageHeight = Math.max(
+            document.body.scrollHeight,
+            document.body.offsetHeight,
+            document.documentElement.clientHeight,
+            document.documentElement.scrollHeight,
+            document.documentElement.offsetHeight
+          );
+          
+          if (pageHeight <= scrollY) {
+            // Страница еще не достаточно высокая, пробуем еще раз
+            if (attempts < maxAttempts) {
+              setTimeout(checkAndScroll, 100);
+            } else {
+              console.log('Page height too small for scroll position after max attempts');
+              isRestoringScroll = false;
+              targetScrollPosition = 0;
+              sessionStorage.removeItem('search_page_scroll');
+            }
+            return;
+          }
+          
+          const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+          
+          // Если позиция уже правильная, завершаем
+          if (Math.abs(currentScroll - scrollY) <= 10) {
+            if (!scrollRestored) {
+              console.log('Scroll position already correct:', currentScroll);
+              scrollRestored = true;
+              isRestoringScroll = false;
+              targetScrollPosition = 0;
+              sessionStorage.removeItem('search_page_scroll');
+            }
+            return;
+          }
+          
+          // Восстанавливаем позицию
+          window.scrollTo({ top: scrollY, behavior: 'auto' });
+          console.log(`Restored scroll position (attempt ${attempts}):`, scrollY);
+          
+          // Проверяем через задержку, не сбросил ли браузер позицию (особенно на iOS)
+          setTimeout(() => {
+            const newScroll = window.pageYOffset || document.documentElement.scrollTop;
+            if (Math.abs(newScroll - scrollY) > 50) {
+              // Браузер сбросил позицию - восстанавливаем снова
+              console.log('Browser reset scroll position, fixing:', newScroll, '->', scrollY);
+              window.scrollTo({ top: scrollY, behavior: 'auto' });
+              
+              // Еще одна проверка через больший интервал для iOS
+              setTimeout(() => {
+                const finalScroll = window.pageYOffset || document.documentElement.scrollTop;
+                if (Math.abs(finalScroll - scrollY) > 50) {
+                  window.scrollTo({ top: scrollY, behavior: 'auto' });
+                  console.log('Second fix for iOS scroll reset');
+                }
+                scrollRestored = true;
+                // Отключаем защиту через небольшую задержку после успешного восстановления
+                setTimeout(() => {
+                  isRestoringScroll = false;
+                  targetScrollPosition = 0;
+                }, 500);
+                sessionStorage.removeItem('search_page_scroll');
+              }, 200);
+            } else {
+              scrollRestored = true;
+              // Отключаем защиту через небольшую задержку после успешного восстановления
+              setTimeout(() => {
+                isRestoringScroll = false;
+                targetScrollPosition = 0;
+              }, 500);
+              sessionStorage.removeItem('search_page_scroll');
+            }
+          }, 100);
+        };
+        
+        // Начинаем восстановление после небольшой задержки для завершения рендеринга
+        setTimeout(checkAndScroll, 100);
+        
+        // Дополнительная проверка через больший интервал для iOS
+        setTimeout(() => {
+          if (!scrollRestored && attempts < maxAttempts) {
+            checkAndScroll();
+          }
+        }, 500);
+        
+        // Автоматически отключаем защиту через 2 секунды (на случай, если что-то пошло не так)
+        setTimeout(() => {
+          if (isRestoringScroll) {
+            console.log('Auto-disabling scroll protection after timeout');
+            isRestoringScroll = false;
+            targetScrollPosition = 0;
+          }
+        }, 2000);
+        
+      } catch (e) {
+        console.log('Could not restore scroll position:', e);
+        sessionStorage.removeItem('search_page_scroll');
+      }
+    }
+    
+    // Обработчик для отслеживания нежелательного сброса позиции на iOS
+    function setupScrollProtection() {
+      window.addEventListener('scroll', () => {
+        if (isRestoringScroll && targetScrollPosition > 0) {
+          const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+          // Если браузер сбросил позицию во время восстановления, исправляем
+          if (Math.abs(currentScroll - targetScrollPosition) > 100 && currentScroll < 50) {
+            // Браузер сбросил позицию вверх - восстанавливаем
+            clearTimeout(scrollRestoreTimeout);
+            scrollRestoreTimeout = setTimeout(() => {
+              window.scrollTo({ top: targetScrollPosition, behavior: 'auto' });
+              console.log('Protected scroll position from browser reset on iOS');
+            }, 50);
+          }
+        }
+      }, { passive: true });
+    }
+    
     // Инициализация - загружаем данные и фокусируемся после загрузки
     async function initialize() {
+      // Настраиваем защиту от сброса скролла
+      setupScrollProtection();
+      
       // Проверяем, есть ли сохраненный поисковый запрос в URL
       const urlParams = new URLSearchParams(location.search);
       const savedQuery = urlParams.get('search_query');
@@ -459,6 +633,12 @@
         
         // Выполняем поиск
         await performSearch();
+        
+        // Восстанавливаем позицию скролла после загрузки результатов
+        // Используем небольшую задержку для завершения рендеринга
+        setTimeout(() => {
+          restoreScrollPosition();
+        }, 150);
         
         // Фокусируемся на поле поиска
         requestAnimationFrame(() => {
