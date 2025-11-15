@@ -105,6 +105,8 @@
     let isRestoringScroll = false;
     let targetScrollPosition = 0;
     let scrollRestoreTimeout = null;
+    let scrollProtectionInterval = null;
+    let scrollProtectionEndTime = 0;
     
     // Популярные запросы
     const popularQueries = ['вкус', 'пицца', 'бургер', 'суши', 'роллы'];
@@ -491,6 +493,8 @@
         // Устанавливаем флаг восстановления
         isRestoringScroll = true;
         targetScrollPosition = scrollY;
+        // Устанавливаем время окончания защиты (5 секунд для iOS)
+        scrollProtectionEndTime = Date.now() + 5000;
         
         // Функция для проверки и восстановления позиции
         const checkAndScroll = () => {
@@ -511,6 +515,11 @@
               console.log('Page height too small for scroll position after max attempts');
               isRestoringScroll = false;
               targetScrollPosition = 0;
+              scrollProtectionEndTime = 0;
+              if (scrollProtectionInterval) {
+                clearInterval(scrollProtectionInterval);
+                scrollProtectionInterval = null;
+              }
               sessionStorage.removeItem('search_page_scroll');
             }
             return;
@@ -523,16 +532,26 @@
             if (!scrollRestored) {
               console.log('Scroll position already correct:', currentScroll);
               scrollRestored = true;
-              isRestoringScroll = false;
-              targetScrollPosition = 0;
+              // Не отключаем защиту сразу, даем время для стабилизации
+              setTimeout(() => {
+                isRestoringScroll = false;
+                targetScrollPosition = 0;
+                scrollProtectionEndTime = 0;
+                if (scrollProtectionInterval) {
+                  clearInterval(scrollProtectionInterval);
+                  scrollProtectionInterval = null;
+                }
+              }, 1000);
               sessionStorage.removeItem('search_page_scroll');
             }
             return;
           }
           
-          // Восстанавливаем позицию
-          window.scrollTo({ top: scrollY, behavior: 'auto' });
-          console.log(`Restored scroll position (attempt ${attempts}):`, scrollY);
+          // Восстанавливаем позицию с использованием requestAnimationFrame для iOS
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: scrollY, behavior: 'auto' });
+            console.log(`Restored scroll position (attempt ${attempts}):`, scrollY);
+          });
           
           // Проверяем через задержку, не сбросил ли браузер позицию (особенно на iOS)
           setTimeout(() => {
@@ -554,7 +573,12 @@
                 setTimeout(() => {
                   isRestoringScroll = false;
                   targetScrollPosition = 0;
-                }, 500);
+                  scrollProtectionEndTime = 0;
+                  if (scrollProtectionInterval) {
+                    clearInterval(scrollProtectionInterval);
+                    scrollProtectionInterval = null;
+                  }
+                }, 2000);
                 sessionStorage.removeItem('search_page_scroll');
               }, 200);
             } else {
@@ -563,7 +587,12 @@
               setTimeout(() => {
                 isRestoringScroll = false;
                 targetScrollPosition = 0;
-              }, 500);
+                scrollProtectionEndTime = 0;
+                if (scrollProtectionInterval) {
+                  clearInterval(scrollProtectionInterval);
+                  scrollProtectionInterval = null;
+                }
+              }, 2000);
               sessionStorage.removeItem('search_page_scroll');
             }
           }, 100);
@@ -579,23 +608,36 @@
           }
         }, 500);
         
-        // Автоматически отключаем защиту через 2 секунды (на случай, если что-то пошло не так)
+        // Автоматически отключаем защиту через 5 секунд (на случай, если что-то пошло не так)
         setTimeout(() => {
           if (isRestoringScroll) {
             console.log('Auto-disabling scroll protection after timeout');
             isRestoringScroll = false;
             targetScrollPosition = 0;
+            scrollProtectionEndTime = 0;
+            if (scrollProtectionInterval) {
+              clearInterval(scrollProtectionInterval);
+              scrollProtectionInterval = null;
+            }
           }
-        }, 2000);
+        }, 5000);
         
       } catch (e) {
         console.log('Could not restore scroll position:', e);
+        isRestoringScroll = false;
+        targetScrollPosition = 0;
+        scrollProtectionEndTime = 0;
+        if (scrollProtectionInterval) {
+          clearInterval(scrollProtectionInterval);
+          scrollProtectionInterval = null;
+        }
         sessionStorage.removeItem('search_page_scroll');
       }
     }
     
     // Обработчик для отслеживания нежелательного сброса позиции на iOS
     function setupScrollProtection() {
+      // Обработчик события scroll
       window.addEventListener('scroll', () => {
         if (isRestoringScroll && targetScrollPosition > 0) {
           const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
@@ -604,18 +646,91 @@
             // Браузер сбросил позицию вверх - восстанавливаем
             clearTimeout(scrollRestoreTimeout);
             scrollRestoreTimeout = setTimeout(() => {
-              window.scrollTo({ top: targetScrollPosition, behavior: 'auto' });
-              console.log('Protected scroll position from browser reset on iOS');
+              requestAnimationFrame(() => {
+                window.scrollTo({ top: targetScrollPosition, behavior: 'auto' });
+                console.log('Protected scroll position from browser reset on iOS (scroll event)');
+              });
             }, 50);
           }
         }
       }, { passive: true });
+      
+      // Агрессивный мониторинг через интервал (для iOS)
+      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        scrollProtectionInterval = setInterval(() => {
+          if (isRestoringScroll && targetScrollPosition > 0 && Date.now() < scrollProtectionEndTime) {
+            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+            // Если позиция сильно отличается от целевой и близка к верху, исправляем
+            if (Math.abs(currentScroll - targetScrollPosition) > 100 && currentScroll < 100) {
+              requestAnimationFrame(() => {
+                window.scrollTo({ top: targetScrollPosition, behavior: 'auto' });
+                console.log('Protected scroll position from browser reset on iOS (interval check)');
+              });
+            }
+          } else if (Date.now() >= scrollProtectionEndTime) {
+            // Время защиты истекло
+            clearInterval(scrollProtectionInterval);
+            scrollProtectionInterval = null;
+            isRestoringScroll = false;
+            targetScrollPosition = 0;
+          }
+        }, 100); // Проверяем каждые 100ms
+      }
+      
+      // Обработчик pageshow для iOS (когда страница восстанавливается из кэша)
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+          // Страница восстановлена из кэша, проверяем сохраненную позицию
+          try {
+            const savedScroll = sessionStorage.getItem('search_page_scroll');
+            if (savedScroll) {
+              const scrollY = parseInt(savedScroll, 10);
+              if (scrollY > 0) {
+                targetScrollPosition = scrollY;
+                isRestoringScroll = true;
+                scrollProtectionEndTime = Date.now() + 5000;
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    window.scrollTo({ top: scrollY, behavior: 'auto' });
+                    console.log('Restored scroll position after pageshow event on iOS');
+                  }, 100);
+                });
+              }
+            }
+          } catch (e) {
+            console.log('Could not restore scroll after pageshow:', e);
+          }
+        }
+      });
     }
     
     // Инициализация - загружаем данные и фокусируемся после загрузки
     async function initialize() {
       // Настраиваем защиту от сброса скролла
       setupScrollProtection();
+      
+      // Проверяем, есть ли сохраненная позиция скролла - восстанавливаем её сразу
+      // Это важно для iOS, чтобы предотвратить сброс позиции браузером
+      try {
+        const savedScroll = sessionStorage.getItem('search_page_scroll');
+        if (savedScroll) {
+          const scrollY = parseInt(savedScroll, 10);
+          if (scrollY > 0) {
+            // Устанавливаем флаги защиты сразу
+            isRestoringScroll = true;
+            targetScrollPosition = scrollY;
+            scrollProtectionEndTime = Date.now() + 5000;
+            
+            // Пытаемся восстановить позицию сразу (даже если контент еще не загружен)
+            // Это поможет предотвратить сброс позиции браузером
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: scrollY, behavior: 'auto' });
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Could not pre-restore scroll position:', e);
+      }
       
       // Проверяем, есть ли сохраненный поисковый запрос в URL
       const urlParams = new URLSearchParams(location.search);
@@ -635,10 +750,12 @@
         await performSearch();
         
         // Восстанавливаем позицию скролла после загрузки результатов
-        // Используем небольшую задержку для завершения рендеринга
-        setTimeout(() => {
-          restoreScrollPosition();
-        }, 150);
+        // Используем requestAnimationFrame для более плавного восстановления
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            restoreScrollPosition();
+          }, 200);
+        });
         
         // Фокусируемся на поле поиска
         requestAnimationFrame(() => {
