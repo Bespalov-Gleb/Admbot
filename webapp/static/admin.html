@@ -709,18 +709,20 @@
                 <input data-field="description" value="${r.description||''}" style="width:80%"/>
               </div>
               <div class="meta">
-                <label>Изображение (URL):</label>
-                <div style="display:flex; gap:10px; align-items:center;">
+                <label>Изображение:</label>
+                <div class="image-upload-container">
                   <img src="${r.image||''}" alt="preview" style="width:120px;height:60px;object-fit:cover;border-radius:8px;${r.image?'':'display:none;'}" data-preview="img"/>
                   <input type="file" accept="image/*" data-upload="image"/>
                   <button type="button" data-act="uploadImg">Загрузить</button>
                 </div>
               </div>
               <div class="meta">
-                <label>Режим (HH:MM - HH:MM):</label>
-                <input data-field="work_open_hhmm" value="${toHHMM(r.work_open_min)}" style="width:120px"/>
-                <span> - </span>
-                <input data-field="work_close_hhmm" value="${toHHMM(r.work_close_min)}" style="width:120px"/>
+                <label>Режим работы:</label>
+                <div class="time-inputs">
+                  <input data-field="work_open_hhmm" value="${toHHMM(r.work_open_min)}" style="width:120px" placeholder="09:00"/>
+                  <span> - </span>
+                  <input data-field="work_close_hhmm" value="${toHHMM(r.work_close_min)}" style="width:120px" placeholder="22:00"/>
+                </div>
               </div>
             </div>
             <div class="restaurant-actions">
