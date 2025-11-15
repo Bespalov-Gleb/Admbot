@@ -1,5 +1,7 @@
 import smtplib
 import os
+import ssl
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
@@ -20,9 +22,34 @@ class EmailService:
         """
         Отправляет уведомление о новом заказе на email ресторана
         """
-        if not restaurant_email or not self.smtp_username or not self.smtp_password:
-            logger.warning("Email notification skipped: missing email or SMTP credentials")
+        if not restaurant_email:
+            logger.warning(f"Email notification skipped for order #{order_data.get('id', 'unknown')}: restaurant email is empty")
             return False
+        
+        if not self.smtp_username or not self.smtp_password:
+            logger.warning(f"Email notification skipped for order #{order_data.get('id', 'unknown')}: SMTP credentials are missing (username: {bool(self.smtp_username)}, password: {bool(self.smtp_password)})")
+            return False
+        
+        if not self.from_email:
+            logger.warning(f"Email notification skipped for order #{order_data.get('id', 'unknown')}: FROM_EMAIL is not set")
+            return False
+        
+        # Проверяем доступность SMTP сервера перед попыткой подключения
+        try:
+            logger.info(f"Checking SMTP server availability: {self.smtp_server}:{self.smtp_port}")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(10)
+            result = sock.connect_ex((self.smtp_server, self.smtp_port))
+            sock.close()
+            if result != 0:
+                logger.error(f"SMTP server {self.smtp_server}:{self.smtp_port} is not reachable (error code: {result})")
+                return False
+            logger.info(f"SMTP server {self.smtp_server}:{self.smtp_port} is reachable")
+        except socket.gaierror as e:
+            logger.error(f"DNS resolution failed for SMTP server {self.smtp_server}: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"Could not check SMTP server availability: {e}, proceeding anyway")
             
         try:
             # Формируем содержимое заказа
@@ -74,7 +101,9 @@ class EmailService:
                         
                         <div class="order-items">
                             <h3>Состав заказа</h3>
-                            {''.join(order_items)}
+                            <ul style="list-style: none; padding: 0;">
+                                {''.join([f'<li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">{item}</li>' for item in order_items])}
+                            </ul>
                             <hr style="margin: 15px 0;">
                             <p class="total">Итого: {total} ₽</p>
                         </div>
@@ -128,16 +157,69 @@ class EmailService:
             msg.attach(html_part)
             
             # Отправляем email
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
+            # Для Yandex может потребоваться более длительный timeout
+            logger.info(f"Attempting to connect to SMTP server {self.smtp_server}:{self.smtp_port}")
+            
+            server = None
+            try:
+                # Для порта 465 используем SSL, для 587 - STARTTLS
+                if self.smtp_port == 465:
+                    # SSL соединение для порта 465
+                    logger.info("Using SSL connection (port 465)")
+                    context = ssl.create_default_context()
+                    server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=30, context=context)
+                else:
+                    # STARTTLS для порта 587
+                    logger.info("Using STARTTLS connection (port 587)")
+                    server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30)
+                    server.set_debuglevel(0)  # Устанавливаем 0 для продакшена, 1 для отладки
+                    # Включаем STARTTLS
+                    server.starttls()
+                
+                # Логинимся
+                logger.info(f"Attempting to login as {self.smtp_username}")
                 server.login(self.smtp_username, self.smtp_password)
+                logger.info("SMTP login successful")
+                
+                # Отправляем сообщение
                 server.send_message(msg)
+                logger.info(f"Message sent successfully to {restaurant_email}")
+                
+            except smtplib.SMTPConnectError as e:
+                logger.error(f"SMTP connection error: {e}")
+                raise
+            except smtplib.SMTPAuthenticationError as e:
+                logger.error(f"SMTP authentication error: {e}")
+                raise
+            except (ConnectionError, OSError) as e:
+                logger.error(f"Network error connecting to SMTP server: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Error during SMTP operation: {e}")
+                raise
+            finally:
+                # Закрываем соединение в любом случае
+                if server:
+                    try:
+                        server.quit()
+                    except Exception as e:
+                        logger.warning(f"Error closing SMTP connection: {e}")
+                        try:
+                            server.close()
+                        except:
+                            pass
             
             logger.info(f"Order notification email sent to {restaurant_email} for order #{order_data['id']}")
             return True
             
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error sending order notification email for order #{order_data.get('id', 'unknown')} to {restaurant_email}: {e}", exc_info=True)
+            return False
+        except (ConnectionError, OSError) as e:
+            logger.error(f"Network error sending order notification email for order #{order_data.get('id', 'unknown')} to {restaurant_email}: {e} (SMTP server: {self.smtp_server}:{self.smtp_port})", exc_info=True)
+            return False
         except Exception as e:
-            logger.error(f"Failed to send order notification email: {e}")
+            logger.error(f"Unexpected error sending order notification email for order #{order_data.get('id', 'unknown')} to {restaurant_email}: {e}", exc_info=True)
             return False
 
 # Создаем глобальный экземпляр сервиса

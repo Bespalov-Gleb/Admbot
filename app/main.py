@@ -32,16 +32,20 @@ async def send_email_background(restaurant_email: str, restaurant_name: str, ord
     try:
         # Запускаем в отдельном потоке, чтобы не блокировать event loop
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
+        result = await loop.run_in_executor(
             None, 
             email_service.send_order_notification,
             restaurant_email,
             restaurant_name,
             order_data
         )
-        logger.info(f"Email успешно отправлен в фоне для заказа #{order_data['id']}")
+        # Проверяем результат выполнения функции
+        if result:
+            logger.info(f"Email успешно отправлен в фоне для заказа #{order_data['id']} на {restaurant_email}")
+        else:
+            logger.warning(f"Email не был отправлен для заказа #{order_data['id']} на {restaurant_email} (send_order_notification вернул False)")
     except Exception as e:
-        logger.error(f"Ошибка при отправке email в фоне: {e}")
+        logger.error(f"Ошибка при отправке email в фоне для заказа #{order_data.get('id', 'unknown')}: {e}", exc_info=True)
 
 # Делаем функцию доступной для роутеров
 app.send_email_background = send_email_background

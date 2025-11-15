@@ -16,6 +16,7 @@ from app.models import Option as OOption, Restaurant as ORestaurant, Order as DB
 from app.store import ensure_user
 from app.email_service import email_service
 import json
+import asyncio
 
 def safe_dish_name(name: str | None) -> str:
     """Безопасное получение названия блюда с проверкой на undefined и пустые значения"""
@@ -228,14 +229,33 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
             }
             
             # Отправляем email в фоновом режиме
-            import asyncio
-            from app.main import send_email_background
-            asyncio.create_task(send_email_background(
-                restaurant_email=r.email,
-                restaurant_name=r.name,
-                order_data=order_data
-            ))
-            logger.info(f"Email отправка запланирована в фоне для заказа #{db_order.id}")
+            try:
+                from app.main import send_email_background
+                # Создаем задачу для асинхронной отправки email
+                # Используем get_event_loop() для получения текущего event loop
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                task = loop.create_task(send_email_background(
+                    restaurant_email=r.email,
+                    restaurant_name=r.name,
+                    order_data=order_data
+                ))
+                # Добавляем обработчик ошибок для задачи
+                def handle_task_done(t):
+                    try:
+                        if t.exception():
+                            logger.error(f"Email task failed for order #{db_order.id}: {t.exception()}")
+                    except Exception as e:
+                        logger.error(f"Error in email task callback: {e}")
+                
+                task.add_done_callback(handle_task_done)
+                logger.info(f"Email отправка запланирована в фоне для заказа #{db_order.id} на {r.email}")
+            except Exception as task_exc:
+                logger.exception(f"Failed to create email task for order #{db_order.id}: {repr(task_exc)}")
     except Exception as exc:
         logger.exception("Failed to schedule email notification: %s", repr(exc))
 
