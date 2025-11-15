@@ -34,22 +34,10 @@ class EmailService:
             logger.warning(f"Email notification skipped for order #{order_data.get('id', 'unknown')}: FROM_EMAIL is not set")
             return False
         
-        # Проверяем доступность SMTP сервера перед попыткой подключения
-        try:
-            logger.info(f"Checking SMTP server availability: {self.smtp_server}:{self.smtp_port}")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(10)
-            result = sock.connect_ex((self.smtp_server, self.smtp_port))
-            sock.close()
-            if result != 0:
-                logger.error(f"SMTP server {self.smtp_server}:{self.smtp_port} is not reachable (error code: {result})")
-                return False
-            logger.info(f"SMTP server {self.smtp_server}:{self.smtp_port} is reachable")
-        except socket.gaierror as e:
-            logger.error(f"DNS resolution failed for SMTP server {self.smtp_server}: {e}")
-            return False
-        except Exception as e:
-            logger.warning(f"Could not check SMTP server availability: {e}, proceeding anyway")
+        # Проверка доступности SMTP сервера временно отключена
+        # (может блокироваться файрволом, но реальное подключение может работать)
+        # Попытка подключения будет выполнена напрямую
+        logger.info(f"Attempting to connect to SMTP server: {self.smtp_server}:{self.smtp_port}")
             
         try:
             # Формируем содержимое заказа
