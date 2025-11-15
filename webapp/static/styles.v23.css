@@ -2514,3 +2514,53 @@ div[class*="restaurant-card"] {
   color: #059669;
 }
 
+/* ===== ИСПРАВЛЕНИЕ ПРОБЛЕМ С КЛАВИАТУРОЙ НА iOS (iPhone 13 и другие) ===== */
+/* Фиксы для корректной работы viewport при появлении клавиатуры */
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari */
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Контейнер должен корректно обрабатывать изменение высоты */
+  .container {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Дополнительные фиксы для корректного отображения при клавиатуре */
+@media screen and (max-width: 768px) {
+  html {
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    position: relative;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+  
+  /* Учитываем safe area для устройств с вырезом */
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Input поля должны корректно позиционироваться */
+  input[type="text"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="number"],
+  textarea {
+    font-size: 16px !important; /* Предотвращает зум на iOS при фокусе */
+  }
+}
+

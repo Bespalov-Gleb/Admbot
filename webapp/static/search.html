@@ -12,6 +12,7 @@
   <script src="/static/loading-system.js" defer></script>
   <script src="/static/micro-animations.js" defer></script>
   <script src="/static/toast-system.js" defer></script>
+  <script src="/static/keyboard-handler.js" defer></script>
 </head>
 <body>
   <div class="container">
@@ -365,6 +366,16 @@
           popularRestaurants.style.display = 'block';
         }
       }, 300);
+    });
+    
+    // Закрытие клавиатуры при нажатии Enter на мобильных устройствах
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        // Закрываем клавиатуру на мобильных устройствах
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          searchInput.blur();
+        }
+      }
     });
     
     searchClearBtn.addEventListener('click', () => {

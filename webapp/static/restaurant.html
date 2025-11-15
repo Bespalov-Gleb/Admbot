@@ -1906,11 +1906,29 @@
     function goBack() {
       console.log('=== goBack called ===');
       const params = new URLSearchParams(location.search);
-      const from = params.get('from');
+      
+      // Проверяем sessionStorage (надежнее на iOS), затем URL-параметр (fallback)
+      let from = null;
+      try {
+        from = sessionStorage.getItem('navigationSource');
+        // Очищаем после чтения
+        if (from) {
+          sessionStorage.removeItem('navigationSource');
+        }
+      } catch (e) {
+        console.log('Could not read navigationSource from sessionStorage:', e);
+      }
+      
+      // Fallback на URL-параметр, если sessionStorage пуст
+      if (!from) {
+        from = params.get('from');
+      }
+      
       const ref = document.referrer || '';
 
       // 1) Явный возврат на Акции
       if (from === 'promotions') {
+        console.log('Returning to promotions page');
         const p = new URLSearchParams(location.search);
         if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
         // Очищаем параметры, которые не нужны на странице акций
