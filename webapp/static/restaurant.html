@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ресторан</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
   <link rel="stylesheet" href="/static/styles.v23.css?v=78" />
   <script src="/static/page-transitions.js"></script>
+  <script src="/static/page-loading.js"></script>
   <style>
     /* Улучшенные стили для горизонтального скролла категорий */
     .cat-row {
@@ -841,7 +843,90 @@
     }
     
     .info-btn:hover {
-      background-color: #f8f8f8;
+      background: #f0f0f0;
+      transform: scale(1.05);
+    }
+    
+    /* Стили для большого фото ресторана */
+    .restaurant-hero-image {
+      width: 100%;
+      height: 250px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .restaurant-hero-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    
+    /* Стили для информационного блока о ресторане */
+    .restaurant-info-block {
+      margin: 12px 16px;
+      padding: 16px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .restaurant-info-block:hover {
+      border-color: #d1d5db;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .restaurant-info-block-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .restaurant-info-block-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .restaurant-info-block-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    
+    .restaurant-info-block-item-icon {
+      font-size: 16px;
+    }
+    
+    .restaurant-info-block-rating {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .restaurant-info-block-reviews {
+      color: #6b7280;
+      cursor: pointer;
+    }
+    
+    .restaurant-info-block-reviews:hover {
+      color: #dc2626;
+    }
+    
+    .restaurant-info-block-delivery {
+      color: #059669;
+      font-weight: 500;
+    }
+    
+    .restaurant-info-block-time {
+      color: #6b7280;
+    }
+    background-color: #f8f8f8;
       border-color: #d0d0d0;
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -902,23 +987,43 @@
       <button class="back-btn" onclick="goBack()">← Назад</button>
     </div>
     
+    <!-- Большое фото ресторана -->
+    <div class="restaurant-hero-image" id="restaurantHeroImage" style="display: none;">
+      <img id="restaurantHeroImageImg" src="" alt="Фото ресторана">
+    </div>
+    
     <!-- Заголовок ресторана -->
     <div class="restaurant-header">
       <div class="restaurant-info">
         <h1 id="restaurantName">Загрузка...</h1>
-        <div class="restaurant-details-row">
-          <div class="rating-section clickable-rating" onclick="showReviewsModal()">
-            <span id="restaurantRating">★ --</span>
-      <span class="reviews-arrow">→</span>
-            <span id="restaurantReviews">-- отзывов</span>
+      </div>
+      <button class="info-btn" onclick="showRestaurantInfo()">ℹ️</button>
+    </div>
+    
+    <!-- Информационный блок о ресторане -->
+    <div class="restaurant-info-block" id="restaurantInfoBlock" onclick="showRestaurantInfo()">
+      <div class="restaurant-info-block-content">
+        <div class="restaurant-info-block-row">
+          <div class="restaurant-info-block-item restaurant-info-block-rating" id="infoBlockRating">
+            <span class="restaurant-info-block-item-icon">★</span>
+            <span id="infoBlockRatingValue">--</span>
           </div>
-          <div class="delivery-section">
-            <span class="delivery-icon">🚚</span>
-            <span id="restaurantDelivery">-- мин</span>
+          <div class="restaurant-info-block-item restaurant-info-block-reviews" id="infoBlockReviews" onclick="event.stopPropagation(); showReviewsModal();">
+            <span>→</span>
+            <span id="infoBlockReviewsCount">-- отзывов</span>
+          </div>
+        </div>
+        <div class="restaurant-info-block-row">
+          <div class="restaurant-info-block-item restaurant-info-block-delivery">
+            <span class="restaurant-info-block-item-icon">🚚</span>
+            <span id="infoBlockDelivery">-- мин</span>
+          </div>
+          <div class="restaurant-info-block-item restaurant-info-block-time">
+            <span class="restaurant-info-block-item-icon">🕒</span>
+            <span id="infoBlockWorkingHours">--</span>
           </div>
         </div>
       </div>
-      <button class="info-btn" onclick="showRestaurantInfo()">ℹ️</button>
     </div>
     
     <!-- Категории блюд -->
@@ -981,10 +1086,9 @@
         </div>
         
         <div class="legal-info">
-          <h4>Юридическая информация</h4>
-          <p id="modalLegalName">Название компании загружается...</p>
-          <p id="modalLegalAddress">Юридический адрес загружается...</p>
-      <p id="modalLegalDetails">Реквизиты загружаются...</p>
+          <h4 id="modalLegalName">Юридическая информация</h4>
+          <p id="modalLegalAddress">Юридическая информация загружается...</p>
+      <p id="modalLegalDetails" style="display:none;"></p>
     </div>
   </div>
 </div>
@@ -1069,6 +1173,70 @@
     let restaurantsMap = new Map();
     let activeCategory = null;
     let scrollPosition = 0; // Позиция прокрутки для навигации внутри страницы ресторана
+    let categoryObserver = null;
+    let lastVisibleCategoryId = null;
+    
+    // Отслеживание видимых категорий для восстановления позиции
+    function initCategoryPositionTracking() {
+      // Очищаем предыдущий observer если есть
+      if (categoryObserver) {
+        categoryObserver.disconnect();
+      }
+      
+      // Создаем новый IntersectionObserver для отслеживания видимых категорий
+      categoryObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const categoryId = entry.target.getAttribute('data-category');
+            if (categoryId) {
+              lastVisibleCategoryId = categoryId;
+              try {
+                sessionStorage.setItem(`lastVisibleCategoryId_${restaurantId}`, categoryId);
+              } catch (e) {
+                console.warn('Failed to save category position:', e);
+              }
+            }
+          }
+        });
+      }, {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.3 // Элемент считается видимым, если видно 30% или больше
+      });
+      
+      // Наблюдаем за всеми категориями
+      document.querySelectorAll('[data-category]').forEach(el => {
+        categoryObserver.observe(el);
+      });
+    }
+    
+    function restoreCategoryPosition() {
+      try {
+        const savedCategoryId = sessionStorage.getItem(`lastVisibleCategoryId_${restaurantId}`);
+        console.log('restoreCategoryPosition called, savedCategoryId:', savedCategoryId, 'restaurantId:', restaurantId);
+        
+        if (!savedCategoryId) {
+          console.log('No saved category position found in sessionStorage');
+          return;
+        }
+        
+        console.log('Restoring category position:', savedCategoryId);
+        const el = document.querySelector(`[data-category="${savedCategoryId}"]`);
+        if (el) {
+          console.log('Category element found, scrolling to it');
+          // Небольшая задержка для завершения рендеринга
+          setTimeout(() => {
+            el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            console.log('Successfully scrolled to category:', savedCategoryId);
+          }, 100);
+        } else {
+          console.warn('Category element not found for categoryId:', savedCategoryId);
+          console.log('Available categories:', Array.from(document.querySelectorAll('[data-category]')).map(el => el.getAttribute('data-category')));
+        }
+      } catch (e) {
+        console.error('Failed to restore category position:', e);
+      }
+    }
     
     async function loadMenu() {
       try {
@@ -1166,39 +1334,84 @@
       // Проверяем, работает ли ресторан в текущее время
       checkRestaurantWorkingHours(restaurant);
       
-      // Формируем рейтинг
-      const rating = restaurant.rating_agg 
-        ? `★ ${Number(restaurant.rating_agg).toFixed(1)}`
-        : '★ --';
-      document.getElementById('restaurantRating').textContent = rating;
-      
       // Загружаем количество отзывов из API
       try {
-        // console.log('Loading reviews for restaurant ID:', restaurant.id);
         const reviewsRes = await fetch(api + '/reviews/restaurant/' + restaurant.id);
-        // console.log('Reviews API response:', reviewsRes.status, reviewsRes.ok);
         if (reviewsRes.ok) {
           const reviewsData = await reviewsRes.json();
-          // console.log('Reviews data:', reviewsData);
           const reviewsCount = reviewsData.total_reviews || 0;
-          // console.log('Reviews count:', reviewsCount);
-          document.getElementById('restaurantReviews').textContent = `${reviewsCount} отзывов`;
+          // Обновляем количество отзывов в информационном блоке
+          updateInfoBlockReviews(reviewsCount);
         } else {
-          // console.log('Reviews API failed, using fallback');
-          document.getElementById('restaurantReviews').textContent = '0 отзывов';
+          updateInfoBlockReviews(0);
         }
       } catch (error) {
         console.error('Error loading reviews count:', error);
-        document.getElementById('restaurantReviews').textContent = '0 отзывов';
+        updateInfoBlockReviews(0);
       }
       
-      // Формируем время доставки
+      // Обновляем информационный блок
+      updateRestaurantInfoBlock(restaurant);
+    }
+    
+    // Функция для обновления информационного блока
+    function updateRestaurantInfoBlock(restaurant) {
+      const infoBlock = document.getElementById('restaurantInfoBlock');
+      
+      if (!infoBlock) return;
+      
+      // Всегда показываем блок с информацией
+      infoBlock.style.display = 'block';
+      
+      // Обновляем большое фото ресторана
+      const heroImageContainer = document.getElementById('restaurantHeroImage');
+      const heroImage = document.getElementById('restaurantHeroImageImg');
+      if (heroImageContainer && heroImage) {
+        if (restaurant.image && restaurant.image.trim()) {
+          heroImage.src = restaurant.image;
+          heroImage.alt = restaurant.name || 'Фото ресторана';
+          heroImageContainer.style.display = 'block';
+        } else {
+          heroImageContainer.style.display = 'none';
+        }
+      }
+      
+      // Обновляем рейтинг
+      const ratingValue = restaurant.rating_agg 
+        ? Number(restaurant.rating_agg).toFixed(1)
+        : '--';
+      const ratingElement = document.getElementById('infoBlockRatingValue');
+      if (ratingElement) {
+        ratingElement.textContent = ratingValue;
+      }
+      
+      // Обновляем время доставки
       const deliveryTime = restaurant.delivery_time_min && restaurant.delivery_time_max
         ? `${restaurant.delivery_time_min}–${restaurant.delivery_time_max} мин`
         : restaurant.delivery_time_minutes 
           ? `${restaurant.delivery_time_minutes} мин`
           : '-- мин';
-      document.getElementById('restaurantDelivery').textContent = deliveryTime;
+      const deliveryElement = document.getElementById('infoBlockDelivery');
+      if (deliveryElement) {
+        deliveryElement.textContent = deliveryTime;
+      }
+      
+      // Обновляем режим работы
+      const workingHours = restaurant.work_open_min !== undefined && restaurant.work_close_min !== undefined 
+        ? `С ${formatTime(restaurant.work_open_min)} до ${formatTime(restaurant.work_close_min)}`
+        : 'Ежедневно';
+      const workingHoursElement = document.getElementById('infoBlockWorkingHours');
+      if (workingHoursElement) {
+        workingHoursElement.textContent = workingHours;
+      }
+    }
+    
+    // Функция для обновления количества отзывов в информационном блоке
+    function updateInfoBlockReviews(count) {
+      const reviewsElement = document.getElementById('infoBlockReviewsCount');
+      if (reviewsElement) {
+        reviewsElement.textContent = `${count} отзывов`;
+      }
     }
     
     function renderCategories() {
@@ -1319,12 +1532,30 @@
       
       loadCartAndSync();
       
-      // Восстанавливаем позицию прокрутки после загрузки контента только при переходе из блюда
+      // Инициализируем отслеживание позиции категорий
+      setTimeout(() => {
+        initCategoryPositionTracking();
+      }, 100);
+      
+      // Восстанавливаем позицию прокрутки после загрузки контента при переходе из блюда или корзины
       const urlParams = new URLSearchParams(location.search);
-      const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
+      let savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
       const fromPage = urlParams.get('from');
       
-      if (savedScrollPosition > 0 && fromPage === 'dish') {
+      // Проверяем sessionStorage как более надежный источник для iOS
+      if (savedScrollPosition === 0) {
+        try {
+          const savedPosition = sessionStorage.getItem('restaurant_scroll_position');
+          if (savedPosition) {
+            savedScrollPosition = Number(savedPosition);
+            sessionStorage.removeItem('restaurant_scroll_position');
+          }
+        } catch (err) {
+          console.log('Could not read scroll position from sessionStorage:', err);
+        }
+      }
+      
+      if (savedScrollPosition > 0 && (fromPage === 'dish' || fromPage === 'cart')) {
         // Небольшая задержка для завершения рендеринга
         setTimeout(() => {
           window.scrollTo(0, savedScrollPosition);
@@ -1610,8 +1841,19 @@
     
     // Функция для перехода к оформлению заказа
     function proceedToCheckout() {
+      // Сохраняем позицию скролла перед переходом в корзину
+      const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      try {
+        sessionStorage.setItem('restaurant_scroll_position', currentScrollPosition.toString());
+      } catch (err) {
+        console.log('Could not save scroll position to sessionStorage:', err);
+      }
+      
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Передаем позицию скролла в URL как fallback
+      p.set('scroll_position', currentScrollPosition.toString());
+      p.set('from', 'restaurant');
       p.set('r', String(restaurantId));
       location.href = '/static/cart.html?' + p.toString();
     }
@@ -1637,21 +1879,28 @@
         : '★ --';
       document.getElementById('modalRating').textContent = rating;
       
-      // Формируем теги кухни (используем доступные данные)
-      const cuisineTags = ['Американская', 'Бургеры', 'Завтраки', 'Кофе', 'Фастфуд', 'Десерты'];
+      // Формируем теги кухни (используем данные из БД)
       const cuisineContainer = document.getElementById('modalCuisine');
       cuisineContainer.innerHTML = '';
-      cuisineTags.forEach(tag => {
-        const tagElement = document.createElement('span');
-        tagElement.className = 'cuisine-tag';
-        tagElement.textContent = tag;
-        cuisineContainer.appendChild(tagElement);
-      });
+      if (restaurant.cuisine && restaurant.cuisine.trim()) {
+        // Разбиваем строку кухни по запятым и создаем теги
+        const cuisineTags = restaurant.cuisine.split(',').map(c => c.trim()).filter(c => c);
+        cuisineTags.forEach(tag => {
+          const tagElement = document.createElement('span');
+          tagElement.className = 'cuisine-tag';
+          tagElement.textContent = tag;
+          cuisineContainer.appendChild(tagElement);
+        });
+      } else {
+        // Если кухня не указана, скрываем секцию
+        const cuisineSection = cuisineContainer.closest('.modal-section');
+        if (cuisineSection) {
+          cuisineSection.style.display = 'none';
+        }
+      }
       
-      // Заполняем юридическую информацию (заглушки, так как у нас нет этих данных)
-      document.getElementById('modalLegalName').textContent = 'ООО "Система ПБО"';
-      document.getElementById('modalLegalAddress').textContent = '115054, Россия, г. Москва, Валовая, дом 26';
-      document.getElementById('modalLegalDetails').textContent = 'ИНН 7710044140, рег. номер 1027700251754';
+      // Заполняем юридическую информацию
+      document.getElementById('modalLegalAddress').textContent = restaurant.legal_address || 'Юридическая информация не указана';
       
       // Показываем модальное окно
       const modal = document.getElementById('restaurantInfoModal');
@@ -1851,8 +2100,23 @@
     
     document.getElementById('navCart').onclick = (e) => { 
       e.preventDefault(); 
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
+      // Сохраняем позицию скролла перед переходом в корзину
+      const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      try {
+        sessionStorage.setItem('restaurant_scroll_position', currentScrollPosition.toString());
+      } catch (err) {
+        console.log('Could not save scroll position to sessionStorage:', err);
+      }
+      
       const p = new URLSearchParams(location.search); 
-      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Передаем позицию скролла в URL как fallback
+      p.set('scroll_position', currentScrollPosition.toString());
+      p.set('from', 'restaurant');
       location.href = '/static/cart.html?' + p.toString(); 
     };
     
@@ -1954,6 +2218,10 @@
       
       // 2) Если пришли из корзины, следующая "Назад" должна вести на Главную
       if (ref.includes('/static/cart.html')) {
+        // Показываем loading overlay
+        if (typeof showPageLoadingOverlay === 'function') {
+          showPageLoadingOverlay();
+        }
         const p2 = new URLSearchParams(location.search);
         if (!p2.get('ngrok-skip-browser-warning')) p2.set('ngrok-skip-browser-warning', '1');
         p2.delete('id');
@@ -1964,6 +2232,10 @@
       }
       
       // 3) По умолчанию — на главную (прямой переход без history.back для быстроты на Android)
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       const p3 = new URLSearchParams(location.search);
       if (!p3.get('ngrok-skip-browser-warning')) p3.set('ngrok-skip-browser-warning', '1');
       p3.delete('id');
@@ -1978,34 +2250,133 @@
     // Проверяем, нужно ли скроллить к категории
     const urlParams = new URLSearchParams(location.search);
     
-    // Восстанавливаем позицию прокрутки только при возврате со страницы блюда
-    const savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
+    // Восстанавливаем позицию прокрутки при возврате со страницы блюда или из корзины
+    let savedScrollPosition = Number(urlParams.get('scroll_position')) || 0;
     const fromPage = urlParams.get('from');
+    
+    // Проверяем sessionStorage как более надежный источник для iOS
+    if (savedScrollPosition === 0) {
+      try {
+        const savedPosition = sessionStorage.getItem('restaurant_scroll_position');
+        if (savedPosition) {
+          savedScrollPosition = Number(savedPosition);
+          sessionStorage.removeItem('restaurant_scroll_position');
+        }
+      } catch (err) {
+        console.log('Could not read scroll position from sessionStorage:', err);
+      }
+    }
     
     console.log('From page:', fromPage, 'Saved scroll position:', savedScrollPosition);
     
-    if (savedScrollPosition > 0 && fromPage === 'dish') {
+    if (savedScrollPosition > 0 && (fromPage === 'dish' || fromPage === 'cart')) {
       // Устанавливаем позицию в переменную для использования в restoreScrollPosition
       scrollPosition = savedScrollPosition;
       console.log('Scroll position changed to:', savedScrollPosition);
       
+      // Отключаем автоматическое восстановление скролла браузером для iOS
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      
+      // Функция для надежного восстановления позиции скролла (особенно для iOS)
+      function restoreScrollPositionWithRetries(targetPosition, attempts = 0) {
+        const maxAttempts = 10;
+        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        
+        if (Math.abs(currentScroll - targetPosition) < 5 || attempts >= maxAttempts) {
+          console.log('Scroll position restored:', currentScroll, 'target:', targetPosition);
+          return;
+        }
+        
+        window.scrollTo(0, targetPosition);
+        
+        // Повторяем попытку через небольшую задержку
+        setTimeout(() => {
+          restoreScrollPositionWithRetries(targetPosition, attempts + 1);
+        }, 50);
+      }
+      
       // Сразу устанавливаем позицию прокрутки
       window.scrollTo(0, savedScrollPosition);
       console.log('Immediate scroll to position:', savedScrollPosition);
+      
+      // Дополнительные попытки восстановления для iOS
+      setTimeout(() => {
+        restoreScrollPositionWithRetries(savedScrollPosition);
+      }, 100);
+      
+      setTimeout(() => {
+        restoreScrollPositionWithRetries(savedScrollPosition);
+      }, 300);
+      
+      // Используем requestAnimationFrame для более плавного восстановления
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedScrollPosition);
+        setTimeout(() => {
+          restoreScrollPositionWithRetries(savedScrollPosition);
+        }, 50);
+      });
+      
+      // Обработчик для восстановления при восстановлении страницы из кэша (iOS)
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted && savedScrollPosition > 0) {
+          setTimeout(() => {
+            restoreScrollPositionWithRetries(savedScrollPosition);
+          }, 100);
+        }
+      });
     } else if (fromPage === 'index') {
       console.log('Transition from index page - no scroll restoration needed');
     }
     
     // Primary initialization
-    loadMenu();
-    
-    const scrollToCategoryId = urlParams.get('scroll_to_category');
-    if (scrollToCategoryId) {
-      // Ждем загрузки меню и скроллим к категории
-      setTimeout(() => {
-        scrollToCategory(scrollToCategoryId);
-      }, 100);
-    }
+    loadMenu().then(() => {
+      // После загрузки меню проверяем, нужно ли восстанавливать позицию
+      const scrollToCategoryId = urlParams.get('scroll_to_category');
+      
+      console.log('Checking scroll restoration:', {
+        scrollToCategoryId,
+        fromPage,
+        savedScrollPosition,
+        hasSavedScroll: savedScrollPosition > 0
+      });
+      
+      // Скроллим к категории только если не восстанавливаем позицию из корзины
+      if (scrollToCategoryId && !(savedScrollPosition > 0 && fromPage === 'cart')) {
+        // Ждем загрузки меню и скроллим к категории
+        setTimeout(() => {
+          scrollToCategory(scrollToCategoryId);
+        }, 100);
+      } else if (!scrollToCategoryId && fromPage !== 'cart' && fromPage !== 'dish') {
+        // Если нет явного указания категории и не возвращаемся из корзины/блюда
+        // Проверяем, есть ли сохраненная позиция скролла из корзины/блюда
+        // Если нет - восстанавливаем позицию по категории
+        const hasScrollFromCartOrDish = savedScrollPosition > 0 && (fromPage === 'cart' || fromPage === 'dish');
+        if (!hasScrollFromCartOrDish) {
+          console.log('Attempting to restore category position', {
+            fromPage,
+            savedScrollPosition,
+            scrollToCategoryId,
+            hasScrollFromCartOrDish
+          });
+          setTimeout(() => {
+            restoreCategoryPosition();
+          }, 300);
+        } else {
+          console.log('Using saved scroll position instead of category position', {
+            fromPage,
+            savedScrollPosition
+          });
+        }
+      } else {
+        console.log('Skipping category position restoration', {
+          scrollToCategoryId,
+          fromPage,
+          savedScrollPosition
+        });
+      }
+    });
     
     // Add scroll handler for updating active category
     window.addEventListener('scroll', updateActiveCategory);

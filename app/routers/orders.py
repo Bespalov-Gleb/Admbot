@@ -208,10 +208,19 @@ async def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> d
     try:
         r = db.query(ORestaurant).filter(ORestaurant.id == db_order.restaurant_id).first()
         if r and r.email:
+            # Получаем первого админа ресторана для ссылки в письме
+            from app.models import RestaurantAdmin as DBRestaurantAdmin
+            admin = db.query(DBRestaurantAdmin).filter(
+                DBRestaurantAdmin.restaurant_id == db_order.restaurant_id
+            ).first()
+            admin_id = admin.user_id if admin else None
+            
             # Подготавливаем данные для email
             order_data = {
                 'id': db_order.id,
                 'user_id': db_order.user_id,
+                'admin_id': admin_id,  # ID админа ресторана для ссылки
+                'restaurant_id': db_order.restaurant_id,
                 'created_at': db_order.created_at.strftime('%d.%m.%Y %H:%M'),
                 'delivery_address': db_order.address or 'Самовывоз',
                 'payment_method': {

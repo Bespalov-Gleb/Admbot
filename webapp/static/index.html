@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yandex Eda MiniApp (MVP)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
     <script src="/static/page-cache.js"></script>
     <link rel="stylesheet" href="/static/styles.v23.css?v=87" />
   <script src="/static/page-transitions.js"></script>
@@ -13,6 +14,7 @@
   <script src="/static/micro-animations.js"></script>
   <script src="/static/toast-system.js"></script>
   <script src="/static/keyboard-handler.js" defer></script>
+  <script src="/static/page-loading.js"></script>
 </head>
 <body>
   <div class="container">
@@ -82,16 +84,78 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     const uidQ = uid ? ('?uid=' + encodeURIComponent(String(uid))) : '';
     
     // ===== АНКОР ДЛЯ ВОЗВРАТА НА ГЛАВНУЮ =====
-    function setHomeAnchor(restaurantId) {
-      try { sessionStorage.setItem('home_anchor', String(restaurantId)); } catch(_) {}
+    // Отслеживание видимых ресторанов для восстановления позиции
+    let restaurantObserver = null;
+    let lastVisibleRestaurantId = null;
+    
+    function initRestaurantPositionTracking() {
+      // Очищаем предыдущий observer если есть
+      if (restaurantObserver) {
+        restaurantObserver.disconnect();
+      }
+      
+      // Создаем новый IntersectionObserver для отслеживания видимых ресторанов
+      restaurantObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const restaurantId = entry.target.getAttribute('data-restaurant-id');
+            if (restaurantId) {
+              lastVisibleRestaurantId = restaurantId;
+              try {
+                sessionStorage.setItem('lastVisibleRestaurantId', restaurantId);
+              } catch (e) {
+                console.warn('Failed to save restaurant position:', e);
+              }
+            }
+          }
+        });
+      }, {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.3 // Элемент считается видимым, если видно 30% или больше
+      });
+      
+      // Наблюдаем за всеми ресторанами
+      document.querySelectorAll('[data-restaurant-id]').forEach(el => {
+        restaurantObserver.observe(el);
+      });
     }
+    
+    function restoreRestaurantPosition() {
+      try {
+        const savedRestaurantId = sessionStorage.getItem('lastVisibleRestaurantId');
+        if (!savedRestaurantId) return;
+        
+        const el = document.querySelector(`[data-restaurant-id="${savedRestaurantId}"]`);
+        if (el) {
+          // Небольшая задержка для завершения рендеринга
+          setTimeout(() => {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }, 100);
+        }
+      } catch (e) {
+        console.warn('Failed to restore restaurant position:', e);
+      }
+    }
+    
+    function setHomeAnchor(restaurantId) {
+      try { 
+        sessionStorage.setItem('home_anchor', String(restaurantId));
+        sessionStorage.setItem('lastVisibleRestaurantId', String(restaurantId));
+      } catch(_) {}
+    }
+    
     function restoreHomeAnchor() {
       try {
         const anchor = sessionStorage.getItem('home_anchor');
-        if (!anchor) return;
+        if (!anchor) {
+          // Если нет якоря из клика, пробуем восстановить по последнему видимому
+          restoreRestaurantPosition();
+          return;
+        }
         const el = document.querySelector('[data-restaurant-id="' + anchor + '"]');
         if (el) {
-          el.scrollIntoView({ block: 'start', behavior: 'auto' });
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
           sessionStorage.removeItem('home_anchor');
         }
       } catch(_) {}
@@ -548,6 +612,11 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         });
         
         console.log('=== loadRestaurants() completed successfully ===');
+        
+        // Инициализируем отслеживание позиции после загрузки ресторанов
+        setTimeout(() => {
+          initRestaurantPositionTracking();
+        }, 100);
       } catch (error) {
         console.error('Error loading restaurants:', error);
         console.log('=== loadRestaurants() failed ===');
@@ -567,6 +636,11 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
 
     // Функция для перехода в ресторан с сохранением позиции прокрутки
     function goToRestaurant(restaurantId) {
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
+      
       const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
       console.log('=== goToRestaurant called ===');
       console.log('Restaurant ID:', restaurantId);
@@ -603,8 +677,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         loadRestaurants()
       ]);
       console.log('=== initialize() completed ===');
-      // Восстанавливаем якорь после рендера
-      restoreHomeAnchor();
+      // Восстанавливаем позицию после рендера
+      setTimeout(() => {
+        restoreHomeAnchor();
+      }, 200);
     }
     
    // Проверка доступа (блокировка)
@@ -687,6 +763,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     };
     document.getElementById('navCart').onclick = (e) => { 
       e.preventDefault(); 
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
       p.set('from', 'index'); // Указываем, что переход с главной страницы

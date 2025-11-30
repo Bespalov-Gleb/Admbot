@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import Request
 from typing import List
 from typing import List, Optional
 from app.deps.auth import require_user_id
-from app.store import get_restaurant_for_admin
+from app.store import get_restaurant_for_admin, get_restaurants_for_admin
 from app.services.telegram import send_admin_message, notify_user_order_modified, notify_user_order_accepted, notify_user_order_delivered, notify_user_order_cancelled, WEBAPP_URL
 from app.services.image_processor import ImageProcessor
 from pydantic import BaseModel
@@ -31,30 +32,62 @@ logger = get_logger("ra")
 router = APIRouter()
 
 
-def require_restaurant_id(user_id: int = Depends(require_user_id)) -> int:
-    print(f"DEBUG: require_restaurant_id called with user_id={user_id}")
-    rid = get_restaurant_for_admin(user_id)
-    print(f"DEBUG: require_restaurant_id result: rid={rid}")
-    if rid is None:
+def require_restaurant_id(
+    user_id: int = Depends(require_user_id),
+    restaurant_id: int | None = Query(None, alias="restaurant_id")
+) -> int:
+    """Проверяет права доступа к ресторану. Если restaurant_id указан, проверяет доступ к нему. Иначе возвращает первый ресторан пользователя."""
+    print(f"DEBUG: require_restaurant_id called with user_id={user_id}, restaurant_id={restaurant_id}")
+    restaurants = get_restaurants_for_admin(user_id)
+    
+    if not restaurants:
         print(f"DEBUG: require_restaurant_id: raising 403 for user_id={user_id}")
         print(f"DEBUG: User {user_id} is not a restaurant admin")
         raise HTTPException(status_code=403, detail="not_restaurant_admin")
-    print(f"DEBUG: require_restaurant_id: returning rid={rid} for user_id={user_id}")
-    return rid
+    
+    if restaurant_id is not None:
+        # Проверяем, что пользователь имеет доступ к указанному ресторану
+        if restaurant_id not in restaurants:
+            print(f"DEBUG: require_restaurant_id: raising 403 - user {user_id} doesn't have access to restaurant {restaurant_id}")
+            raise HTTPException(status_code=403, detail="restaurant_access_denied")
+        print(f"DEBUG: require_restaurant_id: returning specified rid={restaurant_id} for user_id={user_id}")
+        return restaurant_id
+    else:
+        # Возвращаем первый ресторан (для обратной совместимости)
+        rid = restaurants[0]
+        print(f"DEBUG: require_restaurant_id: returning first rid={rid} for user_id={user_id}")
+        return rid
 
 
 @router.get("/ra/me")
-async def ra_me(rid: int = Depends(require_restaurant_id), db: Session = Depends(get_db)) -> dict:
-    """Проверка прав администратора ресторана"""
+async def ra_me(
+    rid: int = Depends(require_restaurant_id),
+    user_id: int = Depends(require_user_id),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Проверка прав администратора ресторана. Возвращает информацию о текущем ресторане и список всех ресторанов пользователя."""
     restaurant = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
+    
+    # Получаем список всех ресторанов пользователя
+    all_restaurant_ids = get_restaurants_for_admin(user_id)
+    all_restaurants = []
+    for restaurant_id in all_restaurant_ids:
+        r = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
+        if r:
+            all_restaurants.append({
+                "id": r.id,
+                "name": r.name,
+                "is_enabled": r.is_enabled
+            })
     
     return {
         "restaurant_id": rid,
         "restaurant_name": restaurant.name,
         "is_enabled": restaurant.is_enabled,
-        "timezone": restaurant.timezone
+        "timezone": restaurant.timezone,
+        "all_restaurants": all_restaurants  # Список всех ресторанов пользователя
     }
 
 
@@ -336,6 +369,7 @@ async def ra_restaurant(rid: int = Depends(require_restaurant_id), db: Session =
         "address": r.address,
         "phone": r.phone,
         "description": r.description,
+        "cuisine": r.cuisine,
         "image": r.image,
         "work_open_min": r.work_open_min,
         "work_close_min": r.work_close_min,
@@ -366,6 +400,8 @@ class RestaurantPatch(BaseModel):
     delivery_min_sum: Optional[int] = None
     delivery_time_minutes: Optional[int] = None
     description: Optional[str] = None
+    cuisine: Optional[str] = None
+    legal_address: Optional[str] = None
     timezone: Optional[str] = None
 
 
@@ -400,6 +436,8 @@ async def ra_update_restaurant(payload: RestaurantPatch, rid: int = Depends(requ
         "address": r.address,
         "phone": r.phone,
         "description": r.description,
+        "cuisine": r.cuisine,
+        "legal_address": r.legal_address,
         "image": r.image,
         "work_open_min": r.work_open_min,
         "work_close_min": r.work_close_min,

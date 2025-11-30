@@ -22,48 +22,59 @@ def ensure_user(user_id: int, username: str | None = None) -> DBUser:
 
 
 def bind_restaurant_admin(user_id: int, restaurant_id: int) -> None:
+    """Добавляет пользователя как админа ресторана. Поддерживает несколько ресторанов для одного пользователя."""
     print(f"DEBUG: bind_restaurant_admin called with user_id={user_id}, restaurant_id={restaurant_id}")
     with get_session() as db:
         # Сначала убеждаемся, что пользователь существует
         ensure_user(user_id)
         print(f"DEBUG: user {user_id} ensured")
         
-        row = db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.user_id == user_id).first()
+        # Проверяем, существует ли уже такая связь
+        row = db.query(DBRestaurantAdmin).filter(
+            DBRestaurantAdmin.user_id == user_id,
+            DBRestaurantAdmin.restaurant_id == restaurant_id
+        ).first()
+        
         if row:
-            print(f"DEBUG: updating existing admin record for user {user_id}")
-            row.restaurant_id = restaurant_id
+            print(f"DEBUG: admin record already exists for user {user_id} and restaurant {restaurant_id}")
         else:
-            print(f"DEBUG: creating new admin record for user {user_id}")
+            print(f"DEBUG: creating new admin record for user {user_id} and restaurant {restaurant_id}")
             db.add(DBRestaurantAdmin(user_id=user_id, restaurant_id=restaurant_id))
-        db.commit()
-        print(f"DEBUG: commit successful")
+            db.commit()
+            print(f"DEBUG: commit successful")
 
 
-def unbind_restaurant_admin(user_id: int) -> None:
+def unbind_restaurant_admin(user_id: int, restaurant_id: int | None = None) -> None:
+    """Удаляет связь пользователя с рестораном. Если restaurant_id не указан, удаляет все связи пользователя."""
     with get_session() as db:
-        row = db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.user_id == user_id).first()
-        if row:
-            db.delete(row)
+        if restaurant_id is not None:
+            # Удаляем конкретную связь
+            row = db.query(DBRestaurantAdmin).filter(
+                DBRestaurantAdmin.user_id == user_id,
+                DBRestaurantAdmin.restaurant_id == restaurant_id
+            ).first()
+            if row:
+                db.delete(row)
+                db.commit()
+        else:
+            # Удаляем все связи пользователя (старое поведение для обратной совместимости)
+            rows = db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.user_id == user_id).all()
+            for row in rows:
+                db.delete(row)
             db.commit()
 
 
-def get_restaurant_for_admin(user_id: int) -> int | None:
-    print(f"DEBUG: get_restaurant_for_admin called with user_id={user_id}")
+def get_restaurants_for_admin(user_id: int) -> List[int]:
+    """Возвращает список ID ресторанов, для которых пользователь является админом."""
     with get_session() as db:
-        print(f"DEBUG: Querying RestaurantAdmin table for user_id={user_id}")
-        row = db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.user_id == user_id).first()
-        result = row.restaurant_id if row else None
-        print(f"DEBUG: get_restaurant_for_admin result: {result}")
-        if row:
-            print(f"DEBUG: Found row: user_id={row.user_id}, restaurant_id={row.restaurant_id}")
-        else:
-            print(f"DEBUG: No row found for user_id={user_id}")
-            # Проверяем, есть ли вообще записи в таблице
-            all_rows = db.query(DBRestaurantAdmin).all()
-            print(f"DEBUG: Total rows in RestaurantAdmin table: {len(all_rows)}")
-            for r in all_rows:
-                print(f"DEBUG: Row: user_id={r.user_id}, restaurant_id={r.restaurant_id}")
-        return result
+        rows = db.query(DBRestaurantAdmin).filter(DBRestaurantAdmin.user_id == user_id).all()
+        return [row.restaurant_id for row in rows]
+
+
+def get_restaurant_for_admin(user_id: int) -> int | None:
+    """Возвращает первый ресторан пользователя (для обратной совместимости)."""
+    restaurants = get_restaurants_for_admin(user_id)
+    return restaurants[0] if restaurants else None
 
 
 def get_user_by_username(username: str) -> int | None:

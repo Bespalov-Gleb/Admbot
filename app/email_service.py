@@ -2,6 +2,7 @@ import smtplib
 import os
 import ssl
 import socket
+import httpx
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
@@ -17,6 +18,11 @@ class EmailService:
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
         self.from_email = os.getenv("FROM_EMAIL", "")
         self.webapp_url = os.getenv("WEBAPP_URL", "")
+        
+        # HTTP API настройки (Resend.com - бесплатный тариф 100 писем/день)
+        self.use_http_api = os.getenv("USE_HTTP_API", "false").lower() == "true"
+        self.resend_api_key = os.getenv("RESEND_API_KEY", "")
+        self.resend_from_email = os.getenv("RESEND_FROM_EMAIL", self.from_email)
         
     def send_order_notification(self, restaurant_email: str, restaurant_name: str, order_data: Dict[str, Any]) -> bool:
         """
@@ -34,26 +40,20 @@ class EmailService:
             logger.warning(f"Email notification skipped for order #{order_data.get('id', 'unknown')}: FROM_EMAIL is not set")
             return False
         
-        # Проверка доступности SMTP сервера временно отключена
-        # (может блокироваться файрволом, но реальное подключение может работать)
-        # Попытка подключения будет выполнена напрямую
-        logger.info(f"Attempting to connect to SMTP server: {self.smtp_server}:{self.smtp_port}")
-            
-        try:
-            # Формируем содержимое заказа
-            order_items = []
-            total = 0
-            
-            for item in order_data.get('items', []):
-                item_total = item['price'] * item['qty']
-                total += item_total
-                order_items.append(f"• {item['name']} × {item['qty']} - {item_total} ₽")
-            
-            # Формируем email
-            subject = f"Новый заказ #{order_data['id']} - {restaurant_name}"
-            
-            # Создаем HTML версию письма
-            html_content = f"""
+        # Формируем содержимое заказа (нужно для обоих методов)
+        order_items = []
+        total = 0
+        
+        for item in order_data.get('items', []):
+            item_total = item['price'] * item['qty']
+            total += item_total
+            order_items.append(f"• {item['name']} × {item['qty']} - {item_total} ₽")
+        
+        # Формируем email
+        subject = f"Новый заказ #{order_data['id']} - {restaurant_name}"
+        
+        # Создаем HTML версию письма
+        html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
@@ -97,7 +97,7 @@ class EmailService:
                         </div>
                         
                         <div style="text-align: center;">
-                            <a href="{self.webapp_url}/static/ra.html?order_id={order_data['id']}&uid={order_data.get('user_id', '')}" class="button">
+                            <a href="{self.webapp_url}/static/ra.html?order_id={order_data['id']}&uid={order_data.get('admin_id', '')}&restaurant_id={order_data.get('restaurant_id', '')}" class="button">
                                 Открыть заказ в боте
                             </a>
                         </div>
@@ -111,8 +111,8 @@ class EmailService:
             </html>
             """
             
-            # Создаем текстовую версию письма
-            text_content = f"""
+        # Создаем текстовую версию письма
+        text_content = f"""
 Новый заказ #{order_data['id']} - {restaurant_name}
 
 Статус: Обрабатывается оператором
@@ -126,11 +126,20 @@ class EmailService:
 Итого: {total} ₽
 
 Для обработки заказа перейдите по ссылке:
-{self.webapp_url}/static/ra.html?order_id={order_data['id']}&uid={order_data.get('user_id', '')}
+{self.webapp_url}/static/ra.html?order_id={order_data['id']}&uid={order_data.get('admin_id', '')}&restaurant_id={order_data.get('restaurant_id', '')}
 
 Это автоматическое уведомление. Не отвечайте на это письмо.
-            """
-            
+        """
+        
+        # Если включен HTTP API или SMTP недоступен, используем HTTP API
+        if self.use_http_api or self.resend_api_key:
+            logger.info("Используется HTTP API для отправки email")
+            return self._send_via_resend_api(restaurant_email, restaurant_name, order_data, subject, text_content, html_content)
+        
+        # Пробуем SMTP
+        logger.info(f"Attempting to connect to SMTP server: {self.smtp_server}:{self.smtp_port}")
+        
+        try:
             # Создаем сообщение
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
@@ -144,8 +153,6 @@ class EmailService:
             msg.attach(text_part)
             msg.attach(html_part)
             
-            # Отправляем email
-            # Для Yandex может потребоваться более длительный timeout
             logger.info(f"Attempting to connect to SMTP server {self.smtp_server}:{self.smtp_port}")
             
             server = None
@@ -184,9 +191,6 @@ class EmailService:
                 raise
             except Exception as e:
                 logger.error(f"Error during SMTP operation: {e}")
-                raise
-            finally:
-                # Закрываем соединение в любом случае
                 if server:
                     try:
                         server.quit()
@@ -205,9 +209,60 @@ class EmailService:
             return False
         except (ConnectionError, OSError) as e:
             logger.error(f"Network error sending order notification email for order #{order_data.get('id', 'unknown')} to {restaurant_email}: {e} (SMTP server: {self.smtp_server}:{self.smtp_port})", exc_info=True)
-            return False
+            # Если SMTP недоступен, пробуем HTTP API
+            logger.info("SMTP недоступен, пробуем отправить через HTTP API...")
+            return self._send_via_resend_api(restaurant_email, restaurant_name, order_data, subject, text_content, html_content)
         except Exception as e:
             logger.error(f"Unexpected error sending order notification email for order #{order_data.get('id', 'unknown')} to {restaurant_email}: {e}", exc_info=True)
+            # Пробуем HTTP API как fallback
+            logger.info("SMTP ошибка, пробуем отправить через HTTP API...")
+            return self._send_via_resend_api(restaurant_email, restaurant_name, order_data, subject, text_content, html_content)
+    
+    def _send_via_resend_api(self, restaurant_email: str, restaurant_name: str, order_data: Dict[str, Any], 
+                             subject: str, text_content: str, html_content: str) -> bool:
+        """
+        Отправка email через Resend.com HTTP API
+        Бесплатный тариф: 100 писем/день, 3000 писем/месяц
+        """
+        # Проверяем наличие API ключа
+        if not self.resend_api_key:
+            logger.warning("RESEND_API_KEY не указан, невозможно отправить через HTTP API")
+            return False
+        
+        try:
+            # Формируем запрос к Resend API
+            api_url = "https://api.resend.com/emails"
+            headers = {
+                "Authorization": f"Bearer {self.resend_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "from": self.resend_from_email or self.from_email,
+                "to": [restaurant_email],
+                "subject": subject,
+                "text": text_content,
+                "html": html_content
+            }
+            
+            logger.info(f"Отправка email через Resend API для заказа #{order_data.get('id', 'unknown')} на {restaurant_email}")
+            
+            # Используем httpx для асинхронного запроса (но вызываем синхронно)
+            response = httpx.post(api_url, json=payload, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"Email успешно отправлен через Resend API. ID: {result.get('id', 'unknown')}")
+                return True
+            else:
+                logger.error(f"Ошибка Resend API: {response.status_code} - {response.text}")
+                return False
+                
+        except httpx.RequestError as e:
+            logger.error(f"Ошибка сети при отправке через Resend API: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при отправке через Resend API: {e}", exc_info=True)
             return False
 
 # Создаем глобальный экземпляр сервиса

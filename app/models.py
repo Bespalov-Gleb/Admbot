@@ -33,15 +33,20 @@ class Restaurant(Base):
     phone: Mapped[str] = mapped_column(String(64), default="")
     email: Mapped[str] = mapped_column(String(128), default="")
     description: Mapped[str] = mapped_column(Text, default="")
+    cuisine: Mapped[str] = mapped_column(String(200), default="")
     image: Mapped[str] = mapped_column(Text, default="")
+    legal_address: Mapped[str] = mapped_column(Text, default="")
     work_open_min: Mapped[int] = mapped_column(Integer, default=0)
     work_close_min: Mapped[int] = mapped_column(Integer, default=1440)
 
 
 class RestaurantAdmin(Base):
     __tablename__ = "restaurant_admins"
+    __table_args__ = (
+        UniqueConstraint("user_id", "restaurant_id", name="uq_restaurant_admin_user_restaurant"),
+    )
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"), nullable=False)
+    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"), primary_key=True)
 
 
 class Category(Base):

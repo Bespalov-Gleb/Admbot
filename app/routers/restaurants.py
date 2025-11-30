@@ -21,7 +21,9 @@ class Restaurant(BaseModel):
     phone: str
     email: str = ""
     description: str = ""
+    cuisine: str = ""
     image: str = ""
+    legal_address: str = ""
     work_open_min: int = 0  # minutes from 00:00
     work_close_min: int = 1440
     is_open_now: bool = True
@@ -59,6 +61,7 @@ async def list_restaurants(is_enabled: Optional[bool] = True, db: Session = Depe
             address=r.address,
             phone=r.phone,
             description=r.description,
+            cuisine=r.cuisine,
             image=r.image,
             work_open_min=r.work_open_min,
             work_close_min=r.work_close_min,
@@ -86,7 +89,9 @@ async def get_restaurants_bulk(ids: str = Query(..., description="comma-separate
         address=r.address,
         phone=r.phone,
         description=r.description,
+        cuisine=r.cuisine,
         image=r.image,
+        legal_address=r.legal_address,
         work_open_min=r.work_open_min,
         work_close_min=r.work_close_min,
         is_open_now=_compute_is_open(r),
@@ -111,7 +116,9 @@ async def get_restaurants_by_ids(ids: str = Query(..., description="comma-separa
         address=r.address,
         phone=r.phone,
         description=r.description,
+        cuisine=r.cuisine,
         image=r.image,
+        legal_address=r.legal_address,
         work_open_min=r.work_open_min,
         work_close_min=r.work_close_min,
         is_open_now=_compute_is_open(r),
@@ -134,7 +141,9 @@ async def get_restaurant(restaurant_id: int, uid: Optional[int] = None, db: Sess
         address=r.address,
         phone=r.phone,
         description=r.description,
+        cuisine=r.cuisine,
         image=r.image,
+        legal_address=r.legal_address,
         work_open_min=r.work_open_min,
         work_close_min=r.work_close_min,
         is_open_now=_compute_is_open(r),

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Корзина</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
   <!-- simple-scroll-restore removed -->
   <script src="/static/page-cache.js"></script>
     <link rel="stylesheet" href="/static/styles.v23.css?v=86" />
@@ -14,6 +15,7 @@
   <script src="/static/preload-system.js"></script>
   <script src="/static/micro-animations.js"></script>
   <script src="/static/toast-system.js"></script>
+  <script src="/static/page-loading.js"></script>
   <style>
     * {
       margin: 0;
@@ -469,7 +471,7 @@
     <div class="header">
       <div class="header-left">
         <button class="back-btn" onclick="goBack()">×</button>
-        <div class="header-title">Корзина</div>
+        <div class="header-title">Назад</div>
       </div>
       <button class="clear-btn" onclick="clearCart()">🗑️</button>
     </div>
@@ -1003,14 +1005,43 @@
 
 
     function openMenu() {
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
+      
       // Если корзина пустая или нет активного ресторана, идем на главную
       if (!activeRestaurantId || activeRestaurantId === 0) {
         location.href = '/static/index.html';
         return;
       }
       
+      // Получаем сохраненную позицию скролла из sessionStorage или URL параметра
+      let scrollPosition = 0;
+      try {
+        const savedPosition = sessionStorage.getItem('restaurant_scroll_position');
+        if (savedPosition) {
+          scrollPosition = Number(savedPosition);
+          // Очищаем после чтения
+          sessionStorage.removeItem('restaurant_scroll_position');
+        }
+      } catch (err) {
+        console.log('Could not read scroll position from sessionStorage:', err);
+      }
+      
+      // Fallback на URL параметр
+      if (scrollPosition === 0) {
+        const params = new URLSearchParams(location.search);
+        scrollPosition = Number(params.get('scroll_position')) || 0;
+      }
+      
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      // Передаем позицию скролла и указываем, что пришли из корзины
+      if (scrollPosition > 0) {
+        p.set('scroll_position', scrollPosition.toString());
+      }
+      p.set('from', 'cart');
       location.href = '/static/restaurant.html?id=' + activeRestaurantId + '&' + p.toString();
     }
 
@@ -1031,43 +1062,33 @@
     }
 
     function goBack() {
-      // Проверяем, откуда пришел пользователь
-      const params = new URLSearchParams(location.search);
-      const from = params.get('from');
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       
-      // Если пришли с главной страницы, всегда возвращаемся на главную
-      if (from === 'index') {
+      // Получаем предыдущую страницу из referrer
+      const referrer = document.referrer;
+      
+      // Если предыдущая страница - оформление заказа, возвращаемся на главную
+      if (referrer && referrer.includes('/static/checkout.html')) {
         const p = new URLSearchParams(location.search);
         if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-        p.delete('from'); // Удаляем параметр from
         location.href = '/static/index.html?' + p.toString();
         return;
       }
       
-      // Если корзина пустая, всегда переходим к списку ресторанов
-      if (!cart.items || cart.items.length === 0) {
-        redirectToRestaurants();
-        return;
-      }
-      
-      // Определяем целевой ресторан: активный, из параметров или из первой позиции корзины
-      let rid = activeRestaurantId;
-      if (!rid) {
-        const paramsIn = new URLSearchParams(location.search);
-        rid = Number(paramsIn.get('r')) || undefined;
-      }
-      if (!rid && cart.items && cart.items.length) {
-        const first = cart.items[0];
-        const d = dishesMap.get(first.dish_id);
-        rid = d ? d.restaurant_id : undefined;
-      }
-      
-      // Если нашли ресторан — открываем его страницу; иначе переходим на главную
-      const p = new URLSearchParams(location.search);
-      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
-      if (rid) {
-        location.href = '/static/restaurant.html?id=' + rid + '&' + p.toString();
+      // Иначе возвращаемся на предыдущую страницу
+      if (referrer && referrer.includes(location.origin)) {
+        // Если referrer с того же домена, используем его
+        location.href = referrer;
+      } else if (history.length > 1) {
+        // Если есть история, используем history.back()
+        history.back();
       } else {
+        // Иначе переходим на главную
+        const p = new URLSearchParams(location.search);
+        if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
         location.href = '/static/index.html?' + p.toString();
       }
     }

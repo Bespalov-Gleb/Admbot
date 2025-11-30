@@ -2428,6 +2428,40 @@ div[class*="restaurant-card"] {
   background: #fff;
 }
 
+/* Подсказка для скрытия клавиатуры */
+.keyboard-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border-bottom: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.keyboard-hint:hover {
+  background: #e0f2fe;
+}
+
+.keyboard-hint-icon {
+  font-size: 16px;
+}
+
+.keyboard-hint-text {
+  flex: 1;
+}
+
+@media (min-width: 769px) {
+  .keyboard-hint {
+    display: none !important;
+  }
+}
+
 .popular-restaurants-section {
   padding: 20px 12px;
 }

@@ -6,6 +6,7 @@
   <title>Админка</title>
   <link rel="stylesheet" href="/static/admin.css?v=26" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
   <style>
     .restaurant-admins-section {
       border: 1px solid #e2e8f0;
@@ -706,7 +707,15 @@
               </div>
               <div class="meta">
                 <label>Описание:</label>
-                <input data-field="description" value="${r.description||''}" style="width:80%"/>
+                <textarea data-field="description" style="width:80%;min-height:80px;resize:vertical;">${r.description||''}</textarea>
+              </div>
+              <div class="meta">
+                <label>Кухня:</label>
+                <input data-field="cuisine" value="${r.cuisine||''}" style="width:80%" placeholder="Например: Итальянская, Японская, Европейская"/>
+              </div>
+              <div class="meta">
+                <label>Юридическая информация:</label>
+                <textarea data-field="legal_address" style="width:80%;min-height:80px;resize:vertical;">${r.legal_address||''}</textarea>
               </div>
               <div class="meta">
                 <label>Изображение:</label>
@@ -733,7 +742,7 @@
           </div>`;
         el.querySelector('[data-act="save"]').onclick = async () => {
           const body = {};
-          el.querySelectorAll('input[data-field]').forEach(inp => {
+          el.querySelectorAll('input[data-field], textarea[data-field]').forEach(inp => {
             const key = inp.getAttribute('data-field');
             let val = (inp.value || '').trim();
             if (['delivery_min_sum','delivery_fee','delivery_time_minutes'].includes(key)) {

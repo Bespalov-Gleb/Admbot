@@ -400,6 +400,7 @@
     }
   </style>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
 </head>
 <body>
   <div class="container">
@@ -506,6 +507,30 @@
            </select>
            <div class="field-actions">
              <button onclick="updateField('timezone')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Описание</label>
+           <textarea id="descriptionInput" class="field-input" style="min-height:100px;resize:vertical;" placeholder="Введите описание ресторана"></textarea>
+           <div class="field-actions">
+             <button onclick="updateField('description')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Кухня</label>
+           <input id="cuisineInput" type="text" class="field-input" placeholder="Например: Итальянская, Японская, Европейская">
+           <div class="field-actions">
+             <button onclick="updateField('cuisine')" class="save-btn">💾 Сохранить</button>
+           </div>
+         </div>
+         
+         <div class="field-item">
+           <label class="field-label">Юридическая информация</label>
+           <textarea id="legalAddressInput" class="field-input" style="min-height:100px;resize:vertical;" placeholder="Введите юридическую информацию ресторана"></textarea>
+           <div class="field-actions">
+             <button onclick="updateField('legal_address')" class="save-btn">💾 Сохранить</button>
            </div>
          </div>
        </div>
@@ -622,6 +647,9 @@ const api = location.origin + '/api';
        document.getElementById('minOrderInput').value = r.delivery_min_sum || '';
        document.getElementById('deliveryTimeInput').value = r.delivery_time_minutes || '';
        document.getElementById('timezoneInput').value = r.timezone || 'UTC+9';
+      document.getElementById('descriptionInput').value = r.description || '';
+      document.getElementById('cuisineInput').value = r.cuisine || '';
+      document.getElementById('legalAddressInput').value = r.legal_address || '';
 
        // Обновляем кнопку статуса
        const toggleBtn = document.getElementById('btnToggleStatus');
@@ -696,12 +724,21 @@ const api = location.origin + '/api';
            }
            data.delivery_time_minutes = deliveryTime;
            break;
-         case 'timezone':
-           data.timezone = document.getElementById('timezoneInput').value;
-           break;
-       }
-       
-       const res = await fetch(api + '/ra/restaurant', {
+        case 'timezone':
+          data.timezone = document.getElementById('timezoneInput').value;
+          break;
+        case 'description':
+          data.description = document.getElementById('descriptionInput').value.trim();
+          break;
+        case 'cuisine':
+          data.cuisine = document.getElementById('cuisineInput').value.trim();
+          break;
+        case 'legal_address':
+          data.legal_address = document.getElementById('legalAddressInput').value.trim();
+          break;
+      }
+      
+      const res = await fetch(api + '/ra/restaurant', {
          method: 'PATCH',
          headers: { ...headers, 'Content-Type': 'application/json' },
          body: JSON.stringify(data)

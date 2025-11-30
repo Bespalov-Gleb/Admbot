@@ -5,7 +5,7 @@ from app.deps.auth import require_super_admin
 from app.routers.restaurants import Restaurant
 from app.services.telegram import send_admin_message, bot
 from app.services.image_processor import ImageProcessor
-from app.store import ensure_user, bind_restaurant_admin, unbind_restaurant_admin
+from app.store import ensure_user, bind_restaurant_admin, unbind_restaurant_admin, get_restaurants_for_admin
 from app.models import Review as DBReview
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -42,7 +42,9 @@ class RestaurantUpdate(BaseModel):
     email: str | None = None
     is_enabled: bool | None = None
     description: str | None = None
+    cuisine: str | None = None
     image: str | None = None
+    legal_address: str | None = None
     work_open_min: int | None = None
     work_close_min: int | None = None
 
@@ -66,7 +68,9 @@ async def list_restaurants_admin(db: Session = Depends(get_db)) -> List[Restaura
         phone=r.phone,
         email=r.email,
         description=r.description,
+        cuisine=r.cuisine,
         image=r.image,
+        legal_address=r.legal_address,
         work_open_min=r.work_open_min,
         work_close_min=r.work_close_min,
         is_open_now=False,
@@ -123,7 +127,7 @@ async def update_restaurant(restaurant_id: int, payload: RestaurantUpdate, db: S
         id=r.id, name=r.name, is_enabled=r.is_enabled, rating_agg=r.rating_agg,
         delivery_min_sum=r.delivery_min_sum, delivery_fee=r.delivery_fee,
         delivery_time_minutes=r.delivery_time_minutes, address=r.address, phone=r.phone,
-        email=r.email, description=r.description, image=r.image, work_open_min=r.work_open_min,
+        email=r.email, description=r.description, cuisine=r.cuisine, image=r.image, legal_address=r.legal_address, work_open_min=r.work_open_min,
         work_close_min=r.work_close_min, is_open_now=False
     ).model_dump()}
 
@@ -672,8 +676,9 @@ async def make_restaurant_admin(user_id: int, restaurant_id: int, db: Session = 
 
 
 @router.post("/users/unbind-admin")
-async def revoke_restaurant_admin(user_id: int) -> dict:
-    unbind_restaurant_admin(user_id)
+async def revoke_restaurant_admin(user_id: int, restaurant_id: int | None = None) -> dict:
+    """Удаляет связь пользователя с рестораном. Если restaurant_id не указан, удаляет все связи пользователя."""
+    unbind_restaurant_admin(user_id, restaurant_id)
     return {"status": "ok"}
 
 
@@ -691,6 +696,22 @@ async def list_restaurant_admins(db: Session = Depends(get_db)) -> List[dict]:
             "restaurant_id": admin.restaurant_id,
             "restaurant_name": restaurant.name if restaurant else None
         })
+    return result
+
+
+@router.get("/users/{user_id}/restaurants")
+async def get_user_restaurants(user_id: int, db: Session = Depends(get_db)) -> List[dict]:
+    """Получить список ресторанов, которыми управляет пользователь"""
+    restaurant_ids = get_restaurants_for_admin(user_id)
+    result = []
+    for rid in restaurant_ids:
+        restaurant = db.query(ORestaurant).filter(ORestaurant.id == rid).first()
+        if restaurant:
+            result.append({
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "is_enabled": restaurant.is_enabled
+            })
     return result
 
 

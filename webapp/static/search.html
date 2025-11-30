@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Поиск</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/static/telegram-webapp-init.js"></script>
   <link rel="stylesheet" href="/static/styles.v23.css?v=88" />
   <script src="/static/preload-system.js" defer></script>
   <script src="/static/page-cache.js" defer></script>
@@ -13,6 +14,7 @@
   <script src="/static/micro-animations.js" defer></script>
   <script src="/static/toast-system.js" defer></script>
   <script src="/static/keyboard-handler.js" defer></script>
+  <script src="/static/page-loading.js"></script>
 </head>
 <body>
   <div class="container">
@@ -26,6 +28,12 @@
         <input type="text" id="searchInput" class="search-input" placeholder="Быстрый поиск" />
         <button class="search-clear-btn" id="searchClearBtn" style="display: none;">✕</button>
       </div>
+    </div>
+    
+    <!-- Подсказка для скрытия клавиатуры (только на мобильных) -->
+    <div class="keyboard-hint" id="keyboardHint" style="display: none;">
+      <span class="keyboard-hint-icon">⌨️</span>
+      <span class="keyboard-hint-text">Нажмите на пустое место, чтобы скрыть клавиатуру</span>
     </div>
     
     <!-- Предложения поиска -->
@@ -399,12 +407,46 @@
       }, 300);
     });
     
+    // Показываем/скрываем подсказку для клавиатуры
+    const keyboardHint = document.getElementById('keyboardHint');
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    function showKeyboardHint() {
+      if (isMobile && keyboardHint) {
+        keyboardHint.style.display = 'flex';
+      }
+    }
+    
+    function hideKeyboardHint() {
+      if (keyboardHint) {
+        keyboardHint.style.display = 'none';
+      }
+    }
+    
+    searchInput.addEventListener('focus', () => {
+      showKeyboardHint();
+    });
+    
+    searchInput.addEventListener('blur', () => {
+      hideKeyboardHint();
+    });
+    
+    // Скрываем подсказку при клике на пустое место
+    document.addEventListener('click', (e) => {
+      if (keyboardHint && keyboardHint.contains(e.target)) {
+        // Если кликнули на подсказку, скрываем клавиатуру
+        searchInput.blur();
+        hideKeyboardHint();
+      }
+    });
+    
     // Закрытие клавиатуры при нажатии Enter на мобильных устройствах
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.keyCode === 13) {
         // Закрываем клавиатуру на мобильных устройствах
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
           searchInput.blur();
+          hideKeyboardHint();
         }
       }
     });
@@ -421,6 +463,10 @@
     });
     
     searchBackBtn.addEventListener('click', () => {
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       // Удаляем параметры поиска при возврате на главную
@@ -447,6 +493,10 @@
     // Навигация
     document.getElementById('navHome').onclick = (e) => { 
       e.preventDefault(); 
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
       // Удаляем параметры поиска при переходе на главную
