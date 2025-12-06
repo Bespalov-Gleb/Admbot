@@ -651,6 +651,10 @@
     const headers = uid ? { 'X-Telegram-User-Id': String(uid), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
     console.log('DEBUG: headers =', headers);
 
+    // Состояние для модалки инфо-блоков ресторанов
+    let currentInfoBlocksRestaurant = null;
+    let currentInfoBlocks = [];
+
     // Функция для показа сообщений
     function showMessage(text, type = 'info') {
       const messageDiv = document.createElement('div');
@@ -737,6 +741,7 @@
             <div class="restaurant-actions">
               <button data-act="save">💾 Сохранить</button>
               <button data-act="toggle">${r.is_enabled ? '🔴 Выключить' : '🟢 Включить'}</button>
+              <button data-act="infoBlocks">🏷️ Инфо-блоки</button>
               <button data-act="del">🗑️ Удалить</button>
             </div>
           </div>`;
@@ -784,6 +789,9 @@
         el.querySelector('[data-act="toggle"]').onclick = async () => {
           await fetch(api + '/admin/restaurants/' + r.id + '/status?enabled=' + (!r.is_enabled), { method:'PATCH', headers });
           load();
+        };
+        el.querySelector('[data-act="infoBlocks"]').onclick = () => {
+          openRestaurantInfoBlocksModal(r);
         };
         el.querySelector('[data-act="del"]').onclick = async () => {
           if (!confirm('Удалить ресторан #' + r.id + '?')) return;
@@ -2417,6 +2425,42 @@
     
   </script>
   
+  <!-- Модальное окно для инфо-блоков ресторана -->
+  <div id="restaurantInfoBlocksModal" class="users-modal" style="display: none;">
+    <div class="users-modal-content">
+      <div class="users-modal-header">
+        <h2>🏷️ Инфо-блоки ресторана <span id="restaurantInfoBlocksModalRestaurantTitle" style="font-size:16px; color:#64748b; margin-left:8px;"></span></h2>
+        <button class="users-modal-close" onclick="closeRestaurantInfoBlocksModal()">×</button>
+      </div>
+      <div class="users-modal-body">
+        <div id="restaurantInfoBlocksList" style="overflow-y:auto; max-height:calc(90vh - 260px);">
+          <!-- Список блоков подставляется из JS -->
+        </div>
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0;">
+          <h4 style="margin:0 0 8px 0; font-size:16px; color:#1e293b;">Новый инфо-блок</h4>
+          <div class="form-group">
+            <label>Название</label>
+            <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж">
+          </div>
+          <div class="form-group">
+            <label>Описание (опционально)</label>
+            <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="min-height:60px; resize:vertical;" placeholder="Текст для будущих сценариев — сейчас используется только название"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Порядок (0, 10, 20...)</label>
+            <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0">
+          </div>
+          <div class="form-group" style="margin-top:8px;">
+            <button type="button" class="primary-btn" style="padding:10px 18px;" onclick="createRestaurantInfoBlockAdmin()">➕ Добавить блок</button>
+          </div>
+        </div>
+      </div>
+      <div class="users-modal-footer">
+        <button class="secondary-btn" onclick="closeRestaurantInfoBlocksModal()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+  
   <!-- Модальное окно для управления админами ресторанов -->
   <div id="restaurantAdminsModal" class="users-modal">
     <div class="users-modal-content">
@@ -2917,6 +2961,189 @@
       }
     }
     
+    // ===== ИНФО-БЛОКИ РЕСТОРАНА (СУПЕРАДМИН) =====
+
+    async function loadRestaurantInfoBlocksAdmin(restaurantId) {
+      try {
+        const res = await fetch(api + '/admin/restaurants/' + restaurantId + '/info-blocks', { headers });
+        if (!res.ok) {
+          console.error('Failed to load info-blocks for restaurant', restaurantId, res.status);
+          currentInfoBlocks = [];
+        } else {
+          currentInfoBlocks = await res.json();
+        }
+        renderRestaurantInfoBlocksAdmin();
+      } catch (e) {
+        console.error('Error loading restaurant info-blocks:', e);
+        currentInfoBlocks = [];
+        renderRestaurantInfoBlocksAdmin();
+      }
+    }
+
+    function renderRestaurantInfoBlocksAdmin() {
+      const list = document.getElementById('restaurantInfoBlocksList');
+      if (!list) return;
+
+      if (!Array.isArray(currentInfoBlocks) || currentInfoBlocks.length === 0) {
+        list.innerHTML = '<div style="padding: 12px; font-size: 14px; color: #64748b;">Пока нет ни одного инфо-блока. Добавьте первый через форму ниже.</div>';
+        return;
+      }
+
+      const sorted = [...currentInfoBlocks].sort((a, b) => {
+        const sa = Number(a.sort_order || 0);
+        const sb = Number(b.sort_order || 0);
+        if (sa !== sb) return sa - sb;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
+
+      list.innerHTML = '';
+      sorted.forEach(block => {
+        const item = document.createElement('div');
+        item.className = 'form-group';
+        const titleId = `adminInfoBlockTitle_${block.id}`;
+        const descId = `adminInfoBlockDescription_${block.id}`;
+        const sortId = `adminInfoBlockSort_${block.id}`;
+        const enabledId = `adminInfoBlockEnabled_${block.id}`;
+        item.innerHTML = `
+          <label>Блок «${block.title || ''}» (ID: ${block.id})</label>
+          <input id="${titleId}" class="form-control" type="text" value="${block.title || ''}" placeholder="Название блока">
+          <textarea id="${descId}" class="form-control" style="margin-top:8px; min-height:60px; resize:vertical;" placeholder="Описание (опционально)">${block.description || ''}</textarea>
+          <input id="${sortId}" class="form-control" style="margin-top:8px;" type="number" value="${block.sort_order ?? 0}" placeholder="Порядок (0,10,20...)">
+          <label style="margin-top:8px; display:flex; align-items:center; gap:8px; font-size:13px; color:#4b5563;">
+            <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''}>
+            Показывать блок на странице ресторана
+          </label>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button type="button" class="primary-btn" style="flex:1; padding:8px 12px;" onclick="updateRestaurantInfoBlockAdmin(${block.id})">💾 Сохранить</button>
+            <button type="button" class="secondary-btn" style="flex:1; padding:8px 12px; background:#fee2e2; border-color:#fecaca; color:#b91c1c;" onclick="deleteRestaurantInfoBlockAdmin(${block.id})">🗑 Удалить</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    async function createRestaurantInfoBlockAdmin() {
+      if (!currentInfoBlocksRestaurant) return;
+      const titleEl = document.getElementById('newRestaurantInfoBlockTitle');
+      const descEl = document.getElementById('newRestaurantInfoBlockDescription');
+      const sortEl = document.getElementById('newRestaurantInfoBlockSort');
+      const title = (titleEl?.value || '').trim();
+      const description = (descEl?.value || '').trim();
+      const sort = Number(sortEl?.value || '0') || 0;
+
+      if (!title) {
+        showMessage('Название инфо-блока не может быть пустым', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(api + '/admin/restaurants/' + currentInfoBlocksRestaurant.id + '/info-blocks', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            title,
+            description,
+            sort_order: sort,
+            is_enabled: true,
+          }),
+        });
+        if (!res.ok) {
+          showMessage('Не удалось создать инфо-блок', 'error');
+          return;
+        }
+        if (titleEl) titleEl.value = '';
+        if (descEl) descEl.value = '';
+        if (sortEl) sortEl.value = '';
+        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
+        showMessage('Инфо-блок создан', 'success');
+      } catch (e) {
+        console.error('Error creating info-block (admin):', e);
+        showMessage('Ошибка при создании инфо-блока', 'error');
+      }
+    }
+
+    async function updateRestaurantInfoBlockAdmin(id) {
+      if (!currentInfoBlocksRestaurant) return;
+      const titleEl = document.getElementById('adminInfoBlockTitle_' + id);
+      const descEl = document.getElementById('adminInfoBlockDescription_' + id);
+      const sortEl = document.getElementById('adminInfoBlockSort_' + id);
+      const enabledEl = document.getElementById('adminInfoBlockEnabled_' + id);
+
+      const title = (titleEl?.value || '').trim();
+      const description = (descEl?.value || '').trim();
+      const sort = Number(sortEl?.value || '0') || 0;
+      const isEnabled = !!(enabledEl && enabledEl.checked);
+
+      if (!title) {
+        showMessage('Название инфо-блока не может быть пустым', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(api + '/admin/restaurants/info-blocks/' + id, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            title,
+            description,
+            sort_order: sort,
+            is_enabled: isEnabled,
+          }),
+        });
+        if (!res.ok) {
+          showMessage('Не удалось обновить инфо-блок', 'error');
+          return;
+        }
+        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
+        showMessage('Инфо-блок обновлён', 'success');
+      } catch (e) {
+        console.error('Error updating info-block (admin):', e);
+        showMessage('Ошибка при обновлении инфо-блока', 'error');
+      }
+    }
+
+    async function deleteRestaurantInfoBlockAdmin(id) {
+      if (!currentInfoBlocksRestaurant) return;
+      if (!confirm('Удалить этот инфо-блок?')) return;
+      try {
+        const res = await fetch(api + '/admin/restaurants/info-blocks/' + id, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!res.ok) {
+          showMessage('Не удалось удалить инфо-блок', 'error');
+          return;
+        }
+        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
+        showMessage('Инфо-блок удалён', 'success');
+      } catch (e) {
+        console.error('Error deleting info-block (admin):', e);
+        showMessage('Ошибка при удалении инфо-блока', 'error');
+      }
+    }
+
+    function openRestaurantInfoBlocksModal(restaurant) {
+      currentInfoBlocksRestaurant = restaurant;
+      const modal = document.getElementById('restaurantInfoBlocksModal');
+      const titleSpan = document.getElementById('restaurantInfoBlocksModalRestaurantTitle');
+      if (titleSpan) {
+        titleSpan.textContent = `#${restaurant.id} ${restaurant.name}`;
+      }
+      if (modal) {
+        modal.style.display = 'flex';
+        loadRestaurantInfoBlocksAdmin(restaurant.id);
+      }
+    }
+
+    function closeRestaurantInfoBlocksModal() {
+      const modal = document.getElementById('restaurantInfoBlocksModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      currentInfoBlocksRestaurant = null;
+      currentInfoBlocks = [];
+    }
+
     // ===== УПРАВЛЕНИЕ АДМИНАМИ РЕСТОРАНОВ =====
     async function loadRestaurantAdmins() {
       try {

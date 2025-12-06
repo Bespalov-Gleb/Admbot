@@ -236,3 +236,18 @@ class Promotion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+
+class RestaurantInfoBlock(Base):
+    __tablename__ = "restaurant_info_blocks"
+    __table_args__ = (
+        Index("ix_restaurant_info_blocks_restaurant_id", "restaurant_id"),
+        Index("ix_restaurant_info_blocks_sort", "restaurant_id", "sort_order"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"))
+    title: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+

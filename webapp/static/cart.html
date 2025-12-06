@@ -654,6 +654,16 @@
       // Переходим к странице конкретного ресторана
       const params = new URLSearchParams(location.search);
       if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
+      // Очищаем параметры навигации/скролла, которые относятся к предыдущим переходам
+      params.delete('id');
+      params.delete('category_id');
+      params.delete('scroll_to_category');
+      params.delete('dish_id');
+      params.delete('from');
+      params.delete('search_query');
+      params.delete('scroll_position');
+      params.delete('r');
+      // В этом сценарии просто открываем ресторан «с нуля»
       location.href = `/static/restaurant.html?id=${restaurantId}&${params.toString()}`;
     }
 
@@ -1016,32 +1026,52 @@
         return;
       }
       
-      // Получаем сохраненную позицию скролла из sessionStorage или URL параметра
-      let scrollPosition = 0;
-      try {
-        const savedPosition = sessionStorage.getItem('restaurant_scroll_position');
-        if (savedPosition) {
-          scrollPosition = Number(savedPosition);
-          // Очищаем после чтения
-          sessionStorage.removeItem('restaurant_scroll_position');
-        }
-      } catch (err) {
-        console.log('Could not read scroll position from sessionStorage:', err);
-      }
+      const currentUrl = new URL(location.href);
+      const sourceRestaurantId = Number(currentUrl.searchParams.get('r')) || 0;
       
-      // Fallback на URL параметр
-      if (scrollPosition === 0) {
-        const params = new URLSearchParams(location.search);
-        scrollPosition = Number(params.get('scroll_position')) || 0;
+      // Скролл имеет смысл восстанавливать только если мы возвращаемся
+      // в тот же ресторан, из которого пришли в корзину (r == activeRestaurantId)
+      const canUseSavedScroll = sourceRestaurantId && sourceRestaurantId === activeRestaurantId;
+      
+      let scrollPosition = 0;
+      if (canUseSavedScroll) {
+        // Получаем сохраненную позицию скролла из sessionStorage
+        try {
+          const savedPosition = sessionStorage.getItem('restaurant_scroll_position');
+          if (savedPosition) {
+            scrollPosition = Number(savedPosition);
+            // Очищаем после чтения
+            sessionStorage.removeItem('restaurant_scroll_position');
+          }
+        } catch (err) {
+          console.log('Could not read scroll position from sessionStorage:', err);
+        }
+        
+        // Fallback на URL параметр только для того же ресторана
+        if (scrollPosition === 0) {
+          const paramsTmp = new URLSearchParams(location.search);
+          scrollPosition = Number(paramsTmp.get('scroll_position')) || 0;
+        }
       }
       
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
+      
+      // Чистим параметры, которые могут мешать корректному возврату
+      p.delete('id');
+      p.delete('category_id');
+      p.delete('scroll_to_category');
+      p.delete('dish_id');
+      p.delete('from');
+      p.delete('search_query');
+      p.delete('scroll_position');
+      
       // Передаем позицию скролла и указываем, что пришли из корзины
-      if (scrollPosition > 0) {
+      if (canUseSavedScroll && scrollPosition > 0) {
         p.set('scroll_position', scrollPosition.toString());
       }
       p.set('from', 'cart');
+      p.set('r', String(activeRestaurantId));
       location.href = '/static/restaurant.html?id=' + activeRestaurantId + '&' + p.toString();
     }
 

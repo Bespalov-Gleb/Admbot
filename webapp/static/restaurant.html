@@ -926,10 +926,31 @@
     .restaurant-info-block-time {
       color: #6b7280;
     }
-    background-color: #f8f8f8;
-      border-color: #d0d0d0;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    
+    /* Список дополнительных инфо-блоков (табы, как на скрине) */
+    .restaurant-extra-info-container {
+      margin: 8px 0 4px;
+      padding: 0 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .restaurant-extra-info-row {
+      display: inline-flex;
+      gap: 16px;
+      white-space: nowrap;
+      padding-bottom: 4px;
+    }
+    
+    .restaurant-extra-info-pill {
+      font-size: 16px;
+      color: #6b7280;
+      cursor: default;
+    }
+    
+    .restaurant-extra-info-pill strong {
+      font-weight: 500;
+      color: #374151;
     }
     
     /* Стили для контейнера с блюдами */
@@ -1023,6 +1044,13 @@
             <span id="infoBlockWorkingHours">--</span>
           </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- Дополнительные инфо-блоки (табы из админки) -->
+    <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none;">
+      <div class="restaurant-extra-info-row" id="restaurantExtraInfoRow">
+        <!-- Таб-лейблы будут подставлены из API -->
       </div>
     </div>
     
@@ -1175,6 +1203,7 @@
     let scrollPosition = 0; // Позиция прокрутки для навигации внутри страницы ресторана
     let categoryObserver = null;
     let lastVisibleCategoryId = null;
+    let restaurantInfoBlocks = [];
     
     // Отслеживание видимых категорий для восстановления позиции
     function initCategoryPositionTracking() {
@@ -1258,6 +1287,17 @@
         });
         
         await renderRestaurantHeader(restaurant);
+        
+        // Загружаем дополнительные инфо-блоки ресторана
+        try {
+          const infoRes = await fetch(api + '/restaurants/' + restaurant.id + '/info-blocks');
+          if (infoRes.ok) {
+            restaurantInfoBlocks = await infoRes.json();
+            renderRestaurantInfoBlocks();
+          }
+        } catch (infoErr) {
+          console.warn('Failed to load restaurant info blocks:', infoErr);
+        }
         renderCategories();
         renderDishes();
         
@@ -1404,6 +1444,42 @@
       if (workingHoursElement) {
         workingHoursElement.textContent = workingHours;
       }
+    }
+
+    // Рендер горизонтального списка инфо-блоков (табы а-ля "За баллы", "Хиты продаж")
+    function renderRestaurantInfoBlocks() {
+      const container = document.getElementById('restaurantExtraInfoContainer');
+      const row = document.getElementById('restaurantExtraInfoRow');
+      if (!container || !row) {
+        return;
+      }
+
+      if (!Array.isArray(restaurantInfoBlocks) || restaurantInfoBlocks.length === 0) {
+        container.style.display = 'none';
+        row.innerHTML = '';
+        return;
+      }
+
+      // Сортируем на всякий случай по sort_order и id
+      const sorted = [...restaurantInfoBlocks].sort((a, b) => {
+        const sa = Number(a.sort_order || 0);
+        const sb = Number(b.sort_order || 0);
+        if (sa !== sb) return sa - sb;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
+
+      row.innerHTML = '';
+      sorted.forEach(block => {
+        if (!block || !block.title) {
+          return;
+        }
+        const pill = document.createElement('div');
+        pill.className = 'restaurant-extra-info-pill';
+        pill.textContent = block.title;
+        row.appendChild(pill);
+      });
+
+      container.style.display = row.children.length > 0 ? 'block' : 'none';
     }
     
     // Функция для обновления количества отзывов в информационном блоке
@@ -2348,7 +2424,7 @@
         setTimeout(() => {
           scrollToCategory(scrollToCategoryId);
         }, 100);
-      } else if (!scrollToCategoryId && fromPage !== 'cart' && fromPage !== 'dish') {
+      } else if (!scrollToCategoryId && fromPage !== 'cart' && fromPage !== 'dish' && fromPage !== 'search') {
         // Если нет явного указания категории и не возвращаемся из корзины/блюда
         // Проверяем, есть ли сохраненная позиция скролла из корзины/блюда
         // Если нет - восстанавливаем позицию по категории

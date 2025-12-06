@@ -14,6 +14,11 @@
   <script src="/static/micro-animations.js"></script>
   <script src="/static/toast-system.js"></script>
   <script src="/static/keyboard-handler.js" defer></script>
+  <script>
+    // На главной странице скрываем лоадер вручную,
+    // когда всё контент и позиции полностью восстановлены
+    window.pageLoadingAutoHideDisabled = true;
+  </script>
   <script src="/static/page-loading.js"></script>
 </head>
 <body>
@@ -734,6 +739,12 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         } catch (e) {
           console.log('Could not restore scroll position');
         }
+      }
+
+      // Когда всё основное содержимое и позиция готовы,
+      // скрываем оверлей загрузки, чтобы не было «мигания» главной
+      if (typeof hidePageLoadingOverlay === 'function') {
+        hidePageLoadingOverlay();
       }
     }
   })();

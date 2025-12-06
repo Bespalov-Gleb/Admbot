@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Restaurant as ORestaurant
+from app.models import Restaurant as ORestaurant, RestaurantInfoBlock as DBRestaurantInfoBlock
 
 
 router = APIRouter()
@@ -29,6 +29,15 @@ class Restaurant(BaseModel):
     is_open_now: bool = True
 
 
+class RestaurantInfoBlock(BaseModel):
+    id: int
+    restaurant_id: int
+    title: str
+    description: str = ""
+    sort_order: int = 0
+    is_enabled: bool = True
+
+
 _RESTAURANTS: List[Restaurant] = []  # legacy in-memory, оставлено для совместимости импорта
 
 
@@ -40,6 +49,37 @@ def _compute_is_open(r: Restaurant) -> bool:
         return r.work_open_min <= minutes < r.work_close_min
     # overnight schedule
     return minutes >= r.work_open_min or minutes < r.work_close_min
+
+
+@router.get("/{restaurant_id}/info-blocks")
+async def list_restaurant_info_blocks(
+    restaurant_id: int,
+    db: Session = Depends(get_db),
+) -> List[RestaurantInfoBlock]:
+    """
+    Публичный список инфо-блоков ресторана.
+    Используется на странице ресторана для отображения горизонтальных табов.
+    """
+    rows = (
+        db.query(DBRestaurantInfoBlock)
+        .filter(
+            DBRestaurantInfoBlock.restaurant_id == restaurant_id,
+            DBRestaurantInfoBlock.is_enabled == True,  # noqa: E712
+        )
+        .order_by(DBRestaurantInfoBlock.sort_order.asc(), DBRestaurantInfoBlock.id.asc())
+        .all()
+    )
+    return [
+        RestaurantInfoBlock(
+            id=row.id,
+            restaurant_id=row.restaurant_id,
+            title=row.title,
+            description=row.description or "",
+            sort_order=row.sort_order or 0,
+            is_enabled=bool(row.is_enabled),
+        )
+        for row in rows
+    ]
 
 
 @router.get("")

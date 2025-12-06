@@ -13,7 +13,19 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from app.db import get_db
-from app.models import Restaurant as ORestaurant, User as DBUser, RestaurantAdmin as DBRestaurantAdmin, Order as DBOrder, Category as DBCategory, Dish as DBDish, OptionGroup as DBOptionGroup, Option as DBOption, CartItem, Promotion as DBPromotion
+from app.models import (
+    Restaurant as ORestaurant,
+    User as DBUser,
+    RestaurantAdmin as DBRestaurantAdmin,
+    Order as DBOrder,
+    Category as DBCategory,
+    Dish as DBDish,
+    OptionGroup as DBOptionGroup,
+    Option as DBOption,
+    CartItem,
+    Promotion as DBPromotion,
+    RestaurantInfoBlock as DBRestaurantInfoBlock,
+)
 import os
 import uuid
 import shutil
@@ -47,6 +59,20 @@ class RestaurantUpdate(BaseModel):
     legal_address: str | None = None
     work_open_min: int | None = None
     work_close_min: int | None = None
+
+
+class RestaurantInfoBlockCreate(BaseModel):
+    title: str
+    description: str = ""
+    sort_order: int = 0
+    is_enabled: bool = True
+
+
+class RestaurantInfoBlockUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    sort_order: int | None = None
+    is_enabled: bool | None = None
 
 
 class AdminCodeUpdate(BaseModel):
@@ -130,6 +156,121 @@ async def update_restaurant(restaurant_id: int, payload: RestaurantUpdate, db: S
         email=r.email, description=r.description, cuisine=r.cuisine, image=r.image, legal_address=r.legal_address, work_open_min=r.work_open_min,
         work_close_min=r.work_close_min, is_open_now=False
     ).model_dump()}
+
+
+@router.get("/restaurants/{restaurant_id}/info-blocks")
+async def admin_list_restaurant_info_blocks(
+    restaurant_id: int,
+    db: Session = Depends(get_db),
+) -> List[dict]:
+    """Список инфо-блоков ресторана (для главной админки)."""
+    rows = (
+        db.query(DBRestaurantInfoBlock)
+        .filter(DBRestaurantInfoBlock.restaurant_id == restaurant_id)
+        .order_by(DBRestaurantInfoBlock.sort_order.asc(), DBRestaurantInfoBlock.id.asc())
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "restaurant_id": row.restaurant_id,
+            "title": row.title,
+            "description": row.description or "",
+            "sort_order": row.sort_order or 0,
+            "is_enabled": bool(row.is_enabled),
+        }
+        for row in rows
+    ]
+
+
+@router.post("/restaurants/{restaurant_id}/info-blocks")
+async def admin_create_restaurant_info_block(
+    restaurant_id: int,
+    payload: RestaurantInfoBlockCreate,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Создать инфо-блок для ресторана (главная админка)."""
+    restaurant = db.query(ORestaurant).filter(ORestaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="restaurant_not_found")
+
+    block = DBRestaurantInfoBlock(
+        restaurant_id=restaurant_id,
+        title=payload.title,
+        description=payload.description or "",
+        sort_order=payload.sort_order or 0,
+        is_enabled=bool(payload.is_enabled),
+    )
+    db.add(block)
+    db.commit()
+    db.refresh(block)
+
+    return {
+        "status": "ok",
+        "block": {
+            "id": block.id,
+            "restaurant_id": block.restaurant_id,
+            "title": block.title,
+            "description": block.description or "",
+            "sort_order": block.sort_order or 0,
+            "is_enabled": bool(block.is_enabled),
+        },
+    }
+
+
+@router.patch("/restaurants/info-blocks/{block_id}")
+async def admin_update_restaurant_info_block(
+    block_id: int,
+    payload: RestaurantInfoBlockUpdate,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Обновить инфо-блок ресторана (главная админка)."""
+    block = (
+        db.query(DBRestaurantInfoBlock)
+        .filter(DBRestaurantInfoBlock.id == block_id)
+        .first()
+    )
+    if not block:
+        raise HTTPException(status_code=404, detail="info_block_not_found")
+
+    patch = payload.model_dump(exclude_unset=True, exclude_none=True)
+    for key, value in patch.items():
+        if hasattr(block, key):
+            setattr(block, key, value)
+
+    db.commit()
+    db.refresh(block)
+
+    return {
+        "status": "ok",
+        "block": {
+            "id": block.id,
+            "restaurant_id": block.restaurant_id,
+            "title": block.title,
+            "description": block.description or "",
+            "sort_order": block.sort_order or 0,
+            "is_enabled": bool(block.is_enabled),
+        },
+    }
+
+
+@router.delete("/restaurants/info-blocks/{block_id}")
+async def admin_delete_restaurant_info_block(
+    block_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Удалить инфо-блок ресторана (главная админка)."""
+    block = (
+        db.query(DBRestaurantInfoBlock)
+        .filter(DBRestaurantInfoBlock.id == block_id)
+        .first()
+    )
+    if not block:
+        raise HTTPException(status_code=404, detail="info_block_not_found")
+
+    db.delete(block)
+    db.commit()
+    return {"status": "ok"}
 
 
 @router.post("/restaurants/{restaurant_id}/upload-image")

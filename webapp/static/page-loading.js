@@ -41,14 +41,19 @@ function hidePageLoadingOverlay() {
   }
 }
 
-// Автоматически скрываем overlay при загрузке страницы
+// Автоматически скрываем overlay при загрузке страницы,
+// если страница не запретила это явным флагом
 document.addEventListener('DOMContentLoaded', () => {
-  hidePageLoadingOverlay();
+  if (!window.pageLoadingAutoHideDisabled) {
+    hidePageLoadingOverlay();
+  }
 });
 
-// Также скрываем при полной загрузке страницы
+// Также скрываем при полной загрузке страницы (fallback)
 window.addEventListener('load', () => {
-  hidePageLoadingOverlay();
+  if (!window.pageLoadingAutoHideDisabled) {
+    hidePageLoadingOverlay();
+  }
 });
 
 // Экспортируем для использования

@@ -536,6 +536,31 @@
        </div>
      </div>
 
+     <!-- Инфо-блоки ресторана (табы на странице ресторана) -->
+     <div id="infoBlocksSection" class="fields-section">
+       <div class="fields-header">
+         <div class="fields-icon">🏷️</div>
+         <div class="fields-title">Инфо-блоки на странице ресторана</div>
+       </div>
+       <p style="margin: 0 0 16px; color: #6b7280; font-size: 13px;">
+         Эти подписи будут отображаться строкой под шапкой ресторана (например: «За баллы», «Хиты продаж», «Мега-комбо»).
+       </p>
+       <div class="field-group" id="infoBlocksList">
+         <!-- Список блоков будет загружен из API -->
+       </div>
+       <div style="margin-top: 16px; border-top: 1px dashed #e5e7eb; padding-top: 16px;">
+         <div class="field-item">
+           <label class="field-label">Новый инфо-блок</label>
+           <input id="newInfoBlockTitle" type="text" class="field-input" placeholder="Например: Хиты продаж">
+           <textarea id="newInfoBlockDescription" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Необязательное текстовое описание (на будущее)"></textarea>
+           <input id="newInfoBlockSort" type="number" class="field-input" style="margin-top:8px;" placeholder="Порядок (0, 10, 20...)">
+           <div class="field-actions">
+             <button type="button" class="save-btn" onclick="createInfoBlock()">➕ Добавить блок</button>
+           </div>
+         </div>
+       </div>
+     </div>
+
      <!-- Кнопки управления -->
          <div class="admin-buttons">
            <button id="btnToggleStatus" class="admin-btn danger">🔴 Выключить ресторан</button>
@@ -600,6 +625,7 @@ const api = location.origin + '/api';
     };
 
     let currentRestaurant = null;
+    let infoBlocks = [];
 
     async function load() {
       const res = await fetch(api + '/ra/restaurant', { headers });
@@ -610,6 +636,7 @@ const api = location.origin + '/api';
       const r = await res.json();
       currentRestaurant = r;
       render(r);
+      await loadInfoBlocks();
     }
 
          function render(r) {
@@ -667,6 +694,163 @@ const api = location.origin + '/api';
          currentImageDiv.innerHTML = '<div style="font-size: 13px; color: #6b7280;">Фото ресторана не загружено</div>';
        }
      }
+
+    async function loadInfoBlocks() {
+      try {
+        const res = await fetch(api + '/ra/info-blocks', { headers });
+        if (!res.ok) {
+          console.warn('Failed to load info blocks:', res.status);
+          return;
+        }
+        infoBlocks = await res.json();
+        renderInfoBlocks();
+      } catch (e) {
+        console.error('Error loading info blocks:', e);
+      }
+    }
+
+    function renderInfoBlocks() {
+      const list = document.getElementById('infoBlocksList');
+      if (!list) return;
+
+      if (!Array.isArray(infoBlocks) || infoBlocks.length === 0) {
+        list.innerHTML = '<div class="field-item" style="color:#6b7280;font-size:13px;">Пока нет ни одного инфо-блока. Добавьте первый с помощью формы ниже.</div>';
+        return;
+      }
+
+      const sorted = [...infoBlocks].sort((a, b) => {
+        const sa = Number(a.sort_order || 0);
+        const sb = Number(b.sort_order || 0);
+        if (sa !== sb) return sa - sb;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
+
+      list.innerHTML = '';
+      sorted.forEach(block => {
+        const item = document.createElement('div');
+        item.className = 'field-item';
+
+        const titleInputId = `infoBlockTitle_${block.id}`;
+        const sortInputId = `infoBlockSort_${block.id}`;
+        const enabledId = `infoBlockEnabled_${block.id}`;
+
+        item.innerHTML = `
+          <label class="field-label">Блок «${block.title}»</label>
+          <input id="${titleInputId}" type="text" class="field-input" value="${block.title || ''}">
+          <textarea id="infoBlockDescription_${block.id}" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Описание (необязательно)">${block.description || ''}</textarea>
+          <input id="${sortInputId}" type="number" class="field-input" style="margin-top:8px;" value="${block.sort_order ?? 0}" placeholder="Порядок (0,10,20...)">
+          <label style="margin-top:8px; display:flex; align-items:center; gap:8px; font-size:13px; color:#4b5563;">
+            <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''}>
+            Показывать блок на странице ресторана
+          </label>
+          <div class="field-actions">
+            <button type="button" class="save-btn" onclick="updateInfoBlock(${block.id})">💾 Сохранить</button>
+            <button type="button" class="save-btn" style="background:#ef4444;" onclick="deleteInfoBlock(${block.id})">🗑 Удалить</button>
+          </div>
+        `;
+
+        list.appendChild(item);
+      });
+    }
+
+    async function createInfoBlock() {
+      const titleEl = document.getElementById('newInfoBlockTitle');
+      const descEl = document.getElementById('newInfoBlockDescription');
+      const sortEl = document.getElementById('newInfoBlockSort');
+      const title = (titleEl?.value || '').trim();
+      const description = (descEl?.value || '').trim();
+      const sort = Number(sortEl?.value || '0') || 0;
+
+      if (!title) {
+        showErrorMessage('Название инфо-блока не может быть пустым');
+        return;
+      }
+
+      try {
+        const res = await fetch(api + '/ra/info-blocks', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description,
+            sort_order: sort,
+            is_enabled: true,
+          }),
+        });
+        if (!res.ok) {
+          showErrorMessage('Не удалось создать инфо-блок');
+          return;
+        }
+        titleEl.value = '';
+        descEl.value = '';
+        sortEl.value = '';
+        await loadInfoBlocks();
+        showSuccessMessage('Инфо-блок создан');
+      } catch (e) {
+        console.error('Error creating info block:', e);
+        showErrorMessage('Ошибка при создании инфо-блока');
+      }
+    }
+
+    async function updateInfoBlock(id) {
+      const titleEl = document.getElementById('infoBlockTitle_' + id);
+      const descEl = document.getElementById('infoBlockDescription_' + id);
+      const sortEl = document.getElementById('infoBlockSort_' + id);
+      const enabledEl = document.getElementById('infoBlockEnabled_' + id);
+
+      const title = (titleEl?.value || '').trim();
+      const description = (descEl?.value || '').trim();
+      const sort = Number(sortEl?.value || '0') || 0;
+      const isEnabled = !!(enabledEl && enabledEl.checked);
+
+      if (!title) {
+        showErrorMessage('Название инфо-блока не может быть пустым');
+        return;
+      }
+
+      try {
+        const res = await fetch(api + '/ra/info-blocks/' + id, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description,
+            sort_order: sort,
+            is_enabled: isEnabled,
+          }),
+        });
+        if (!res.ok) {
+          showErrorMessage('Не удалось обновить инфо-блок');
+          return;
+        }
+        await loadInfoBlocks();
+        showSuccessMessage('Инфо-блок обновлён');
+      } catch (e) {
+        console.error('Error updating info block:', e);
+        showErrorMessage('Ошибка при обновлении инфо-блока');
+      }
+    }
+
+    async function deleteInfoBlock(id) {
+      if (!confirm('Удалить этот инфо-блок?')) {
+        return;
+      }
+      try {
+        const res = await fetch(api + '/ra/info-blocks/' + id, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!res.ok) {
+          showErrorMessage('Не удалось удалить инфо-блок');
+          return;
+        }
+        await loadInfoBlocks();
+        showSuccessMessage('Инфо-блок удалён');
+      } catch (e) {
+        console.error('Error deleting info block:', e);
+        showErrorMessage('Ошибка при удалении инфо-блока');
+      }
+    }
 
     function formatWorkingHours(openMin, closeMin) {
       if (!openMin || !closeMin) return 'Не задано';
