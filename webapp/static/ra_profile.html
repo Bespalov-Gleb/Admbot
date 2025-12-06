@@ -552,8 +552,9 @@
          <div class="field-item">
            <label class="field-label">Новый инфо-блок</label>
            <input id="newInfoBlockTitle" type="text" class="field-input" placeholder="Например: Хиты продаж">
-           <textarea id="newInfoBlockDescription" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Необязательное текстовое описание (на будущее)"></textarea>
-           <input id="newInfoBlockSort" type="number" class="field-input" style="margin-top:8px;" placeholder="Порядок (0, 10, 20...)">
+           <textarea id="newInfoBlockDescription" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Текстовое описание блока (на будущее)"></textarea>
+           <input id="newInfoBlockSort" type="number" class="field-input" style="margin-top:8px;" placeholder="0" value="0">
+           <small style="display:block; margin-top:4px; color:#6b7280; font-size:12px;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
            <div class="field-actions">
              <button type="button" class="save-btn" onclick="createInfoBlock()">➕ Добавить блок</button>
            </div>
@@ -737,8 +738,9 @@ const api = location.origin + '/api';
         item.innerHTML = `
           <label class="field-label">Блок «${block.title}»</label>
           <input id="${titleInputId}" type="text" class="field-input" value="${block.title || ''}">
-          <textarea id="infoBlockDescription_${block.id}" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Описание (необязательно)">${block.description || ''}</textarea>
-          <input id="${sortInputId}" type="number" class="field-input" style="margin-top:8px;" value="${block.sort_order ?? 0}" placeholder="Порядок (0,10,20...)">
+          <textarea id="infoBlockDescription_${block.id}" class="field-input" style="min-height:60px;resize:vertical;margin-top:8px;" placeholder="Текстовое описание блока (на будущее)">${block.description || ''}</textarea>
+          <input id="${sortInputId}" type="number" class="field-input" style="margin-top:8px;" value="${block.sort_order ?? 0}" placeholder="0">
+          <small style="display:block; margin-top:4px; color:#6b7280; font-size:12px;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
           <label style="margin-top:8px; display:flex; align-items:center; gap:8px; font-size:13px; color:#4b5563;">
             <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''}>
             Показывать блок на странице ресторана

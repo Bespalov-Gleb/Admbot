@@ -1293,10 +1293,13 @@
           const infoRes = await fetch(api + '/restaurants/' + restaurant.id + '/info-blocks');
           if (infoRes.ok) {
             restaurantInfoBlocks = await infoRes.json();
+            console.log('Loaded restaurant info blocks:', restaurantInfoBlocks);
             renderRestaurantInfoBlocks();
+          } else {
+            console.warn('Failed to load restaurant info blocks, status:', infoRes.status);
           }
         } catch (infoErr) {
-          console.warn('Failed to load restaurant info blocks:', infoErr);
+          console.error('Error loading restaurant info blocks:', infoErr);
         }
         renderCategories();
         renderDishes();
@@ -1451,10 +1454,14 @@
       const container = document.getElementById('restaurantExtraInfoContainer');
       const row = document.getElementById('restaurantExtraInfoRow');
       if (!container || !row) {
+        console.warn('restaurantExtraInfoContainer or restaurantExtraInfoRow not found');
         return;
       }
 
+      console.log('renderRestaurantInfoBlocks called, blocks:', restaurantInfoBlocks);
+
       if (!Array.isArray(restaurantInfoBlocks) || restaurantInfoBlocks.length === 0) {
+        console.log('No info blocks to display, hiding container');
         container.style.display = 'none';
         row.innerHTML = '';
         return;
@@ -1471,6 +1478,7 @@
       row.innerHTML = '';
       sorted.forEach(block => {
         if (!block || !block.title) {
+          console.warn('Skipping invalid block:', block);
           return;
         }
         const pill = document.createElement('div');
@@ -1479,7 +1487,9 @@
         row.appendChild(pill);
       });
 
-      container.style.display = row.children.length > 0 ? 'block' : 'none';
+      const shouldShow = row.children.length > 0;
+      console.log('Info blocks rendered:', row.children.length, 'shouldShow:', shouldShow);
+      container.style.display = shouldShow ? 'block' : 'none';
     }
     
     // Функция для обновления количества отзывов в информационном блоке

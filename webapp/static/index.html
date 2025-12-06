@@ -22,7 +22,7 @@
   <script src="/static/page-loading.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="mainContainer" style="opacity: 0;">
     <!-- Поисковая строка -->
     <div id="searchContainer" class="search-container">
       <div class="search-bar">
@@ -57,7 +57,7 @@
         <span class="nav-icon nav-icon-home"></span>
         <span>Главное</span>
       </a>
-      <a id="navPromotions" href="/static/promotions.html" class="nav-item">
+      <a id="navPromotions" href="#" class="nav-item">
         <span class="nav-icon nav-icon-promo"></span>
         <span>Акции</span>
       </a>
@@ -126,44 +126,101 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       });
     }
     
-    function restoreRestaurantPosition() {
+    
+    function saveCurrentPosition() {
       try {
-        const savedRestaurantId = sessionStorage.getItem('lastVisibleRestaurantId');
-        if (!savedRestaurantId) return;
+        // Сохраняем текущую позицию скролла
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        sessionStorage.setItem('main_page_scroll', String(scrollY));
         
-        const el = document.querySelector(`[data-restaurant-id="${savedRestaurantId}"]`);
-        if (el) {
-          // Небольшая задержка для завершения рендеринга
-          setTimeout(() => {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          }, 100);
+        // Сохраняем ID последнего видимого ресторана
+        if (lastVisibleRestaurantId) {
+          sessionStorage.setItem('lastVisibleRestaurantId', lastVisibleRestaurantId);
         }
       } catch (e) {
-        console.warn('Failed to restore restaurant position:', e);
+        console.warn('Failed to save position:', e);
       }
     }
     
     function setHomeAnchor(restaurantId) {
       try { 
+        // Сохраняем якорь для точного восстановления
         sessionStorage.setItem('home_anchor', String(restaurantId));
+        // Также сохраняем как последний видимый
         sessionStorage.setItem('lastVisibleRestaurantId', String(restaurantId));
+        // Сохраняем позицию скролла
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        sessionStorage.setItem('main_page_scroll', String(scrollY));
       } catch(_) {}
     }
     
     function restoreHomeAnchor() {
       try {
         const anchor = sessionStorage.getItem('home_anchor');
-        if (!anchor) {
-          // Если нет якоря из клика, пробуем восстановить по последнему видимому
-          restoreRestaurantPosition();
-          return;
+        if (anchor) {
+          // Если есть якорь из клика, используем его
+          const el = document.querySelector('[data-restaurant-id="' + anchor + '"]');
+          if (el) {
+            setTimeout(() => {
+              el.scrollIntoView({ block: 'center', behavior: 'auto' });
+              // Удаляем якорь только после успешного восстановления
+              sessionStorage.removeItem('home_anchor');
+              // Показываем контент после восстановления
+              const container = document.getElementById('mainContainer');
+              if (container) {
+                container.style.transition = 'opacity 0.2s ease-in';
+                container.style.opacity = '1';
+              }
+              if (typeof hidePageLoadingOverlay === 'function') {
+                hidePageLoadingOverlay();
+              }
+            }, 50);
+            return;
+          }
         }
-        const el = document.querySelector('[data-restaurant-id="' + anchor + '"]');
-        if (el) {
-          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          sessionStorage.removeItem('home_anchor');
+        
+        // Если нет якоря, пробуем восстановить по последнему видимому
+        const savedRestaurantId = sessionStorage.getItem('lastVisibleRestaurantId');
+        if (savedRestaurantId) {
+          const el = document.querySelector(`[data-restaurant-id="${savedRestaurantId}"]`);
+          if (el) {
+            setTimeout(() => {
+              el.scrollIntoView({ block: 'center', behavior: 'auto' });
+              // Показываем контент после восстановления
+              const container = document.getElementById('mainContainer');
+              if (container) {
+                container.style.transition = 'opacity 0.2s ease-in';
+                container.style.opacity = '1';
+              }
+              if (typeof hidePageLoadingOverlay === 'function') {
+                hidePageLoadingOverlay();
+              }
+            }, 50);
+            return;
+          }
         }
-      } catch(_) {}
+        
+        // Если ничего не найдено, просто показываем контент
+        const container = document.getElementById('mainContainer');
+        if (container) {
+          container.style.transition = 'opacity 0.2s ease-in';
+          container.style.opacity = '1';
+        }
+        if (typeof hidePageLoadingOverlay === 'function') {
+          hidePageLoadingOverlay();
+        }
+      } catch (e) {
+        console.warn('Failed to restore position:', e);
+        // В случае ошибки все равно показываем контент
+        const container = document.getElementById('mainContainer');
+        if (container) {
+          container.style.transition = 'opacity 0.2s ease-in';
+          container.style.opacity = '1';
+        }
+        if (typeof hidePageLoadingOverlay === 'function') {
+          hidePageLoadingOverlay();
+        }
+      }
     }
     
     // Кэш для изображений
@@ -407,11 +464,13 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
                     console.log('=== Block item clicked (restaurant) ===');
                     console.log('Restaurant ID:', it.item_id);
                     console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+                    setHomeAnchor(it.item_id);
                     goToRestaurant(it.item_id);
                   } else if (it.restaurant_id) {
                     console.log('=== Block item clicked (restaurant by restaurant_id) ===');
                     console.log('Restaurant ID:', it.restaurant_id);
                     console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+                    setHomeAnchor(it.restaurant_id);
                     goToRestaurant(it.restaurant_id);
                   }
 
@@ -536,6 +595,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
                   console.log('=== Restaurant card clicked ===');
                   console.log('Restaurant ID:', restaurantData.id);
                   console.log('Current scroll position before click:', window.pageYOffset || document.documentElement.scrollTop);
+                  setHomeAnchor(restaurantData.id);
                   goToRestaurant(restaurantData.id);
                 };
                 
@@ -683,9 +743,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       ]);
       console.log('=== initialize() completed ===');
       // Восстанавливаем позицию после рендера
+      // Небольшая задержка для завершения рендеринга всех элементов
       setTimeout(() => {
         restoreHomeAnchor();
-      }, 200);
+      }, 100);
     }
     
    // Проверка доступа (блокировка)
@@ -719,27 +780,8 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     if (await checkAccess()) {
       await initialize();
       
-      // Восстанавливаем позицию скролла, если вернулись из поиска
-      const urlParams = new URLSearchParams(location.search);
-      if (urlParams.get('restore_scroll') === '1') {
-        try {
-          const savedScroll = sessionStorage.getItem('main_page_scroll');
-          if (savedScroll) {
-            const scrollPosition = parseInt(savedScroll, 10);
-            // Небольшая задержка для завершения рендеринга
-            setTimeout(() => {
-              window.scrollTo({ top: scrollPosition, behavior: 'auto' });
-              sessionStorage.removeItem('main_page_scroll');
-              // Удаляем параметр из URL
-              urlParams.delete('restore_scroll');
-              const newUrl = location.pathname + '?' + urlParams.toString();
-              history.replaceState({}, '', newUrl);
-            }, 100);
-          }
-        } catch (e) {
-          console.log('Could not restore scroll position');
-        }
-      }
+      // Логика восстановления позиции теперь в restoreHomeAnchor()
+      // Удаляем старую логику с restore_scroll, так как она конфликтует
 
       // Когда всё основное содержимое и позиция готовы,
       // скрываем оверлей загрузки, чтобы не было «мигания» главной
@@ -774,6 +816,8 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     };
     document.getElementById('navCart').onclick = (e) => { 
       e.preventDefault(); 
+      // Сохраняем позицию перед уходом
+      saveCurrentPosition();
       // Показываем loading overlay
       if (typeof showPageLoadingOverlay === 'function') {
         showPageLoadingOverlay();
@@ -785,9 +829,19 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     };
     document.getElementById('navProfile').onclick = (e) => { 
       e.preventDefault(); 
+      // Сохраняем позицию перед уходом
+      saveCurrentPosition();
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
       location.href = '/static/profile.html?' + p.toString(); 
+    };
+    document.getElementById('navPromotions').onclick = (e) => { 
+      e.preventDefault(); 
+      // Сохраняем позицию перед уходом
+      saveCurrentPosition();
+      const p = new URLSearchParams(location.search); 
+      if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
+      location.href = '/static/promotions.html?' + p.toString(); 
     };
 
     // ===== ПОИСК =====
@@ -934,7 +988,7 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
           
           return `
             <div class="search-restaurant-block">
-              <div class="search-restaurant-header" onclick="goToRestaurant(${restaurant.id})">
+              <div class="search-restaurant-header" onclick="setHomeAnchor(${restaurant.id}); goToRestaurant(${restaurant.id});">
                 ${restaurant.image ? `<img src="${restaurant.image}" alt="${restaurant.name}" class="search-restaurant-image" onerror="this.style.display='none'"/>` : '<div class="search-restaurant-image"></div>'}
                 <div class="search-restaurant-info">
                   <div class="search-restaurant-name">${restaurant.name}</div>
