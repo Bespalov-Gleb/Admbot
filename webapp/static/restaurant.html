@@ -10,6 +10,7 @@
   <script src="/static/page-transitions.js"></script>
   <script src="/static/page-loading.js"></script>
   <style>
+    /* v2 - Обновлено: стили для инфо-блоков */
     /* Улучшенные стили для горизонтального скролла категорий */
     .cat-row {
       display: flex !important;
@@ -927,86 +928,99 @@
       color: #6b7280;
     }
     
-    /* Список дополнительных инфо-блоков (табы, как на скрине) */
+    /* v3 - Список дополнительных инфо-блоков (табы + описание) */
     .restaurant-extra-info-container {
       margin: 12px 0 16px;
-      padding: 0 16px;
+      padding: 0;
+    }
+    
+    /* Строка с кликабельными табами-названиями */
+    .restaurant-extra-info-tabs-row {
+      display: flex;
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    
-    .restaurant-extra-info-container::-webkit-scrollbar {
-      display: none;
-    }
-    
-    .restaurant-extra-info-row {
-      display: inline-flex;
+      overflow-y: hidden;
       gap: 12px;
-      white-space: nowrap;
-      padding-bottom: 8px;
+      padding: 0 16px 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+      -ms-overflow-style: auto;
     }
     
-    .restaurant-extra-info-pill {
+    .restaurant-extra-info-tabs-row::-webkit-scrollbar {
+      height: 6px;
+      display: block;
+    }
+    
+    .restaurant-extra-info-tabs-row::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 3px;
+    }
+    
+    .restaurant-extra-info-tabs-row::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    
+    .restaurant-extra-info-tabs-row::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Кликабельный таб с названием */
+    .restaurant-extra-info-tab {
       display: inline-flex !important;
       align-items: center !important;
       padding: 10px 20px !important;
-      background: white !important;
-      border: 1.5px solid #e5e7eb !important;
-      border-radius: 24px !important;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
       font-size: 15px !important;
       font-weight: 500 !important;
-      color: #374151 !important;
+      color: #6b7280 !important;
       cursor: pointer !important;
       transition: all 0.2s ease !important;
-      white-space: nowrap !important;
       flex-shrink: 0 !important;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-      min-width: auto !important;
-      width: auto !important;
-      height: auto !important;
+      white-space: nowrap !important;
+      position: relative !important;
+      padding-bottom: 12px !important;
     }
     
-    .restaurant-extra-info-pill:hover {
-      background: #f9fafb !important;
-      border-color: #d1d5db !important;
-      transform: translateY(-1px) !important;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    .restaurant-extra-info-tab:hover {
+      color: #374151 !important;
     }
     
-    .restaurant-extra-info-pill.active {
+    .restaurant-extra-info-tab.active {
+      color: #3b82f6 !important;
+      font-weight: 600 !important;
+    }
+    
+    .restaurant-extra-info-tab.active::after {
+      content: '' !important;
+      position: absolute !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: 2px !important;
       background: #3b82f6 !important;
-      border-color: #3b82f6 !important;
-      color: white !important;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+      border-radius: 2px 2px 0 0 !important;
     }
     
-    .restaurant-extra-info-pill-title {
-      font-weight: 500;
+    /* Блок с описанием активного таба (на всю ширину) */
+    .restaurant-extra-info-description-block {
+      margin: 0 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
     
-    .restaurant-extra-info-pill-description {
-      display: none;
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
-      line-height: 1.3;
+    .restaurant-extra-info-description-text {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #0c4a6e;
+      margin: 0;
     }
     
-    .restaurant-extra-info-pill.has-description {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      padding: 12px 18px !important;
-    }
-    
-    .restaurant-extra-info-pill.has-description .restaurant-extra-info-pill-description {
-      display: block !important;
-    }
-    
-    .restaurant-extra-info-pill.active .restaurant-extra-info-pill-description {
-      color: rgba(255, 255, 255, 0.9);
-    }
     
     /* Стили для контейнера с блюдами */
     #dishesGrid {
@@ -1104,8 +1118,13 @@
     
     <!-- Дополнительные инфо-блоки (табы из админки) -->
     <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none;">
-      <div class="restaurant-extra-info-row" id="restaurantExtraInfoRow">
+      <!-- Строка с кликабельными табами-названиями -->
+      <div class="restaurant-extra-info-tabs-row" id="restaurantExtraInfoTabsRow">
         <!-- Таб-лейблы будут подставлены из API -->
+      </div>
+      <!-- Блок с описанием активного таба (на всю ширину) -->
+      <div class="restaurant-extra-info-description-block" id="restaurantExtraInfoDescriptionBlock" style="display:none;">
+        <!-- Описание активного блока -->
       </div>
     </div>
     
@@ -1259,6 +1278,7 @@
     let categoryObserver = null;
     let lastVisibleCategoryId = null;
     let restaurantInfoBlocks = [];
+    let activeInfoBlockId = null;
     
     // Отслеживание видимых категорий для восстановления позиции
     function initCategoryPositionTracking() {
@@ -1507,9 +1527,11 @@
     // Рендер горизонтального списка инфо-блоков (табы а-ля "За баллы", "Хиты продаж")
     function renderRestaurantInfoBlocks() {
       const container = document.getElementById('restaurantExtraInfoContainer');
-      const row = document.getElementById('restaurantExtraInfoRow');
-      if (!container || !row) {
-        console.warn('restaurantExtraInfoContainer or restaurantExtraInfoRow not found');
+      const tabsRow = document.getElementById('restaurantExtraInfoTabsRow');
+      const descriptionBlock = document.getElementById('restaurantExtraInfoDescriptionBlock');
+      
+      if (!container || !tabsRow || !descriptionBlock) {
+        console.warn('restaurantExtraInfoContainer, tabsRow or descriptionBlock not found');
         return;
       }
 
@@ -1518,7 +1540,8 @@
       if (!Array.isArray(restaurantInfoBlocks) || restaurantInfoBlocks.length === 0) {
         console.log('No info blocks to display, hiding container');
         container.style.display = 'none';
-        row.innerHTML = '';
+        tabsRow.innerHTML = '';
+        descriptionBlock.style.display = 'none';
         return;
       }
 
@@ -1530,64 +1553,82 @@
         return Number(a.id || 0) - Number(b.id || 0);
       });
 
-      row.innerHTML = '';
-      sorted.forEach((block, index) => {
+      // Очищаем табы
+      tabsRow.innerHTML = '';
+      
+      // Если нет активного блока, выбираем первый
+      if (!activeInfoBlockId) {
+        activeInfoBlockId = sorted[0]?.id || null;
+      }
+
+      // Создаем табы с названиями
+      sorted.forEach((block) => {
         if (!block || !block.title) {
           console.warn('Skipping invalid block:', block);
           return;
         }
-        const pill = document.createElement('div');
-        pill.className = 'restaurant-extra-info-pill';
-        if (index === 0) {
-          pill.classList.add('active');
+        
+        const tab = document.createElement('button');
+        tab.className = 'restaurant-extra-info-tab';
+        tab.textContent = block.title;
+        tab.dataset.blockId = block.id;
+        
+        if (block.id === activeInfoBlockId) {
+          tab.classList.add('active');
         }
         
-        const hasDescription = block.description && block.description.trim().length > 0;
-        if (hasDescription) {
-          pill.classList.add('has-description');
-        }
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'restaurant-extra-info-pill-title';
-        titleSpan.textContent = block.title;
-        pill.appendChild(titleSpan);
-        
-        if (hasDescription) {
-          const descSpan = document.createElement('span');
-          descSpan.className = 'restaurant-extra-info-pill-description';
-          descSpan.textContent = block.description.trim();
-          pill.appendChild(descSpan);
-        }
-        
-        // Добавляем обработчик клика для переключения активного таба
-        pill.addEventListener('click', () => {
-          document.querySelectorAll('.restaurant-extra-info-pill').forEach(p => p.classList.remove('active'));
-          pill.classList.add('active');
+        // Обработчик клика для переключения активного таба
+        tab.addEventListener('click', () => {
+          activeInfoBlockId = block.id;
+          updateActiveInfoBlock(sorted);
         });
         
-        row.appendChild(pill);
+        tabsRow.appendChild(tab);
       });
 
-      const shouldShow = row.children.length > 0;
-      console.log('Info blocks rendered:', row.children.length, 'shouldShow:', shouldShow);
-      console.log('Container element:', container);
-      console.log('Container computed style before:', window.getComputedStyle(container).display);
+      // Обновляем описание активного блока
+      updateActiveInfoBlock(sorted);
+
+      // Показываем контейнер
+      container.style.setProperty('display', 'block', 'important');
+      container.style.setProperty('visibility', 'visible', 'important');
+      container.style.setProperty('opacity', '1', 'important');
+    }
+    
+    // Функция для обновления описания активного блока
+    function updateActiveInfoBlock(sortedBlocks) {
+      const tabsRow = document.getElementById('restaurantExtraInfoTabsRow');
+      const descriptionBlock = document.getElementById('restaurantExtraInfoDescriptionBlock');
       
-      if (shouldShow) {
-        // Принудительно показываем контейнер
-        container.style.setProperty('display', 'block', 'important');
-        container.style.setProperty('visibility', 'visible', 'important');
-        container.style.setProperty('opacity', '1', 'important');
-        console.log('Container should be visible now');
-        console.log('Container computed style after:', window.getComputedStyle(container).display);
-        console.log('Container offsetHeight:', container.offsetHeight);
-        console.log('Row children count:', row.children.length);
-        row.children.forEach((child, idx) => {
-          console.log(`Pill ${idx}:`, child.className, child.textContent, 'computed display:', window.getComputedStyle(child).display);
-        });
+      if (!tabsRow || !descriptionBlock) return;
+      
+      // Обновляем активный таб
+      tabsRow.querySelectorAll('.restaurant-extra-info-tab').forEach(tab => {
+        if (Number(tab.dataset.blockId) === activeInfoBlockId) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+      
+      // Находим активный блок
+      const activeBlock = sortedBlocks.find(b => b.id === activeInfoBlockId);
+      
+      if (activeBlock && activeBlock.description && activeBlock.description.trim().length > 0) {
+        // Показываем описание (экранируем HTML для безопасности)
+        const descText = activeBlock.description.trim()
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;')
+          .replace(/\n/g, '<br>');
+        descriptionBlock.innerHTML = `<p class="restaurant-extra-info-description-text">${descText}</p>`;
+        descriptionBlock.style.display = 'block';
       } else {
-        container.style.display = 'none';
-        console.log('No blocks to show, hiding container');
+        // Скрываем описание, если его нет
+        descriptionBlock.style.display = 'none';
+        descriptionBlock.innerHTML = '';
       }
     }
     
