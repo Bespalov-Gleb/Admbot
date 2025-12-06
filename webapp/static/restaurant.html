@@ -1103,7 +1103,7 @@
     </div>
     
     <!-- Дополнительные инфо-блоки (табы из админки) -->
-    <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none;">
+    <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none; visibility:hidden;">
       <div class="restaurant-extra-info-row" id="restaurantExtraInfoRow">
         <!-- Таб-лейблы будут подставлены из API -->
       </div>
@@ -1570,7 +1570,16 @@
 
       const shouldShow = row.children.length > 0;
       console.log('Info blocks rendered:', row.children.length, 'shouldShow:', shouldShow);
-      container.style.display = shouldShow ? 'block' : 'none';
+      if (shouldShow) {
+        container.style.display = 'block';
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
+        console.log('Container should be visible now');
+      } else {
+        container.style.display = 'none';
+        container.style.visibility = 'hidden';
+        console.log('No blocks to show, hiding container');
+      }
     }
     
     // Функция для обновления количества отзывов в информационном блоке
