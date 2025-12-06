@@ -1001,7 +1001,7 @@
     }
     
     .restaurant-extra-info-pill.has-description .restaurant-extra-info-pill-description {
-      display: block;
+      display: block !important;
     }
     
     .restaurant-extra-info-pill.active .restaurant-extra-info-pill-description {
@@ -1103,7 +1103,7 @@
     </div>
     
     <!-- Дополнительные инфо-блоки (табы из админки) -->
-    <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none; visibility:hidden;">
+    <div class="restaurant-extra-info-container" id="restaurantExtraInfoContainer" style="display:none;">
       <div class="restaurant-extra-info-row" id="restaurantExtraInfoRow">
         <!-- Таб-лейблы будут подставлены из API -->
       </div>
@@ -1570,14 +1570,23 @@
 
       const shouldShow = row.children.length > 0;
       console.log('Info blocks rendered:', row.children.length, 'shouldShow:', shouldShow);
+      console.log('Container element:', container);
+      console.log('Container computed style before:', window.getComputedStyle(container).display);
+      
       if (shouldShow) {
-        container.style.display = 'block';
-        container.style.visibility = 'visible';
-        container.style.opacity = '1';
+        // Принудительно показываем контейнер
+        container.style.setProperty('display', 'block', 'important');
+        container.style.setProperty('visibility', 'visible', 'important');
+        container.style.setProperty('opacity', '1', 'important');
         console.log('Container should be visible now');
+        console.log('Container computed style after:', window.getComputedStyle(container).display);
+        console.log('Container offsetHeight:', container.offsetHeight);
+        console.log('Row children count:', row.children.length);
+        row.children.forEach((child, idx) => {
+          console.log(`Pill ${idx}:`, child.className, child.textContent, 'computed display:', window.getComputedStyle(child).display);
+        });
       } else {
         container.style.display = 'none';
-        container.style.visibility = 'hidden';
         console.log('No blocks to show, hiding container');
       }
     }
