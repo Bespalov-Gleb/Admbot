@@ -35,6 +35,13 @@
           <button class="search-clear-btn" id="searchClearBtn" style="display: none;">✕</button>
         </div>
       </div>
+      
+      <!-- Подсказка для скрытия клавиатуры (только на мобильных) -->
+      <div class="keyboard-hint" id="keyboardHint" style="display: none;">
+        <span class="keyboard-hint-icon">⌨️</span>
+        <span class="keyboard-hint-text">Нажмите на пустое место, чтобы скрыть клавиатуру</span>
+      </div>
+      
       <div id="searchSuggestions" class="search-suggestions" style="display: none;"></div>
       <div id="searchFilters" class="search-filters" style="display: none;">
         <span class="search-results-count" id="searchResultsCount"></span>
@@ -156,6 +163,41 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
     
     function restoreHomeAnchor() {
       try {
+        // Проверяем, возвращаемся ли из корзины
+        const urlParams = new URLSearchParams(location.search);
+        const fromPage = urlParams.get('from');
+        
+        if (fromPage === 'cart') {
+          console.log('Возврат из корзины, восстанавливаем позицию скролла');
+          
+          // Пробуем восстановить сохраненную позицию скролла
+          const savedScrollPosition = sessionStorage.getItem('main_page_scroll');
+          if (savedScrollPosition) {
+            const scrollY = parseInt(savedScrollPosition, 10);
+            console.log('Восстанавливаем позицию скролла:', scrollY);
+            
+            setTimeout(() => {
+              window.scrollTo(0, scrollY);
+              
+              // Показываем контент после восстановления
+              const container = document.getElementById('mainContainer');
+              if (container) {
+                container.style.transition = 'opacity 0.2s ease-in';
+                container.style.opacity = '1';
+              }
+              if (typeof hidePageLoadingOverlay === 'function') {
+                hidePageLoadingOverlay();
+              }
+              
+              // Очищаем параметр from из URL
+              urlParams.delete('from');
+              const newUrl = location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+              history.replaceState({}, '', newUrl);
+            }, 50);
+            return;
+          }
+        }
+        
         const anchor = sessionStorage.getItem('home_anchor');
         if (anchor) {
           // Если есть якорь из клика, используем его
@@ -1043,17 +1085,43 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
       }, 300);
     });
     
+    // Показываем/скрываем подсказку для клавиатуры
+    const keyboardHint = document.getElementById('keyboardHint');
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    function showKeyboardHint() {
+      if (isMobile && keyboardHint) {
+        keyboardHint.style.display = 'flex';
+      }
+    }
+    
+    function hideKeyboardHint() {
+      if (keyboardHint) {
+        keyboardHint.style.display = 'none';
+      }
+    }
+    
+    // Скрываем подсказку при клике на неё
+    if (keyboardHint) {
+      keyboardHint.addEventListener('click', () => {
+        searchInput.blur();
+        hideKeyboardHint();
+      });
+    }
+    
     // Закрытие клавиатуры при нажатии Enter на мобильных устройствах
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.keyCode === 13) {
         // Закрываем клавиатуру на мобильных устройствах
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
           searchInput.blur();
+          hideKeyboardHint();
         }
       }
     });
     
     searchInput.addEventListener('focus', () => {
+      showKeyboardHint();
       // При фокусе переходим на страницу поиска
       const p = new URLSearchParams(location.search);
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1');
@@ -1067,6 +1135,10 @@ const getHeaders = uid ? { 'X-Telegram-User-Id': String(uid) } : {};
         console.log('Could not save scroll position');
       }
       location.href = '/static/search.html?' + p.toString();
+    });
+    
+    searchInput.addEventListener('blur', () => {
+      hideKeyboardHint();
     });
     
     searchClearBtn.addEventListener('click', () => {

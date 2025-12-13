@@ -644,13 +644,27 @@
     }
 
     function redirectToRestaurants() {
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
+      
       // Переходим к списку ресторанов при пустой корзине
       const params = new URLSearchParams(location.search);
       if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');
+      
+      // Указываем, что возвращаемся из корзины
+      params.set('from', 'cart');
+      
       location.href = '/static/index.html?' + params.toString();
     }
     
     function redirectToRestaurant(restaurantId) {
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
+      
       // Переходим к странице конкретного ресторана
       const params = new URLSearchParams(location.search);
       if (!params.get('ngrok-skip-browser-warning')) params.set('ngrok-skip-browser-warning', '1');

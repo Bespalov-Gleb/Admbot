@@ -2318,7 +2318,11 @@
     
     // Navigation
     document.getElementById('navHome').onclick = (e) => { 
-      e.preventDefault(); 
+      e.preventDefault();
+      // Показываем loading overlay
+      if (typeof showPageLoadingOverlay === 'function') {
+        showPageLoadingOverlay();
+      }
       const p = new URLSearchParams(location.search); 
       if (!p.get('ngrok-skip-browser-warning')) p.set('ngrok-skip-browser-warning', '1'); 
       location.href = '/static/index.html?' + p.toString(); 

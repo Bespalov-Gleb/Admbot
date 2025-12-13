@@ -134,48 +134,76 @@
       align-items: center;
       justify-content: center;
       overflow: auto;
+      padding: 20px;
     }
     
     .users-modal-content {
       background: white;
       border-radius: 16px;
-      width: 90%;
+      width: 100%;
       max-width: 900px;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      margin: 20px;
+      margin: 0 auto;
+    }
+    
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+      .users-modal {
+        padding: 0;
+      }
+      
+      .users-modal-content {
+        border-radius: 0;
+        max-height: 100vh;
+        width: 100%;
+        height: 100vh;
+      }
     }
     
     .users-modal-header {
-      padding: 20px 24px;
+      padding: 16px 20px;
       border-bottom: 1px solid #e2e8f0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
     
     .users-modal-header h2 {
       margin: 0;
-      font-size: 24px;
+      font-size: 20px;
       color: #1e293b;
+      line-height: 1.4;
+    }
+    
+    @media (max-width: 768px) {
+      .users-modal-header {
+        padding: 12px 16px;
+      }
+      
+      .users-modal-header h2 {
+        font-size: 18px;
+      }
     }
     
     .users-modal-close {
       background: none;
       border: none;
-      font-size: 32px;
+      font-size: 28px;
       color: #64748b;
       cursor: pointer;
       padding: 0;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
     
     .users-modal-close:hover {
@@ -184,17 +212,26 @@
     }
     
     .users-modal-body {
-      padding: 24px;
+      padding: 20px;
       flex: 1;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
     
+    @media (max-width: 768px) {
+      .users-modal-body {
+        padding: 16px;
+        gap: 12px;
+      }
+    }
+    
     .users-search-bar {
       display: flex;
       gap: 12px;
+      flex-wrap: wrap;
     }
     
     .users-search-bar input {
@@ -391,11 +428,18 @@
     }
     
     .users-modal-footer {
-      padding: 20px 24px;
+      padding: 16px 20px;
       border-top: 1px solid #e2e8f0;
       display: flex;
       justify-content: flex-end;
       gap: 12px;
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .users-modal-footer {
+        padding: 12px 16px;
+      }
     }
     
     .secondary-btn {
@@ -2433,28 +2477,31 @@
         <button class="users-modal-close" onclick="closeRestaurantInfoBlocksModal()">×</button>
       </div>
       <div class="users-modal-body">
-        <div id="restaurantInfoBlocksList" style="overflow-y:auto; max-height:calc(90vh - 400px); padding:8px 0;">
+        <!-- Список существующих блоков -->
+        <div id="restaurantInfoBlocksList" style="flex: 1; overflow-y: auto; margin-bottom: 16px;">
           <!-- Список блоков подставляется из JS -->
         </div>
-        <div style="margin-top:20px; padding:20px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
-          <h4 style="margin:0 0 16px 0; font-size:18px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
-            <span style="font-size:20px;">➕</span>
+        
+        <!-- Форма добавления нового блока -->
+        <div style="padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; flex-shrink: 0;">
+          <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">➕</span>
             <span>Новый инфо-блок</span>
           </h4>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Название блока *</label>
-            <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Название блока *</label>
+            <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; box-sizing: border-box;">
           </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Описание (опционально)</label>
-            <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="min-height:80px; resize:vertical; padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; font-family:inherit;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Описание (опционально)</label>
+            <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="width: 100%; min-height: 70px; resize: vertical; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; font-family: inherit; box-sizing: border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
           </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Порядок отображения</label>
-            <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0" value="0" style="padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; max-width:150px;">
-            <small style="display:block; margin-top:6px; color:#6b7280; font-size:12px; line-height:1.4;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Порядок отображения</label>
+            <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0" value="0" style="width: 100%; max-width: 150px; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; box-sizing: border-box;">
+            <small style="display: block; margin-top: 4px; color: #6b7280; font-size: 11px; line-height: 1.4;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
           </div>
-          <button type="button" class="primary-btn" style="padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600; width:100%;" onclick="createRestaurantInfoBlockAdmin()">
+          <button type="button" class="primary-btn" style="padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; width: 100%; box-sizing: border-box;" onclick="createRestaurantInfoBlockAdmin()">
             ➕ Добавить блок
           </button>
         </div>

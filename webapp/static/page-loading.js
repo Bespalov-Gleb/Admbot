@@ -30,6 +30,10 @@ function showPageLoadingOverlay() {
   });
 }
 
+// Показываем overlay немедленно при загрузке скрипта
+// (скрипт загружается синхронно, так что это будет одним из первых действий)
+showPageLoadingOverlay();
+
 function hidePageLoadingOverlay() {
   const overlay = document.getElementById('page-loading-overlay');
   if (overlay) {
