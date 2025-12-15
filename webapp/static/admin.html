@@ -163,6 +163,121 @@
       }
     }
     
+    /* === Специальные стили для модального окна инфо-блоков === */
+    .info-blocks-modal-content {
+      max-width: 1400px;
+      max-height: 95vh;
+    }
+    
+    .info-blocks-modal-body {
+      padding: 24px;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .info-blocks-container {
+      display: grid;
+      grid-template-columns: 1fr 450px;
+      gap: 24px;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    .info-blocks-list-section {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    
+    .info-blocks-form-section {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .info-blocks-scrollable {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 8px;
+      min-height: 0;
+    }
+    
+    /* Улучшенные стили для элементов списка блоков */
+    .info-blocks-scrollable > div {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+    }
+    
+    .info-blocks-scrollable > div:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+    
+    /* Адаптивность для планшетов */
+    @media (max-width: 1200px) {
+      .info-blocks-modal-content {
+        max-width: 95vw;
+      }
+      
+      .info-blocks-container {
+        grid-template-columns: 1fr 400px;
+        gap: 20px;
+      }
+    }
+    
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+      .info-blocks-modal-content {
+        max-width: 100%;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+      }
+      
+      .info-blocks-modal-body {
+        padding: 16px;
+      }
+      
+      .info-blocks-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .info-blocks-list-section {
+        overflow: visible;
+      }
+      
+      .info-blocks-scrollable {
+        overflow: visible;
+        max-height: none;
+        padding-right: 0;
+      }
+      
+      .info-blocks-form-section {
+        overflow: visible;
+      }
+    }
+    
+    /* Исправление для Safari - принудительная высота */
+    @supports (-webkit-appearance: none) {
+      .info-blocks-scrollable {
+        height: 100%;
+      }
+    }
+    
     .users-modal-header {
       padding: 16px 20px;
       border-bottom: 1px solid #e2e8f0;
@@ -2470,40 +2585,51 @@
   </script>
   
   <!-- Модальное окно для инфо-блоков ресторана -->
-  <div id="restaurantInfoBlocksModal" class="users-modal" style="display: none;">
-    <div class="users-modal-content">
+  <div id="restaurantInfoBlocksModal" class="users-modal info-blocks-modal" style="display: none;">
+    <div class="users-modal-content info-blocks-modal-content">
       <div class="users-modal-header">
         <h2>🏷️ Инфо-блоки ресторана <span id="restaurantInfoBlocksModalRestaurantTitle" style="font-size:16px; color:#64748b; margin-left:8px;"></span></h2>
         <button class="users-modal-close" onclick="closeRestaurantInfoBlocksModal()">×</button>
       </div>
-      <div class="users-modal-body">
-        <!-- Список существующих блоков -->
-        <div id="restaurantInfoBlocksList" style="flex: 1; overflow-y: auto; margin-bottom: 16px;">
-          <!-- Список блоков подставляется из JS -->
-        </div>
-        
-        <!-- Форма добавления нового блока -->
-        <div style="padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; flex-shrink: 0;">
-          <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 18px;">➕</span>
-            <span>Новый инфо-блок</span>
-          </h4>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Название блока *</label>
-            <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; box-sizing: border-box;">
+      <div class="users-modal-body info-blocks-modal-body">
+        <!-- Контейнер с двумя колонками для десктопа -->
+        <div class="info-blocks-container">
+          <!-- Левая колонка: Список существующих блоков -->
+          <div class="info-blocks-list-section">
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 20px;">📋</span>
+              <span>Существующие блоки</span>
+            </h3>
+            <div id="restaurantInfoBlocksList" class="info-blocks-scrollable">
+              <!-- Список блоков подставляется из JS -->
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Описание (опционально)</label>
-            <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="width: 100%; min-height: 70px; resize: vertical; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; font-family: inherit; box-sizing: border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
+          
+          <!-- Правая колонка: Форма создания нового блока -->
+          <div class="info-blocks-form-section">
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 20px;">➕</span>
+              <span>Создать новый блок</span>
+            </h3>
+            <div style="padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Название блока *</label>
+                <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Описание (опционально)</label>
+                <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="width: 100%; min-height: 100px; resize: vertical; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; font-family: inherit; box-sizing: border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Порядок отображения</label>
+                <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0" value="0" style="width: 100%; max-width: 180px; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
+                <small style="display: block; margin-top: 6px; color: #6b7280; font-size: 12px; line-height: 1.5;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
+              </div>
+              <button type="button" class="primary-btn" style="padding: 14px 24px; border-radius: 8px; font-size: 15px; font-weight: 600; width: 100%; box-sizing: border-box;" onclick="createRestaurantInfoBlockAdmin()">
+                ➕ Добавить блок
+              </button>
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 13px;">Порядок отображения</label>
-            <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0" value="0" style="width: 100%; max-width: 150px; padding: 10px 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; box-sizing: border-box;">
-            <small style="display: block; margin-top: 4px; color: #6b7280; font-size: 11px; line-height: 1.4;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
-          </div>
-          <button type="button" class="primary-btn" style="padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; width: 100%; box-sizing: border-box;" onclick="createRestaurantInfoBlockAdmin()">
-            ➕ Добавить блок
-          </button>
         </div>
       </div>
       <div class="users-modal-footer">
@@ -3036,7 +3162,7 @@
       if (!list) return;
 
       if (!Array.isArray(currentInfoBlocks) || currentInfoBlocks.length === 0) {
-        list.innerHTML = '<div style="padding: 12px; font-size: 14px; color: #64748b;">Пока нет ни одного инфо-блока. Добавьте первый через форму ниже.</div>';
+        list.innerHTML = '<div style="padding: 24px; text-align: center; font-size: 15px; color: #64748b; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0;">📋 Пока нет ни одного инфо-блока.<br><br>Создайте первый блок, используя форму справа →</div>';
         return;
       }
 
@@ -3050,43 +3176,47 @@
       list.innerHTML = '';
       sorted.forEach(block => {
         const item = document.createElement('div');
-        item.style.cssText = 'background:white; border:1px solid #e2e8f0; border-radius:12px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.1);';
         const titleId = `adminInfoBlockTitle_${block.id}`;
         const descId = `adminInfoBlockDescription_${block.id}`;
         const sortId = `adminInfoBlockSort_${block.id}`;
         const enabledId = `adminInfoBlockEnabled_${block.id}`;
+        
         item.innerHTML = `
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #e2e8f0;">
-            <h5 style="margin:0; font-size:16px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
-              <span style="font-size:18px;">🏷️</span>
-              <span>Блок «${(block.title || '').substring(0, 30)}${block.title && block.title.length > 30 ? '...' : ''}»</span>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; padding-bottom:14px; border-bottom:2px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
+            <h5 style="margin:0; font-size:17px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:10px; flex: 1; min-width: 200px;">
+              <span style="font-size:20px;">🏷️</span>
+              <span>${(block.title || '').substring(0, 40)}${block.title && block.title.length > 40 ? '...' : ''}</span>
             </h5>
-            <span style="font-size:12px; color:#64748b; background:#f1f5f9; padding:4px 8px; border-radius:6px;">ID: ${block.id}</span>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <span style="font-size:12px; color:#64748b; background:#f1f5f9; padding:6px 12px; border-radius:8px; font-weight: 500;">Порядок: ${block.sort_order ?? 0}</span>
+              <span style="font-size:12px; color:${block.is_enabled ? '#059669' : '#ef4444'}; background:${block.is_enabled ? '#d1fae5' : '#fee2e2'}; padding:6px 12px; border-radius:8px; font-weight: 600;">${block.is_enabled ? '✓ Включен' : '✗ Выключен'}</span>
+            </div>
           </div>
-          <div style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Название блока *</label>
-            <input id="${titleId}" class="form-control" type="text" value="${(block.title || '').replace(/"/g, '&quot;')}" placeholder="Например: Хиты продаж" style="padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; width:100%; box-sizing:border-box;">
+          <div style="margin-bottom:14px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Название блока *</label>
+            <input id="${titleId}" class="form-control" type="text" value="${(block.title || '').replace(/"/g, '&quot;')}" placeholder="Например: Хиты продаж" style="padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:15px; width:100%; box-sizing:border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
           </div>
-          <div style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Описание (опционально)</label>
-            <textarea id="${descId}" class="form-control" style="min-height:80px; resize:vertical; padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; font-family:inherit; width:100%; box-sizing:border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана.">${(block.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+          <div style="margin-bottom:14px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Описание (опционально)</label>
+            <textarea id="${descId}" class="form-control" style="min-height:90px; resize:vertical; padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; font-family:inherit; width:100%; box-sizing:border-box; transition: border-color 0.2s;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана." onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">${(block.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
           </div>
-          <div style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:6px; font-weight:500; color:#374151; font-size:14px;">Порядок отображения</label>
-            <input id="${sortId}" class="form-control" type="number" value="${block.sort_order ?? 0}" placeholder="0" style="padding:12px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; max-width:150px;">
-            <small style="display:block; margin-top:6px; color:#6b7280; font-size:12px; line-height:1.4;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Порядок</label>
+              <input id="${sortId}" class="form-control" type="number" value="${block.sort_order ?? 0}" placeholder="0" style="padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:15px; width:100%; box-sizing:border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+              <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; cursor:pointer; margin:0; padding: 12px 14px; background:#f8fafc; border-radius:8px; border:2px solid #e2e8f0; width: 100%; box-sizing: border-box; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
+                <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;">
+                <span style="font-weight:500; font-size:13px;">Показывать</span>
+              </label>
+            </div>
           </div>
-          <div style="margin-bottom:16px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
-            <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; cursor:pointer; margin:0;">
-              <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer; accent-color:#3b82f6;">
-              <span style="font-weight:500;">Показывать блок на странице ресторана</span>
-            </label>
-          </div>
-          <div style="display:flex; gap:12px; margin-top:20px;">
-            <button type="button" class="primary-btn" style="flex:1; padding:12px; border-radius:8px; font-size:14px; font-weight:600;" onclick="updateRestaurantInfoBlockAdmin(${block.id})">
+          <div style="display:flex; gap:10px; margin-top:18px; flex-wrap: wrap;">
+            <button type="button" class="primary-btn" style="flex:1; min-width: 140px; padding:14px 20px; border-radius:8px; font-size:15px; font-weight:600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);" onclick="updateRestaurantInfoBlockAdmin(${block.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.2)'">
               💾 Сохранить
             </button>
-            <button type="button" class="secondary-btn" style="flex:1; padding:12px; border-radius:8px; font-size:14px; font-weight:600; background:#fee2e2; border-color:#fecaca; color:#b91c1c;" onclick="if(confirm('Удалить этот инфо-блок?')) deleteRestaurantInfoBlockAdmin(${block.id})">
+            <button type="button" class="secondary-btn" style="flex:1; min-width: 140px; padding:14px 20px; border-radius:8px; font-size:15px; font-weight:600; background:#fee2e2; border:2px solid #fecaca; color:#b91c1c; transition: all 0.2s; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);" onclick="if(confirm('Удалить этот инфо-блок?')) deleteRestaurantInfoBlockAdmin(${block.id})" onmouseover="this.style.background='#fecaca'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.3)'" onmouseout="this.style.background='#fee2e2'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(239, 68, 68, 0.2)'">
               🗑 Удалить
             </button>
           </div>
