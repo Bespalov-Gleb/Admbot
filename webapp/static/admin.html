@@ -163,121 +163,6 @@
       }
     }
     
-    /* === Специальные стили для модального окна инфо-блоков === */
-    .info-blocks-modal-content {
-      max-width: 1400px;
-      max-height: 95vh;
-    }
-    
-    .info-blocks-modal-body {
-      padding: 24px;
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .info-blocks-container {
-      display: grid;
-      grid-template-columns: 1fr 450px;
-      gap: 24px;
-      height: 100%;
-      overflow: hidden;
-    }
-    
-    .info-blocks-list-section {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-height: 0;
-    }
-    
-    .info-blocks-form-section {
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    .info-blocks-scrollable {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-      padding-right: 8px;
-      min-height: 0;
-    }
-    
-    /* Улучшенные стили для элементов списка блоков */
-    .info-blocks-scrollable > div {
-      background: white;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s;
-    }
-    
-    .info-blocks-scrollable > div:hover {
-      border-color: #3b82f6;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-    }
-    
-    /* Адаптивность для планшетов */
-    @media (max-width: 1200px) {
-      .info-blocks-modal-content {
-        max-width: 95vw;
-      }
-      
-      .info-blocks-container {
-        grid-template-columns: 1fr 400px;
-        gap: 20px;
-      }
-    }
-    
-    /* Адаптивность для мобильных устройств */
-    @media (max-width: 768px) {
-      .info-blocks-modal-content {
-        max-width: 100%;
-        max-height: 100vh;
-        height: 100vh;
-        border-radius: 0;
-      }
-      
-      .info-blocks-modal-body {
-        padding: 16px;
-      }
-      
-      .info-blocks-container {
-        grid-template-columns: 1fr;
-        gap: 20px;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      .info-blocks-list-section {
-        overflow: visible;
-      }
-      
-      .info-blocks-scrollable {
-        overflow: visible;
-        max-height: none;
-        padding-right: 0;
-      }
-      
-      .info-blocks-form-section {
-        overflow: visible;
-      }
-    }
-    
-    /* Исправление для Safari - принудительная высота */
-    @supports (-webkit-appearance: none) {
-      .info-blocks-scrollable {
-        height: 100%;
-      }
-    }
-    
     .users-modal-header {
       padding: 16px 20px;
       border-bottom: 1px solid #e2e8f0;
@@ -900,7 +785,8 @@
             <div class="restaurant-actions">
               <button data-act="save">💾 Сохранить</button>
               <button data-act="toggle">${r.is_enabled ? '🔴 Выключить' : '🟢 Включить'}</button>
-              <button data-act="infoBlocks">🏷️ Инфо-блоки</button>
+              <button data-act="editInfoBlocks">📋 Редактировать блоки</button>
+              <button data-act="createInfoBlock">➕ Создать блок</button>
               <button data-act="del">🗑️ Удалить</button>
             </div>
           </div>`;
@@ -949,8 +835,11 @@
           await fetch(api + '/admin/restaurants/' + r.id + '/status?enabled=' + (!r.is_enabled), { method:'PATCH', headers });
           load();
         };
-        el.querySelector('[data-act="infoBlocks"]').onclick = () => {
-          openRestaurantInfoBlocksModal(r);
+        el.querySelector('[data-act="editInfoBlocks"]').onclick = () => {
+          openEditInfoBlocksModal(r);
+        };
+        el.querySelector('[data-act="createInfoBlock"]').onclick = () => {
+          openCreateInfoBlockModal(r);
         };
         el.querySelector('[data-act="del"]').onclick = async () => {
           if (!confirm('Удалить ресторан #' + r.id + '?')) return;
@@ -2584,56 +2473,49 @@
     
   </script>
   
-  <!-- Модальное окно для инфо-блоков ресторана -->
-  <div id="restaurantInfoBlocksModal" class="users-modal info-blocks-modal" style="display: none;">
-    <div class="users-modal-content info-blocks-modal-content">
+  <!-- Модальное окно для редактирования существующих инфо-блоков -->
+  <div id="editInfoBlocksModal" class="users-modal" style="display: none;">
+    <div class="users-modal-content" style="max-width: 700px;">
       <div class="users-modal-header">
-        <h2>🏷️ Инфо-блоки ресторана <span id="restaurantInfoBlocksModalRestaurantTitle" style="font-size:16px; color:#64748b; margin-left:8px;"></span></h2>
-        <button class="users-modal-close" onclick="closeRestaurantInfoBlocksModal()">×</button>
+        <h2>📋 Инфо-блоки ресторана <span id="editInfoBlocksModalTitle" style="font-size:16px; color:#64748b; margin-left:8px;"></span></h2>
+        <button class="users-modal-close" onclick="closeEditInfoBlocksModal()">×</button>
       </div>
-      <div class="users-modal-body info-blocks-modal-body">
-        <!-- Контейнер с двумя колонками для десктопа -->
-        <div class="info-blocks-container">
-          <!-- Левая колонка: Список существующих блоков -->
-          <div class="info-blocks-list-section">
-            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 20px;">📋</span>
-              <span>Существующие блоки</span>
-            </h3>
-            <div id="restaurantInfoBlocksList" class="info-blocks-scrollable">
-              <!-- Список блоков подставляется из JS -->
-            </div>
-          </div>
-          
-          <!-- Правая колонка: Форма создания нового блока -->
-          <div class="info-blocks-form-section">
-            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 20px;">➕</span>
-              <span>Создать новый блок</span>
-            </h3>
-            <div style="padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-              <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Название блока *</label>
-                <input id="newRestaurantInfoBlockTitle" class="form-control" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
-              </div>
-              <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Описание (опционально)</label>
-                <textarea id="newRestaurantInfoBlockDescription" class="form-control" style="width: 100%; min-height: 100px; resize: vertical; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; font-family: inherit; box-sizing: border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
-              </div>
-              <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">Порядок отображения</label>
-                <input id="newRestaurantInfoBlockSort" class="form-control" type="number" placeholder="0" value="0" style="width: 100%; max-width: 180px; padding: 12px 14px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
-                <small style="display: block; margin-top: 6px; color: #6b7280; font-size: 12px; line-height: 1.5;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
-              </div>
-              <button type="button" class="primary-btn" style="padding: 14px 24px; border-radius: 8px; font-size: 15px; font-weight: 600; width: 100%; box-sizing: border-box;" onclick="createRestaurantInfoBlockAdmin()">
-                ➕ Добавить блок
-              </button>
-            </div>
-          </div>
+      <div class="users-modal-body" style="padding: 20px; overflow-y: auto;">
+        <div id="editInfoBlocksList">
+          <!-- Список блоков подставляется из JS -->
         </div>
       </div>
       <div class="users-modal-footer">
-        <button class="secondary-btn" onclick="closeRestaurantInfoBlocksModal()">Закрыть</button>
+        <button class="secondary-btn" onclick="closeEditInfoBlocksModal()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для создания нового инфо-блока -->
+  <div id="createInfoBlockModal" class="users-modal" style="display: none;">
+    <div class="users-modal-content" style="max-width: 600px;">
+      <div class="users-modal-header">
+        <h2>➕ Создать инфо-блок <span id="createInfoBlockModalTitle" style="font-size:16px; color:#64748b; margin-left:8px;"></span></h2>
+        <button class="users-modal-close" onclick="closeCreateInfoBlockModal()">×</button>
+      </div>
+      <div class="users-modal-body" style="padding: 24px;">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 15px;">Название блока *</label>
+          <input id="newInfoBlockTitle" type="text" placeholder="Например: Хиты продаж, За баллы, Мега-комбо" style="width: 100%; padding: 14px 16px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 16px; box-sizing: border-box;">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 15px;">Описание (опционально)</label>
+          <textarea id="newInfoBlockDescription" style="width: 100%; min-height: 120px; resize: vertical; padding: 14px 16px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 16px; font-family: inherit; box-sizing: border-box;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана."></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 15px;">Порядок отображения</label>
+          <input id="newInfoBlockSort" type="number" placeholder="0" value="0" style="width: 100%; max-width: 150px; padding: 14px 16px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 16px; box-sizing: border-box;">
+          <small style="display: block; margin-top: 8px; color: #6b7280; font-size: 13px; line-height: 1.5;">Число для сортировки блоков (0, 10, 20...). Блоки с меньшим числом отображаются первыми.</small>
+        </div>
+      </div>
+      <div class="users-modal-footer">
+        <button class="secondary-btn" onclick="closeCreateInfoBlockModal()">Отмена</button>
+        <button class="primary-btn" onclick="createInfoBlock()" style="padding: 12px 32px;">➕ Создать</button>
       </div>
     </div>
   </div>
@@ -3138,31 +3020,30 @@
       }
     }
     
-    // ===== ИНФО-БЛОКИ РЕСТОРАНА (СУПЕРАДМИН) =====
-
-    async function loadRestaurantInfoBlocksAdmin(restaurantId) {
+    // ===== ИНФО-БЛОКИ РЕСТОРАНА =====
+    async function loadAndRenderInfoBlocks(restaurantId) {
       try {
         const res = await fetch(api + '/admin/restaurants/' + restaurantId + '/info-blocks', { headers });
         if (!res.ok) {
-          console.error('Failed to load info-blocks for restaurant', restaurantId, res.status);
+          console.error('Failed to load info-blocks', res.status);
           currentInfoBlocks = [];
         } else {
           currentInfoBlocks = await res.json();
         }
-        renderRestaurantInfoBlocksAdmin();
+        renderEditInfoBlocksList();
       } catch (e) {
         console.error('Error loading restaurant info-blocks:', e);
         currentInfoBlocks = [];
-        renderRestaurantInfoBlocksAdmin();
+        renderEditInfoBlocksList();
       }
     }
 
-    function renderRestaurantInfoBlocksAdmin() {
-      const list = document.getElementById('restaurantInfoBlocksList');
+    function renderEditInfoBlocksList() {
+      const list = document.getElementById('editInfoBlocksList');
       if (!list) return;
 
       if (!Array.isArray(currentInfoBlocks) || currentInfoBlocks.length === 0) {
-        list.innerHTML = '<div style="padding: 24px; text-align: center; font-size: 15px; color: #64748b; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0;">📋 Пока нет ни одного инфо-блока.<br><br>Создайте первый блок, используя форму справа →</div>';
+        list.innerHTML = '<div style="padding: 40px 20px; text-align: center; font-size: 15px; color: #64748b;">📋 Нет инфо-блоков.<br><br>Создайте первый блок, нажав на кнопку <strong>«➕ Создать блок»</strong></div>';
         return;
       }
 
@@ -3176,47 +3057,57 @@
       list.innerHTML = '';
       sorted.forEach(block => {
         const item = document.createElement('div');
-        const titleId = `adminInfoBlockTitle_${block.id}`;
-        const descId = `adminInfoBlockDescription_${block.id}`;
-        const sortId = `adminInfoBlockSort_${block.id}`;
-        const enabledId = `adminInfoBlockEnabled_${block.id}`;
+        const titleId = `editBlockTitle_${block.id}`;
+        const descId = `editBlockDesc_${block.id}`;
+        const sortId = `editBlockSort_${block.id}`;
+        const enabledId = `editBlockEnabled_${block.id}`;
+        
+        item.style.cssText = 'background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px;';
         
         item.innerHTML = `
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; padding-bottom:14px; border-bottom:2px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
-            <h5 style="margin:0; font-size:17px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:10px; flex: 1; min-width: 200px;">
-              <span style="font-size:20px;">🏷️</span>
-              <span>${(block.title || '').substring(0, 40)}${block.title && block.title.length > 40 ? '...' : ''}</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
+            <h5 style="margin: 0; font-size: 17px; font-weight: 600; color: #1e293b;">
+              🏷️ ${block.title}
             </h5>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <span style="font-size:12px; color:#64748b; background:#f1f5f9; padding:6px 12px; border-radius:8px; font-weight: 500;">Порядок: ${block.sort_order ?? 0}</span>
-              <span style="font-size:12px; color:${block.is_enabled ? '#059669' : '#ef4444'}; background:${block.is_enabled ? '#d1fae5' : '#fee2e2'}; padding:6px 12px; border-radius:8px; font-weight: 600;">${block.is_enabled ? '✓ Включен' : '✗ Выключен'}</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 12px; padding: 4px 10px; border-radius: 6px; background: #f1f5f9; color: #64748b; font-weight: 500;">
+                Порядок: ${block.sort_order ?? 0}
+              </span>
+              <span style="font-size: 12px; padding: 4px 10px; border-radius: 6px; background: ${block.is_enabled ? '#d1fae5' : '#fee2e2'}; color: ${block.is_enabled ? '#059669' : '#ef4444'}; font-weight: 600;">
+                ${block.is_enabled ? '✓ Включен' : '✗ Выключен'}
+              </span>
             </div>
           </div>
-          <div style="margin-bottom:14px;">
-            <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Название блока *</label>
-            <input id="${titleId}" class="form-control" type="text" value="${(block.title || '').replace(/"/g, '&quot;')}" placeholder="Например: Хиты продаж" style="padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:15px; width:100%; box-sizing:border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
+          
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">Название *</label>
+            <input id="${titleId}" type="text" value="${(block.title || '').replace(/"/g, '&quot;')}" placeholder="Название блока" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
           </div>
-          <div style="margin-bottom:14px;">
-            <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Описание (опционально)</label>
-            <textarea id="${descId}" class="form-control" style="min-height:90px; resize:vertical; padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:14px; font-family:inherit; width:100%; box-sizing:border-box; transition: border-color 0.2s;" placeholder="Текстовое описание блока. Будет отображаться под названием на странице ресторана." onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">${(block.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+          
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">Описание</label>
+            <textarea id="${descId}" style="width: 100%; min-height: 80px; resize: vertical; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 14px; font-family: inherit; box-sizing: border-box;" placeholder="Описание блока">${(block.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
             <div>
-              <label style="display:block; margin-bottom:8px; font-weight:600; color:#374151; font-size:13px;">Порядок</label>
-              <input id="${sortId}" class="form-control" type="number" value="${block.sort_order ?? 0}" placeholder="0" style="padding:12px 14px; border-radius:8px; border:2px solid #e5e7eb; font-size:15px; width:100%; box-sizing:border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
+              <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">Порядок</label>
+              <input id="${sortId}" type="number" value="${block.sort_order ?? 0}" placeholder="0" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb; font-size: 15px; box-sizing: border-box;">
             </div>
-            <div style="display: flex; align-items: flex-end;">
-              <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; cursor:pointer; margin:0; padding: 12px 14px; background:#f8fafc; border-radius:8px; border:2px solid #e2e8f0; width: 100%; box-sizing: border-box; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
-                <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;">
-                <span style="font-weight:500; font-size:13px;">Показывать</span>
+            <div>
+              <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">Статус</label>
+              <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer; height: 100%; box-sizing: border-box;">
+                <input id="${enabledId}" type="checkbox" ${block.is_enabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;">
+                <span style="font-weight: 500; font-size: 14px; color: #374151;">Показывать</span>
               </label>
             </div>
           </div>
-          <div style="display:flex; gap:10px; margin-top:18px; flex-wrap: wrap;">
-            <button type="button" class="primary-btn" style="flex:1; min-width: 140px; padding:14px 20px; border-radius:8px; font-size:15px; font-weight:600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);" onclick="updateRestaurantInfoBlockAdmin(${block.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.2)'">
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="primary-btn" onclick="updateInfoBlock(${block.id})" style="flex: 1; min-width: 120px; padding: 12px 20px; font-size: 15px; font-weight: 600; border-radius: 8px;">
               💾 Сохранить
             </button>
-            <button type="button" class="secondary-btn" style="flex:1; min-width: 140px; padding:14px 20px; border-radius:8px; font-size:15px; font-weight:600; background:#fee2e2; border:2px solid #fecaca; color:#b91c1c; transition: all 0.2s; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);" onclick="if(confirm('Удалить этот инфо-блок?')) deleteRestaurantInfoBlockAdmin(${block.id})" onmouseover="this.style.background='#fecaca'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.3)'" onmouseout="this.style.background='#fee2e2'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(239, 68, 68, 0.2)'">
+            <button type="button" onclick="if(confirm('Удалить блок «${block.title}»?')) deleteInfoBlock(${block.id})" style="flex: 1; min-width: 120px; padding: 12px 20px; font-size: 15px; font-weight: 600; border-radius: 8px; background: #fee2e2; border: 2px solid #fecaca; color: #b91c1c; cursor: pointer;">
               🗑 Удалить
             </button>
           </div>
@@ -3225,17 +3116,20 @@
       });
     }
 
-    async function createRestaurantInfoBlockAdmin() {
+    // ===== СОЗДАНИЕ НОВОГО БЛОКА =====
+    async function createInfoBlock() {
       if (!currentInfoBlocksRestaurant) return;
-      const titleEl = document.getElementById('newRestaurantInfoBlockTitle');
-      const descEl = document.getElementById('newRestaurantInfoBlockDescription');
-      const sortEl = document.getElementById('newRestaurantInfoBlockSort');
+      
+      const titleEl = document.getElementById('newInfoBlockTitle');
+      const descEl = document.getElementById('newInfoBlockDescription');
+      const sortEl = document.getElementById('newInfoBlockSort');
+      
       const title = (titleEl?.value || '').trim();
       const description = (descEl?.value || '').trim();
       const sort = Number(sortEl?.value || '0') || 0;
 
       if (!title) {
-        showMessage('Название инфо-блока не может быть пустым', 'error');
+        alert('Введите название блока');
         return;
       }
 
@@ -3250,27 +3144,34 @@
             is_enabled: true,
           }),
         });
+        
         if (!res.ok) {
-          showMessage('Не удалось создать инфо-блок', 'error');
+          alert('Ошибка при создании инфо-блока');
           return;
         }
-        if (titleEl) titleEl.value = '';
-        if (descEl) descEl.value = '';
-        if (sortEl) sortEl.value = '';
-        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
-        showMessage('Инфо-блок создан', 'success');
+        
+        alert('✅ Инфо-блок успешно создан!');
+        closeCreateInfoBlockModal();
+        
+        // Если открыто окно редактирования, обновляем список
+        const editModal = document.getElementById('editInfoBlocksModal');
+        if (editModal && editModal.style.display === 'flex') {
+          await loadAndRenderInfoBlocks(currentInfoBlocksRestaurant.id);
+        }
       } catch (e) {
-        console.error('Error creating info-block (admin):', e);
-        showMessage('Ошибка при создании инфо-блока', 'error');
+        console.error('Error creating info-block:', e);
+        alert('Ошибка при создании инфо-блока');
       }
     }
 
-    async function updateRestaurantInfoBlockAdmin(id) {
+    // ===== ОБНОВЛЕНИЕ БЛОКА =====
+    async function updateInfoBlock(id) {
       if (!currentInfoBlocksRestaurant) return;
-      const titleEl = document.getElementById('adminInfoBlockTitle_' + id);
-      const descEl = document.getElementById('adminInfoBlockDescription_' + id);
-      const sortEl = document.getElementById('adminInfoBlockSort_' + id);
-      const enabledEl = document.getElementById('adminInfoBlockEnabled_' + id);
+      
+      const titleEl = document.getElementById('editBlockTitle_' + id);
+      const descEl = document.getElementById('editBlockDesc_' + id);
+      const sortEl = document.getElementById('editBlockSort_' + id);
+      const enabledEl = document.getElementById('editBlockEnabled_' + id);
 
       const title = (titleEl?.value || '').trim();
       const description = (descEl?.value || '').trim();
@@ -3278,7 +3179,7 @@
       const isEnabled = !!(enabledEl && enabledEl.checked);
 
       if (!title) {
-        showMessage('Название инфо-блока не может быть пустым', 'error');
+        alert('Введите название блока');
         return;
       }
 
@@ -3293,58 +3194,88 @@
             is_enabled: isEnabled,
           }),
         });
+        
         if (!res.ok) {
-          showMessage('Не удалось обновить инфо-блок', 'error');
+          alert('Ошибка при обновлении инфо-блока');
           return;
         }
-        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
-        showMessage('Инфо-блок обновлён', 'success');
+        
+        alert('✅ Инфо-блок успешно обновлён!');
+        await loadAndRenderInfoBlocks(currentInfoBlocksRestaurant.id);
       } catch (e) {
-        console.error('Error updating info-block (admin):', e);
-        showMessage('Ошибка при обновлении инфо-блока', 'error');
+        console.error('Error updating info-block:', e);
+        alert('Ошибка при обновлении инфо-блока');
       }
     }
 
-    async function deleteRestaurantInfoBlockAdmin(id) {
+    // ===== УДАЛЕНИЕ БЛОКА =====
+    async function deleteInfoBlock(id) {
       if (!currentInfoBlocksRestaurant) return;
-      if (!confirm('Удалить этот инфо-блок?')) return;
+      
       try {
         const res = await fetch(api + '/admin/restaurants/info-blocks/' + id, {
           method: 'DELETE',
           headers,
         });
+        
         if (!res.ok) {
-          showMessage('Не удалось удалить инфо-блок', 'error');
+          alert('Ошибка при удалении инфо-блока');
           return;
         }
-        await loadRestaurantInfoBlocksAdmin(currentInfoBlocksRestaurant.id);
-        showMessage('Инфо-блок удалён', 'success');
+        
+        alert('✅ Инфо-блок успешно удалён!');
+        await loadAndRenderInfoBlocks(currentInfoBlocksRestaurant.id);
       } catch (e) {
-        console.error('Error deleting info-block (admin):', e);
-        showMessage('Ошибка при удалении инфо-блока', 'error');
+        console.error('Error deleting info-block:', e);
+        alert('Ошибка при удалении инфо-блока');
       }
     }
 
-    function openRestaurantInfoBlocksModal(restaurant) {
+    // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ДЛЯ РЕДАКТИРОВАНИЯ СУЩЕСТВУЮЩИХ БЛОКОВ =====
+    function openEditInfoBlocksModal(restaurant) {
       currentInfoBlocksRestaurant = restaurant;
-      const modal = document.getElementById('restaurantInfoBlocksModal');
-      const titleSpan = document.getElementById('restaurantInfoBlocksModalRestaurantTitle');
+      const modal = document.getElementById('editInfoBlocksModal');
+      const titleSpan = document.getElementById('editInfoBlocksModalTitle');
       if (titleSpan) {
         titleSpan.textContent = `#${restaurant.id} ${restaurant.name}`;
       }
       if (modal) {
         modal.style.display = 'flex';
-        loadRestaurantInfoBlocksAdmin(restaurant.id);
+        loadAndRenderInfoBlocks(restaurant.id);
       }
     }
 
-    function closeRestaurantInfoBlocksModal() {
-      const modal = document.getElementById('restaurantInfoBlocksModal');
+    function closeEditInfoBlocksModal() {
+      const modal = document.getElementById('editInfoBlocksModal');
       if (modal) {
         modal.style.display = 'none';
       }
       currentInfoBlocksRestaurant = null;
       currentInfoBlocks = [];
+    }
+
+    // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ДЛЯ СОЗДАНИЯ НОВОГО БЛОКА =====
+    function openCreateInfoBlockModal(restaurant) {
+      currentInfoBlocksRestaurant = restaurant;
+      const modal = document.getElementById('createInfoBlockModal');
+      const titleSpan = document.getElementById('createInfoBlockModalTitle');
+      if (titleSpan) {
+        titleSpan.textContent = `#${restaurant.id} ${restaurant.name}`;
+      }
+      // Очищаем форму
+      document.getElementById('newInfoBlockTitle').value = '';
+      document.getElementById('newInfoBlockDescription').value = '';
+      document.getElementById('newInfoBlockSort').value = '0';
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeCreateInfoBlockModal() {
+      const modal = document.getElementById('createInfoBlockModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
     }
 
     // ===== УПРАВЛЕНИЕ АДМИНАМИ РЕСТОРАНОВ =====
